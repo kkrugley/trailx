@@ -85,6 +85,12 @@ export async function buildRoute(
     throw new RateLimitError()
   }
 
+  if (response.status === 401 || response.status === 403) {
+    throw new RoutingError(
+      'GraphHopper API key недействителен. Установите VITE_GRAPHHOPPER_API_KEY в .env',
+    )
+  }
+
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { message?: string }
     throw new RoutingError(body.message ?? `GraphHopper error ${response.status}`)

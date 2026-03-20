@@ -5,6 +5,7 @@ import { WaypointInputList } from '../WaypointInputList/WaypointInputList'
 import { RouteResults } from '../RouteResults/RouteResults'
 import { ErrorMessage } from '../ErrorMessage/ErrorMessage'
 import { CollapsedFooter } from '../CollapsedFooter/CollapsedFooter'
+import { FilterBar } from '../FilterBar/FilterBar'
 import { PoweredBy } from '../PoweredBy/PoweredBy'
 import styles from './BottomSheet.module.css'
 
@@ -41,6 +42,7 @@ export function BottomSheet() {
             <ProfileTabs />
           </div>
           <WaypointInputList />
+          <FilterBar />
           <ErrorMessage />
           {routeResult && <RouteResults result={routeResult} />}
           <div className={styles.footerAttrib}>

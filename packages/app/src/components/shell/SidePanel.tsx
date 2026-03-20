@@ -1,4 +1,6 @@
 import { RoutePanel } from '../RoutePanel/RoutePanel'
+import { FilterBar } from '../FilterBar/FilterBar'
+import { ExportPanel } from '../ExportPanel/ExportPanel'
 import styles from './SidePanel.module.css'
 
 export function SidePanel() {
@@ -7,6 +9,8 @@ export function SidePanel() {
       <div className={styles.inner}>
         <RoutePanel />
       </div>
+      <FilterBar />
+      <ExportPanel />
     </aside>
   )
 }

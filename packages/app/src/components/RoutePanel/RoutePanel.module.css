@@ -1,0 +1,138 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0.75rem;
+}
+
+/* ── Empty state ──────────────────────────── */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--surface-container-high);
+  padding: 2rem 1rem;
+}
+
+.emptyText {
+  font-size: 0.9rem;
+  color: var(--primary);
+  opacity: 0.4;
+  text-align: center;
+}
+
+/* ── Waypoint list ────────────────────────── */
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── Waypoint item ────────────────────────── */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  background-color: var(--surface-container-high);
+  border-radius: var(--radius-md);
+  cursor: default;
+  user-select: none;
+}
+
+.item.dragging {
+  opacity: 0.45;
+  box-shadow: var(--shadow-float);
+}
+
+/* drag handle */
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: grab;
+  color: var(--primary);
+  opacity: 0.35;
+  flex-shrink: 0;
+  touch-action: none; /* required for dnd-kit on mobile */
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+/* type icon */
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--secondary);
+}
+
+/* label */
+.itemLabel {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* delete button */
+.removeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  opacity: 0.3;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.removeButton:hover {
+  opacity: 1;
+  color: #c0392b;
+}
+
+/* ── Clear button ─────────────────────────── */
+.clearButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--surface-container);
+  color: var(--primary);
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.clearButton:hover {
+  opacity: 1;
+}

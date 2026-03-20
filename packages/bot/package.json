@@ -1,0 +1,24 @@
+{
+  "name": "@trailx/bot",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@trailx/shared": "workspace:*",
+    "grammy": "^1.27.0",
+    "fastify": "^4.28.0",
+    "@fastify/websocket": "^10.0.0",
+    "@prisma/client": "^5.22.0",
+    "stripe": "^16.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

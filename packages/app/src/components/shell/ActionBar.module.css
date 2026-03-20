@@ -1,0 +1,37 @@
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  /* base height + safe area so content doesn't underlap home indicator */
+  height: calc(var(--action-bar-height) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 20;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.button:active {
+  background-color: rgba(255, 255, 255, 0.18);
+}

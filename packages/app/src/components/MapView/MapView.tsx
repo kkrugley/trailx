@@ -29,10 +29,19 @@ export interface MapViewHandle {
   getMap: () => maplibregl.Map | null
 }
 
+/** Per-type color — applied via inline style so className mutations don't
+ *  conflict with MapLibre v5 transform-based marker positioning. */
+const TYPE_COLOR: Record<RoutePoint['type'], string> = {
+  start: '#2a8f4a',
+  end: '#c0392b',
+  intermediate: '#4456b5',
+}
+
 /** Build a styled HTMLElement for a MapLibre Marker */
 function buildMarkerEl(type: RoutePoint['type'], number: number): HTMLElement {
   const el = document.createElement('div')
-  el.className = `${styles.marker} ${styles[type]}`
+  el.className = styles.marker
+  el.style.color = TYPE_COLOR[type]
   const label = document.createElement('span')
   label.className = styles.markerLabel
   label.textContent = String(number)
@@ -114,7 +123,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         clusterRadius: 50,
       })
 
-      // Cluster circles (below unclustered)
       map.addLayer({
         id: POI_LAYER_CLUSTERS,
         type: 'circle',
@@ -133,7 +141,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         },
       })
 
-      // Cluster count label
       map.addLayer({
         id: POI_LAYER_CLUSTER_COUNT,
         type: 'symbol',
@@ -146,7 +153,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         paint: { 'text-color': '#ffffff' },
       })
 
-      // Unclustered individual POI (colored by category)
       map.addLayer({
         id: POI_LAYER_UNCLUSTERED,
         type: 'circle',
@@ -169,7 +175,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       const features = map.queryRenderedFeatures(e.point, {
         layers: [POI_LAYER_UNCLUSTERED, POI_LAYER_CLUSTERS],
       })
-      if (features.length > 0) return // handled by layer-specific click
+      if (features.length > 0) return
       addWaypointRef.current(e.lngLat.lat, e.lngLat.lng)
     })
 
@@ -178,20 +184,11 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       if (!e.features?.[0]) return
       const f = e.features[0]
       const p = f.properties as {
-        id: string
-        name: string
-        category: string
-        color: string
-        osmId: number
-        osmType: string
-        tags: string
-        lat: number
-        lng: number
+        id: string; name: string; category: string; color: string
+        osmId: number; osmType: string; tags: string; lat: number; lng: number
       }
       setSelectedPOIRef.current({
-        id: p.id,
-        lat: p.lat,
-        lng: p.lng,
+        id: p.id, lat: p.lat, lng: p.lng,
         name: p.name || undefined,
         category: p.category as POICategory,
         osmId: p.osmId,
@@ -200,19 +197,10 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       })
     })
 
-    // Cursor pointer on POI hover
-    map.on('mouseenter', POI_LAYER_UNCLUSTERED, () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', POI_LAYER_UNCLUSTERED, () => {
-      map.getCanvas().style.cursor = ''
-    })
-    map.on('mouseenter', POI_LAYER_CLUSTERS, () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', POI_LAYER_CLUSTERS, () => {
-      map.getCanvas().style.cursor = ''
-    })
+    map.on('mouseenter', POI_LAYER_UNCLUSTERED, () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', POI_LAYER_UNCLUSTERED, () => { map.getCanvas().style.cursor = '' })
+    map.on('mouseenter', POI_LAYER_CLUSTERS, () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', POI_LAYER_CLUSTERS, () => { map.getCanvas().style.cursor = '' })
 
     const observer = new ResizeObserver(() => map.resize())
     observer.observe(containerRef.current)
@@ -231,16 +219,10 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined
     if (!source) return
-
     if (routeResult) {
-      source.setData({
-        type: 'Feature',
-        properties: {},
-        geometry: routeResult.geometry,
-      })
+      source.setData({ type: 'Feature', properties: {}, geometry: routeResult.geometry })
     } else {
       source.setData({ type: 'FeatureCollection', features: [] })
     }
@@ -252,7 +234,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     if (!map || !mapReady) return
 
     const activeIds = new Set(waypoints.map((p) => p.id))
-
     for (const [id, marker] of markersRef.current) {
       if (!activeIds.has(id)) {
         marker.remove()
@@ -263,11 +244,12 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     waypoints.forEach((point, i) => {
       const number = i + 1
       const existing = markersRef.current.get(point.id)
-
       if (existing) {
         const span = existing.getElement().querySelector('span')
         if (span) span.textContent = String(number)
-        existing.getElement().className = `${styles.marker} ${styles[point.type]}`
+        // Update colour via inline style — avoids className mutation which causes
+        // layout invalidation and position drift in MapLibre v5.
+        existing.getElement().style.color = TYPE_COLOR[point.type]
         existing.setLngLat([point.lng, point.lat])
       } else {
         const el = buildMarkerEl(point.type, number)
@@ -283,25 +265,17 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-
     const source = map.getSource(POI_SOURCE) as GeoJSONSource | undefined
     if (!source) return
-
     source.setData({
       type: 'FeatureCollection',
       features: pois.map((poi) => ({
         type: 'Feature' as const,
         geometry: { type: 'Point' as const, coordinates: [poi.lng, poi.lat] },
         properties: {
-          id: poi.id,
-          name: poi.name ?? '',
-          category: poi.category,
-          color: POI_COLORS[poi.category],
-          osmId: poi.osmId,
-          osmType: poi.osmType,
-          tags: JSON.stringify(poi.tags),
-          lat: poi.lat,
-          lng: poi.lng,
+          id: poi.id, name: poi.name ?? '', category: poi.category,
+          color: POI_COLORS[poi.category], osmId: poi.osmId, osmType: poi.osmType,
+          tags: JSON.stringify(poi.tags), lat: poi.lat, lng: poi.lng,
         },
       })),
     })

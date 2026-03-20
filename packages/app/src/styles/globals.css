@@ -5,47 +5,64 @@
 }
 
 :root {
-  /* Telegram theme mappings with design system fallbacks */
+  /* ── Telegram theme mappings with design system fallbacks ── */
   --color-bg: var(--tg-theme-bg-color, #fef9f2);
   --color-text: var(--tg-theme-text-color, #151415);
   --color-button: var(--tg-theme-button-color, #2481cc);
   --color-secondary-bg: var(--tg-theme-secondary-bg-color, #f2ede7);
 
-  /* Design system surfaces */
+  /* ── Surface palette (tonal layering — per DESIGN.md) ── */
   --surface: #fef9f2;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f8f3ed;
   --surface-container: #f2ede7;
   --surface-container-high: #e7e2dc;
   --surface-variant: rgba(242, 237, 231, 0.7);
 
-  /* Ink colors */
+  /* ── Ink / text colors ── */
   --primary: #151415;
   --primary-container: #2a2829;
   --on-primary: #fef9f2;
+  --on-surface: #1d1b18;
   --secondary: #4456b5;
   --secondary-container: #879afd;
   --on-secondary-container: #162c8c;
+  --tertiary-fixed-dim: #abc8f3;
+  --on-tertiary-fixed: #001c38;
+  --outline-variant: #ccc4c9;
 
-  /* Typography */
+  /* ── Accent tones ── */
+  --topographic-accent: #DCD0BE;
+  --dark-sky-blue: #97B4DE;
+
+  /* ── Typography ── */
   --font-family: 'Space Grotesk', system-ui, sans-serif;
 
-  /* Layout tokens */
+  /* ── Layout tokens ── */
   --action-bar-height: 64px;
-  --side-panel-width: 28%;
+  --side-panel-width: 320px;
   --sidebar-width: 26rem;
   --bottom-sheet-handle-height: 28px;
   --bottom-sheet-peek: 80px;
   --elevation-bar-height: 48px;
 
-  /* Border radius */
+  /* ── Border radius (organic, no sharp corners) ── */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
   --radius-full: 9999px;
 
-  /* Shadows (tinted, diffuse — per DESIGN.md) */
+  /* ── Shadows (tinted, diffuse — ambient cloud shadows per DESIGN.md) ── */
   --shadow-float: 0 4px 24px rgba(29, 27, 24, 0.06);
-  --shadow-overlay: 0 -4px 32px rgba(29, 27, 24, 0.08);
+  --shadow-overlay: 0 4px 40px rgba(29, 27, 24, 0.08);
+
+  /* ── Ghost border (outline_variant at 15% opacity) ── */
+  --ghost-border: rgba(204, 196, 201, 0.15);
+
+  /* ── Glassmorphism ── */
+  --glass-bg: rgba(242, 237, 231, 0.7);
+  --glass-blur: 20px;
 }
 
 html,
@@ -56,9 +73,23 @@ body {
   background-color: var(--surface);
   color: var(--primary);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
 #root {
   width: 100%;
   height: 100%;
+}
+
+/* ── Scrollbar styling (thin, tonal) ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-container-high);
+  border-radius: var(--radius-full);
 }

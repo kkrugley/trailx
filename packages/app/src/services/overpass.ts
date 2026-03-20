@@ -8,7 +8,7 @@ import { POI_OVERPASS_FILTER } from '@trailx/shared'
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 const MAX_ROUTE_POINTS = 200
-const TIMEOUT_MS = 10_000
+const TIMEOUT_MS = 20_000
 
 export class OverpassTimeoutError extends Error {
   constructor() {

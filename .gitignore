@@ -1,0 +1,120 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.local
+
+# Vite
+.vite/
+.vite-cache/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# SSL/TLS certificates and private keys (Telegram webhook)
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# ESLint / Prettier
+.eslintcache
+.prettiercache
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.agents/*
+.claude/*
+.mcp.json
+skills-lock.json
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Optional: Database
+*.dump
+*.sql
+dump.rdb
+*.db
+*.sqlite
+*.sqlite3
+
+# Optional: MapLibre GL JS (if using local map tiles or cache)
+map-tiles/
+*.mbtiles
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+temp/
+tmp/
+
+# Misc
+*.bak
+*.orig
+*.rej
+
+# Turborepo
+.turbo/
+
+# pnpm store
+.pnpm-store/
+
+# Internal project documentation — must not be in public repo
+docs/
+docs/internal/
+docs/references/
+*.internal.md
+CLAUDE.md
+AGENTS.md
+.cursorrules
+.cursor/
+*_instructions.md
+*_prompt.md

@@ -1,0 +1,51 @@
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* sit directly above ActionBar */
+  bottom: calc(var(--action-bar-height) + env(safe-area-inset-bottom));
+  background-color: var(--surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-overlay);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 10;
+}
+
+.collapsed {
+  /* handle + 80px content peek */
+  height: calc(var(--bottom-sheet-handle-height) + var(--bottom-sheet-peek));
+}
+
+.expanded {
+  height: 50vh;
+}
+
+.handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: var(--bottom-sheet-handle-height);
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  width: 100%;
+  padding: 0;
+}
+
+.handleBar {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--surface-container-high);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 1rem 1rem;
+}

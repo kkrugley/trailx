@@ -1,0 +1,62 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Telegram theme mappings with design system fallbacks */
+  --color-bg: var(--tg-theme-bg-color, #fef9f2);
+  --color-text: var(--tg-theme-text-color, #151415);
+  --color-button: var(--tg-theme-button-color, #2481cc);
+  --color-secondary-bg: var(--tg-theme-secondary-bg-color, #f2ede7);
+
+  /* Design system surfaces */
+  --surface: #fef9f2;
+  --surface-container: #f2ede7;
+  --surface-container-high: #e7e2dc;
+  --surface-variant: rgba(242, 237, 231, 0.7);
+
+  /* Ink colors */
+  --primary: #151415;
+  --primary-container: #2a2829;
+  --on-primary: #fef9f2;
+  --secondary: #4456b5;
+  --secondary-container: #879afd;
+  --on-secondary-container: #162c8c;
+
+  /* Typography */
+  --font-family: 'Space Grotesk', system-ui, sans-serif;
+
+  /* Layout tokens */
+  --action-bar-height: 64px;
+  --side-panel-width: 28%;
+  --bottom-sheet-handle-height: 28px;
+  --bottom-sheet-peek: 80px;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows (tinted, diffuse — per DESIGN.md) */
+  --shadow-float: 0 4px 24px rgba(29, 27, 24, 0.06);
+  --shadow-overlay: 0 -4px 32px rgba(29, 27, 24, 0.08);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--surface);
+  color: var(--primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}

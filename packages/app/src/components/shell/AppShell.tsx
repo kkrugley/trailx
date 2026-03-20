@@ -1,9 +1,13 @@
 import { useRef } from 'react'
 import { usePlatform } from '../../hooks/usePlatform'
+import { useMapStore } from '../../store/useMapStore'
 import { MapView } from '../MapView/MapView'
 import type { MapViewHandle } from '../MapView/MapView'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { MobileHeader } from '../MobileHeader/MobileHeader'
+import { SearchBar } from '../Header/SearchBar'
+import { ExportPanel } from '../ExportPanel/ExportPanel'
+import { POICard } from '../POICard/POICard'
 import { BottomSheet } from './BottomSheet'
 import { MapControls } from '../MapControls/MapControls'
 import { ElevationBar } from '../ElevationBar/ElevationBar'
@@ -13,6 +17,10 @@ export function AppShell() {
   const { isMobile, isTMA } = usePlatform()
   const isDesktop = !isMobile && !isTMA
   const mapRef = useRef<MapViewHandle>(null)
+
+  const isExportOpen = useMapStore((s) => s.isExportOpen)
+  const selectedPOI = useMapStore((s) => s.selectedPOI)
+  const { setSelectedPOI } = useMapStore((s) => s.actions)
 
   if (isDesktop) {
     return (
@@ -28,7 +36,13 @@ export function AppShell() {
         </div>
 
         {/* Center column: empty space (map shows through) */}
-        <div className={styles.centerCol} />
+        <div className={styles.centerCol}>
+          {isExportOpen && (
+            <div className={styles.searchOverlay}>
+              <ExportPanel />
+            </div>
+          )}
+        </div>
 
         {/* Right column: map controls */}
         <div className={styles.controlsCol}>
@@ -39,6 +53,8 @@ export function AppShell() {
         <div className={styles.elevationRow}>
           <ElevationBar />
         </div>
+
+        <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
       </div>
     )
   }
@@ -66,6 +82,14 @@ export function AppShell() {
       <div className={styles.mobileBottomRow}>
         <BottomSheet />
       </div>
+
+      {isExportOpen && (
+        <div className={styles.mobileExportOverlay}>
+          <ExportPanel />
+        </div>
+      )}
+
+      <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
     </div>
   )
 }

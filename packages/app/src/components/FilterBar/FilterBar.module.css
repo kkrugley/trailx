@@ -1,0 +1,92 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-shrink: 0;
+}
+
+.bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Chip base ───────────────────────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.625rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: var(--surface-container-high);
+  color: var(--primary);
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  background-color: var(--surface-container);
+}
+
+/* ── "All" chip active state ─────────────────────────────────────────────── */
+
+.chipAllActive {
+  background-color: var(--secondary);
+  color: var(--on-primary);
+}
+
+.chipAllActive:hover {
+  background-color: var(--secondary);
+  opacity: 0.9;
+}
+
+/* ── Category chip active state (uses CSS custom property --chip-color) ──── */
+
+.chipActive {
+  background-color: var(--chip-color, var(--secondary));
+  color: #ffffff;
+}
+
+.chipActive:hover {
+  opacity: 0.9;
+}
+
+/* ── Chip icon ───────────────────────────────────────────────────────────── */
+
+.chipIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Chip label ──────────────────────────────────────────────────────────── */
+
+.chipLabel {
+  line-height: 1;
+}
+
+/* ── POI count badge ─────────────────────────────────────────────────────── */
+
+.chipCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.2rem;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.3);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}

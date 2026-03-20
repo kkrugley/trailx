@@ -8,11 +8,12 @@ datasource db {
 }
 
 model Group {
-  id        String   @id
-  chatId    BigInt   @unique
-  isPro     Boolean  @default(false)
-  createdAt DateTime @default(now())
-  routes    Route[]
+  id            String   @id
+  chatId        BigInt   @unique
+  isPro         Boolean  @default(false)
+  activeRouteId String?
+  createdAt     DateTime @default(now())
+  routes        Route[]
 }
 
 model Route {
@@ -31,5 +32,16 @@ model Subscription {
   userId    BigInt
   status    String
   expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PendingVote {
+  id        String   @id @default(cuid())
+  pollId    String   @unique
+  chatId    BigInt
+  place     String
+  routeId   String
+  lat       Float
+  lng       Float
   createdAt DateTime @default(now())
 }

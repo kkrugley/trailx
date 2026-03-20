@@ -7,7 +7,17 @@ export interface PhotonFeature {
     street?: string
     housenumber?: string
     state?: string
+    type?: string
+    osm_value?: string
   }
+}
+
+export interface SearchResult {
+  lat: number
+  lng: number
+  name: string
+  address: string
+  type: string
 }
 
 interface PhotonResponse {
@@ -43,4 +53,24 @@ export function photonFeatureLabel(feature: PhotonFeature): string {
   if (p.city) parts.push(p.city)
   if (p.country) parts.push(p.country)
   return parts.join(', ') || 'Unknown location'
+}
+
+/** Legacy helper used by SearchBar */
+export async function searchPlaces(query: string): Promise<SearchResult[]> {
+  const features = await searchPhoton(query)
+  return features.map((f) => ({
+    lng: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+    name: f.properties.name ?? f.properties.street ?? query,
+    address: [
+      f.properties.street && f.properties.housenumber
+        ? `${f.properties.street} ${f.properties.housenumber}`
+        : f.properties.street,
+      f.properties.city,
+      f.properties.country,
+    ]
+      .filter(Boolean)
+      .join(', '),
+    type: f.properties.type ?? f.properties.osm_value ?? 'place',
+  }))
 }

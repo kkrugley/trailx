@@ -35,3 +35,7 @@
 .button:active {
   background-color: rgba(255, 255, 255, 0.18);
 }
+
+.button.active {
+  color: var(--secondary-container);
+}

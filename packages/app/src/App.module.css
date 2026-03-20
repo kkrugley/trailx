@@ -3,3 +3,8 @@
   height: 100vh;
   overflow: hidden;
 }
+
+/* Inside Telegram, use the stable viewport height to avoid toolbar overlap */
+.tma {
+  height: var(--tma-vh, 100vh);
+}

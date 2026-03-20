@@ -8,9 +8,11 @@ import {
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { GeoJSONSource } from 'maplibre-gl'
-import type { RoutePoint } from '@trailx/shared'
+import type { RoutePoint, POICategory } from '@trailx/shared'
+import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useRoute } from '../../hooks/useRoute'
+import { usePOISearch } from '../../hooks/usePOISearch'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -18,6 +20,10 @@ const INITIAL_CENTER: [number, number] = [23.68, 52.09]
 const INITIAL_ZOOM = 10
 const ROUTE_SOURCE = 'route-line'
 const ROUTE_LAYER = 'route-line-layer'
+const POI_SOURCE = 'poi-source'
+const POI_LAYER_CLUSTERS = 'poi-clusters'
+const POI_LAYER_CLUSTER_COUNT = 'poi-cluster-count'
+const POI_LAYER_UNCLUSTERED = 'poi-unclustered'
 
 export interface MapViewHandle {
   getMap: () => maplibregl.Map | null
@@ -43,13 +49,30 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
   const isRouting = useMapStore((s) => s.isRouting)
+  const pois = useMapStore((s) => s.pois)
+  const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
   const { addWaypoint } = useRoute()
+  usePOISearch()
 
-  // Stable ref for the click handler
+  const setSelectedPOI = useMapStore((s) => s.actions.setSelectedPOI)
+
+  // Stable refs for imperative handlers
   const addWaypointRef = useRef(addWaypoint)
   useEffect(() => { addWaypointRef.current = addWaypoint }, [addWaypoint])
+  const setSelectedPOIRef = useRef(setSelectedPOI)
+  useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])
 
   useImperativeHandle(ref, () => ({ getMap: () => mapRef.current }))
+
+  // ── FlyTo command ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { lat, lng } = (e as CustomEvent<{ lat: number; lng: number }>).detail
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 })
+    }
+    window.addEventListener('trailx:flyto', handler)
+    return () => window.removeEventListener('trailx:flyto', handler)
+  }, [])
 
   // ── Map initialisation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -65,12 +88,11 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     mapRef.current = map
 
     map.on('load', () => {
-      // Route polyline source + layer (empty geometry initially)
+      // ── Route polyline ──
       map.addSource(ROUTE_SOURCE, {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       })
-
       map.addLayer({
         id: ROUTE_LAYER,
         type: 'line',
@@ -83,11 +105,113 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         },
       })
 
+      // ── POI source (clustered) ──
+      map.addSource(POI_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
+      })
+
+      // Cluster circles (below unclustered)
+      map.addLayer({
+        id: POI_LAYER_CLUSTERS,
+        type: 'circle',
+        source: POI_SOURCE,
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#4456b5',
+          'circle-opacity': 0.85,
+          'circle-stroke-color': 'rgba(255,255,255,0.7)',
+          'circle-stroke-width': 1.5,
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            14, 10, 18, 50, 22,
+          ] as maplibregl.ExpressionSpecification,
+        },
+      })
+
+      // Cluster count label
+      map.addLayer({
+        id: POI_LAYER_CLUSTER_COUNT,
+        type: 'symbol',
+        source: POI_SOURCE,
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-size': 11,
+        },
+        paint: { 'text-color': '#ffffff' },
+      })
+
+      // Unclustered individual POI (colored by category)
+      map.addLayer({
+        id: POI_LAYER_UNCLUSTERED,
+        type: 'circle',
+        source: POI_SOURCE,
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-radius': 7,
+          'circle-color': ['get', 'color'] as maplibregl.ExpressionSpecification,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': 'rgba(255, 255, 255, 0.9)',
+          'circle-opacity': 0.9,
+        },
+      })
+
       setMapReady(true)
     })
 
+    // Map click: add waypoint (only when not clicking a POI layer)
     map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: [POI_LAYER_UNCLUSTERED, POI_LAYER_CLUSTERS],
+      })
+      if (features.length > 0) return // handled by layer-specific click
       addWaypointRef.current(e.lngLat.lat, e.lngLat.lng)
+    })
+
+    // POI click: open POICard
+    map.on('click', POI_LAYER_UNCLUSTERED, (e) => {
+      if (!e.features?.[0]) return
+      const f = e.features[0]
+      const p = f.properties as {
+        id: string
+        name: string
+        category: string
+        color: string
+        osmId: number
+        osmType: string
+        tags: string
+        lat: number
+        lng: number
+      }
+      setSelectedPOIRef.current({
+        id: p.id,
+        lat: p.lat,
+        lng: p.lng,
+        name: p.name || undefined,
+        category: p.category as POICategory,
+        osmId: p.osmId,
+        osmType: p.osmType as 'node' | 'way' | 'relation',
+        tags: JSON.parse(p.tags) as Record<string, string>,
+      })
+    })
+
+    // Cursor pointer on POI hover
+    map.on('mouseenter', POI_LAYER_UNCLUSTERED, () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', POI_LAYER_UNCLUSTERED, () => {
+      map.getCanvas().style.cursor = ''
+    })
+    map.on('mouseenter', POI_LAYER_CLUSTERS, () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', POI_LAYER_CLUSTERS, () => {
+      map.getCanvas().style.cursor = ''
     })
 
     const observer = new ResizeObserver(() => map.resize())
@@ -122,7 +246,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     }
   }, [mapReady, routeResult])
 
-  // ── Marker sync ───────────────────────────────────────────────────────────
+  // ── Waypoint marker sync ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
@@ -144,6 +268,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         const span = existing.getElement().querySelector('span')
         if (span) span.textContent = String(number)
         existing.getElement().className = `${styles.marker} ${styles[point.type]}`
+        existing.setLngLat([point.lng, point.lat])
       } else {
         const el = buildMarkerEl(point.type, number)
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -154,12 +279,46 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     })
   }, [mapReady, waypoints])
 
+  // ── POI source sync ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+
+    const source = map.getSource(POI_SOURCE) as GeoJSONSource | undefined
+    if (!source) return
+
+    source.setData({
+      type: 'FeatureCollection',
+      features: pois.map((poi) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [poi.lng, poi.lat] },
+        properties: {
+          id: poi.id,
+          name: poi.name ?? '',
+          category: poi.category,
+          color: POI_COLORS[poi.category],
+          osmId: poi.osmId,
+          osmType: poi.osmType,
+          tags: JSON.stringify(poi.tags),
+          lat: poi.lat,
+          lng: poi.lng,
+        },
+      })),
+    })
+  }, [mapReady, pois])
+
   return (
     <div ref={containerRef} className={styles.container}>
       {isRouting && (
         <div className={styles.spinnerOverlay}>
           <span className={styles.spinner} />
           Building route…
+        </div>
+      )}
+      {isSearchingPOI && !isRouting && (
+        <div className={styles.spinnerOverlay}>
+          <span className={styles.spinner} />
+          Searching POI…
         </div>
       )}
     </div>

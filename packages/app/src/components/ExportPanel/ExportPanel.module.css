@@ -1,0 +1,123 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  flex-shrink: 0;
+}
+
+/* ── Action row ──────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ── Import zone ─────────────────────────────────────────────────────────── */
+
+.importZone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--surface-container-high);
+  color: var(--primary);
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  /* Receives drag events */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.importZone:hover {
+  background-color: var(--surface-container);
+}
+
+.importZone.dragging {
+  background-color: var(--surface-container);
+  outline-color: var(--secondary);
+}
+
+/* ── Export button ───────────────────────────────────────────────────────── */
+
+.exportButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--primary), var(--primary-container));
+  color: var(--on-primary);
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.exportButton:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.exportButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Hidden file input ───────────────────────────────────────────────────── */
+
+.hiddenInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Error toast ─────────────────────────────────────────────────────────── */
+
+.errorToast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.625rem;
+  background-color: rgba(200, 60, 60, 0.12);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: #c83c3c;
+  animation: fadeIn 0.2s ease;
+}
+
+.errorDismiss {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #c83c3c;
+  opacity: 0.7;
+  padding: 0.125rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.errorDismiss:hover {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

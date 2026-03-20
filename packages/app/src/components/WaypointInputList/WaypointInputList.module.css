@@ -1,0 +1,51 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+/* Vertical connector line — runs through the dot column of each item */
+.list::before {
+  content: '';
+  position: absolute;
+  /* 18px drag handle + 0.5rem gap + half-dot width (5px) ≈ left: 30px */
+  left: 30px;
+  top: 20px;
+  bottom: 20px;
+  width: 1.5px;
+  background: linear-gradient(
+    to bottom,
+    #2a8f4a 0%,
+    rgba(68, 86, 181, 0.4) 50%,
+    #c0392b 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Only show connector line when there are at least 2 items */
+.list:has(li:nth-child(2))::before {
+  display: block;
+}
+
+/* Hide line when only 1 item */
+.list:not(:has(li:nth-child(2)))::before {
+  display: none;
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--primary);
+  opacity: 0.4;
+  text-align: center;
+  padding: 0.875rem 0;
+  letter-spacing: 0.01em;
+}

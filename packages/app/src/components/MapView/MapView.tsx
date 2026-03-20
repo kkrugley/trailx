@@ -39,7 +39,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const [mapReady, setMapReady] = useState(false)
-  const [showRateLimit, setShowRateLimit] = useState(false)
 
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
@@ -51,16 +50,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => { addWaypointRef.current = addWaypoint }, [addWaypoint])
 
   useImperativeHandle(ref, () => ({ getMap: () => mapRef.current }))
-
-  // ── Rate-limit toast ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = () => {
-      setShowRateLimit(true)
-      setTimeout(() => setShowRateLimit(false), 4000)
-    }
-    window.addEventListener('trailx:ratelimit', handler)
-    return () => window.removeEventListener('trailx:ratelimit', handler)
-  }, [])
 
   // ── Map initialisation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -88,9 +77,9 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         source: ROUTE_SOURCE,
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#2481cc',
-          'line-width': 4,
-          'line-opacity': 0.85,
+          'line-color': '#4456b5',
+          'line-width': 5,
+          'line-opacity': 0.9,
         },
       })
 
@@ -170,12 +159,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       {isRouting && (
         <div className={styles.spinnerOverlay}>
           <span className={styles.spinner} />
-          Строю маршрут…
-        </div>
-      )}
-      {showRateLimit && (
-        <div className={styles.toast}>
-          Лимит GraphHopper исчерпан. Введите свой API ключ.
+          Building route…
         </div>
       )}
     </div>

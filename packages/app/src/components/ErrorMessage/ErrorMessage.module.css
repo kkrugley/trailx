@@ -1,0 +1,40 @@
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(199, 57, 57, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.625rem 0.75rem;
+}
+
+.icon {
+  color: #c03535;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.text {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: #c03535;
+  line-height: 1.45;
+}
+
+.dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.125rem;
+  cursor: pointer;
+  color: #c03535;
+  opacity: 0.6;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s ease;
+}
+
+.dismiss:hover {
+  opacity: 1;
+}

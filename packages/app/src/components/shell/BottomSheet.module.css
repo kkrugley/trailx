@@ -2,9 +2,10 @@
   position: absolute;
   left: 0;
   right: 0;
-  /* sit directly above ActionBar */
-  bottom: calc(var(--action-bar-height) + env(safe-area-inset-bottom));
-  background-color: var(--surface);
+  bottom: env(safe-area-inset-bottom, 0);
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-overlay);
   display: flex;
@@ -15,12 +16,11 @@
 }
 
 .collapsed {
-  /* handle + 80px content peek */
   height: calc(var(--bottom-sheet-handle-height) + var(--bottom-sheet-peek));
 }
 
 .expanded {
-  height: 50vh;
+  height: 60vh;
 }
 
 .handle {
@@ -37,10 +37,29 @@
 }
 
 .handleBar {
-  width: 36px;
+  width: 40px;
   height: 4px;
   border-radius: var(--radius-full);
-  background-color: var(--surface-container-high);
+  background: rgba(68, 86, 181, 0.2);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.handle:hover .handleBar {
+  width: 48px;
+  background: rgba(68, 86, 181, 0.35);
+}
+
+.peek {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--primary);
+  opacity: 0.4;
+  text-align: center;
+  padding: 0.5rem 1rem;
 }
 
 .content {
@@ -48,4 +67,17 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.profileRow {
+  display: flex;
+  justify-content: center;
+}
+
+.footerAttrib {
+  margin-top: auto;
+  padding-top: 0.5rem;
 }

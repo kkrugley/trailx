@@ -1,0 +1,82 @@
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  gap: 0.5rem;
+  pointer-events: all;
+  animation: fadeInControls 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fadeInControls {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Zoom group — stacked pill */
+.zoomGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-float), 0 4px 20px rgba(68, 86, 181, 0.08);
+  overflow: hidden;
+}
+
+.zoomDivider {
+  width: 22px;
+  height: 1px;
+  background: rgba(21, 20, 21, 0.1);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+
+.btn:hover {
+  background: rgba(68, 86, 181, 0.08);
+}
+
+.btn:active {
+  transform: scale(0.92);
+}
+
+/* Locate button — separate pill */
+.locateBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-float), 0 4px 20px rgba(68, 86, 181, 0.08);
+  transition: background 0.12s ease, transform 0.15s ease;
+}
+
+.locateBtn:hover {
+  background: var(--secondary-container);
+  transform: scale(1.08);
+}
+
+.locateBtn:active {
+  transform: scale(0.95);
+}

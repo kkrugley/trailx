@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RoutePoint, RouteResult } from '@trailx/shared'
+import type { RoutePoint, RouteResult, RoutingProfile } from '@trailx/shared'
 
 // Re-assigns order and type to every point based on array position.
 function assignTypes(points: RoutePoint[]): RoutePoint[] {
@@ -18,6 +18,8 @@ interface MapStoreActions {
   clearRoute: () => void
   setRouteResult: (result: RouteResult | null) => void
   setIsRouting: (value: boolean) => void
+  setProfile: (profile: RoutingProfile) => void
+  setRouteError: (err: string | null) => void
 }
 
 interface MapStore {
@@ -25,6 +27,8 @@ interface MapStore {
   activeRouteId: string | null
   routeResult: RouteResult | null
   isRouting: boolean
+  profile: RoutingProfile
+  routeError: string | null
   actions: MapStoreActions
 }
 
@@ -33,6 +37,8 @@ export const useMapStore = create<MapStore>((set) => ({
   activeRouteId: null,
   routeResult: null,
   isRouting: false,
+  profile: 'bike',
+  routeError: null,
 
   actions: {
     addWaypoint: (point) =>
@@ -53,10 +59,14 @@ export const useMapStore = create<MapStore>((set) => ({
         return { waypoints: assignTypes(items) }
       }),
 
-    clearRoute: () => set({ waypoints: [], routeResult: null }),
+    clearRoute: () => set({ waypoints: [], routeResult: null, routeError: null }),
 
     setRouteResult: (result) => set({ routeResult: result }),
 
     setIsRouting: (value) => set({ isRouting: value }),
+
+    setProfile: (profile) => set({ profile }),
+
+    setRouteError: (err) => set({ routeError: err }),
   },
 }))

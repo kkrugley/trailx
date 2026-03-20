@@ -22,29 +22,34 @@ export function useRoute(): UseRouteReturn {
 
   // ── Debounced GraphHopper call ───────────────────────────────────────────
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Track in-flight request so we can ignore stale responses
-  const requestIdRef = useRef(0)
+  // Cancels the in-flight HTTP request when a newer one starts
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (timerRef.current !== null) clearTimeout(timerRef.current)
 
     if (waypoints.length < 2) {
+      abortRef.current?.abort()
       setRouteResult(null)
       setIsRouting(false)
       setRouteError(null)
       return
     }
 
-    const currentId = ++requestIdRef.current
     timerRef.current = setTimeout(async () => {
+      // Cancel any previous in-flight request before sending a new one
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
       setIsRouting(true)
       try {
-        const result = await buildRoute(waypoints, profile)
-        if (requestIdRef.current !== currentId) return // stale response
+        const result = await buildRoute(waypoints, profile, controller.signal)
         setRouteResult(result)
         setRouteError(null)
       } catch (err) {
-        if (requestIdRef.current !== currentId) return
+        // Silently ignore our own cancellations
+        if (err instanceof DOMException && err.name === 'AbortError') return
         setRouteResult(null)
         if (err instanceof RateLimitError) {
           setRouteError('GraphHopper rate limit reached. Add your API key via VITE_GRAPHHOPPER_API_KEY.')
@@ -54,7 +59,7 @@ export function useRoute(): UseRouteReturn {
           setRouteError('Routing failed.')
         }
       } finally {
-        if (requestIdRef.current === currentId) setIsRouting(false)
+        if (abortRef.current === controller) setIsRouting(false)
       }
     }, DEBOUNCE_MS)
 

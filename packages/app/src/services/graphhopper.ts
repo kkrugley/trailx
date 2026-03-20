@@ -45,6 +45,7 @@ interface GHResponse {
 export async function buildRoute(
   waypoints: RoutePoint[],
   profile: RoutingProfile,
+  cancelSignal?: AbortSignal,
 ): Promise<RouteResult> {
   if (waypoints.length < 2) {
     throw new RoutingError('At least 2 waypoints are required.')
@@ -66,14 +67,23 @@ export async function buildRoute(
 
   const url = `${DEMO_ENDPOINT}?${params.toString()}&${pointParams}`
 
+  // Combine timeout + external cancellation into one controller
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  if (cancelSignal) {
+    if (cancelSignal.aborted) {
+      clearTimeout(timeoutId)
+      throw new DOMException('Cancelled', 'AbortError')
+    }
+    cancelSignal.addEventListener('abort', () => controller.abort(), { once: true })
+  }
 
   let response: Response
   try {
     response = await fetch(url, { signal: controller.signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
+      if (cancelSignal?.aborted) throw err  // propagate cancellation as-is
       throw new RoutingError('GraphHopper request timed out (15s).')
     }
     throw new RoutingError('Network error while contacting GraphHopper.')

@@ -30,8 +30,10 @@ export function usePOISearch(): void {
         )
         if (requestIdRef.current !== currentId) return
         setPois(found)
-      } catch {
-        // On error or timeout: preserve existing pois unchanged
+      } catch (err) {
+        if (requestIdRef.current !== currentId) return
+        console.error('[poi] fetchPOIsAlongRoute failed:', err)
+        setPois([])
       } finally {
         if (requestIdRef.current === currentId) setIsSearchingPOI(false)
       }

@@ -6,7 +6,8 @@
 
 /* ── Waypoint markers — map-pin shape ────────────────────────────────────
    Rotated rounded-square gives the classic teardrop pin silhouette.
-   Applied to imperative DOM elements created in MapView.tsx.
+   Color is set via inline `color` style in MapView.tsx so that
+   className mutations don't conflict with MapLibre v5 marker positioning.
 ──────────────────────────────────────────────────────────────────────────── */
 .marker {
   width: 32px;
@@ -26,7 +27,8 @@
   transform: scale(1.2) translateY(-3px);
 }
 
-/* Pin body: rotated rounded square = teardrop */
+/* Pin body: rotated rounded square = teardrop. Uses currentColor so the
+   inline `color` style on the parent drives the fill. */
 .marker::before {
   content: '';
   position: absolute;
@@ -39,10 +41,6 @@
   background: currentColor;
   border: 2.5px solid rgba(255, 255, 255, 0.9);
 }
-
-.start        { color: #2a8f4a; }
-.end          { color: #c0392b; }
-.intermediate { color: #4456b5; }
 
 .markerLabel {
   position: relative;

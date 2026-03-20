@@ -1,0 +1,55 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.625rem 0.75rem;
+  padding: 0.625rem 1rem;
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float), 0 4px 24px rgba(68, 86, 181, 0.07);
+  pointer-events: all;
+  animation: slideDownBar 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slideDownBar {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.profileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--secondary-container);
+  border-radius: var(--radius-full);
+  color: var(--on-secondary-container);
+  flex-shrink: 0;
+}
+
+.inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.inputLine {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(68, 86, 181, 0.18), transparent);
+  margin: 0.2rem 0;
+}

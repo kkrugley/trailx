@@ -31,8 +31,10 @@
   /* Layout tokens */
   --action-bar-height: 64px;
   --side-panel-width: 28%;
+  --sidebar-width: 26rem;
   --bottom-sheet-handle-height: 28px;
   --bottom-sheet-peek: 80px;
+  --elevation-bar-height: 48px;
 
   /* Border radius */
   --radius-sm: 0.25rem;

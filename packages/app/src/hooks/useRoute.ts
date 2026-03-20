@@ -4,7 +4,6 @@ import { useMapStore } from '../store/useMapStore'
 import { buildRoute, RateLimitError } from '../services/graphhopper'
 
 const DEBOUNCE_MS = 500
-const DEFAULT_PROFILE = 'bike' as const
 
 interface UseRouteReturn {
   waypoints: RoutePoint[]
@@ -16,8 +15,9 @@ interface UseRouteReturn {
 
 export function useRoute(): UseRouteReturn {
   const waypoints = useMapStore((s) => s.waypoints)
+  const profile = useMapStore((s) => s.profile)
   const { addWaypoint, removeWaypoint, reorderWaypoints, clearRoute,
-          setRouteResult, setIsRouting } =
+          setRouteResult, setIsRouting, setRouteError } =
     useMapStore((s) => s.actions)
 
   // ── Debounced GraphHopper call ───────────────────────────────────────────
@@ -31,6 +31,7 @@ export function useRoute(): UseRouteReturn {
     if (waypoints.length < 2) {
       setRouteResult(null)
       setIsRouting(false)
+      setRouteError(null)
       return
     }
 
@@ -38,16 +39,19 @@ export function useRoute(): UseRouteReturn {
     timerRef.current = setTimeout(async () => {
       setIsRouting(true)
       try {
-        const result = await buildRoute(waypoints, DEFAULT_PROFILE)
+        const result = await buildRoute(waypoints, profile)
         if (requestIdRef.current !== currentId) return // stale response
         setRouteResult(result)
+        setRouteError(null)
       } catch (err) {
         if (requestIdRef.current !== currentId) return
         setRouteResult(null)
         if (err instanceof RateLimitError) {
-          // Bubble the error for MapView to show as a toast
-          // We store it as a special sentinel in the store via a custom event
-          window.dispatchEvent(new CustomEvent('trailx:ratelimit'))
+          setRouteError('GraphHopper rate limit reached. Add your API key via VITE_GRAPHHOPPER_API_KEY.')
+        } else if (err instanceof Error) {
+          setRouteError(err.message)
+        } else {
+          setRouteError('Routing failed.')
         }
       } finally {
         if (requestIdRef.current === currentId) setIsRouting(false)
@@ -57,7 +61,7 @@ export function useRoute(): UseRouteReturn {
     return () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current)
     }
-  }, [waypoints, setRouteResult, setIsRouting])
+  }, [waypoints, profile, setRouteResult, setIsRouting, setRouteError])
 
   // ── Stable wrapper for addWaypoint ──────────────────────────────────────
   const add = useCallback(

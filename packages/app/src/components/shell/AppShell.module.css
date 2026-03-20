@@ -1,33 +1,109 @@
-.shell {
+/* ═══════════════════════════════════════════════════════════
+   Desktop — 3-column CSS Grid matching GraphHopper Maps layout
+   Columns: sidebar (26rem) | map (1fr) | controls (auto)
+   Rows:    main (1fr) | elevation (auto)
+   Map layer sits behind everything via position:absolute
+═══════════════════════════════════════════════════════════ */
+
+.desktopGrid {
   position: relative;
   width: 100%;
   height: 100%;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr auto;
+  grid-template-rows: 1fr auto;
   overflow: hidden;
 }
 
-/* ── Desktop ────────────────────────────────── */
-.desktop {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100%;
-}
-
-.desktopMap {
-  flex: 1;
-  position: relative;
-  min-width: 0;
-  height: 100%;
-}
-
-/* ── Mobile / TMA ───────────────────────────── */
-.mobile {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.mobileMap {
+/* Full-bleed map background — behind all overlay columns */
+.mapLayer {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
   position: absolute;
   inset: 0;
+  z-index: 0;
+}
+
+/* Left column: sidebar floating over map */
+.sidebarCol {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Center column: transparent (map shows through) */
+.centerCol {
+  grid-column: 2;
+  grid-row: 1;
+  pointer-events: none;
+}
+
+/* Right column: map controls */
+.controlsCol {
+  grid-column: 3;
+  grid-row: 1;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* Bottom row: elevation bar under the left column */
+.elevationRow {
+  grid-column: 1;
+  grid-row: 2;
+  z-index: 20;
+  pointer-events: none;
+  padding: 0 0.75rem 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Mobile — Grid rows: top-bar | spacer | map | bottom-sheet
+═══════════════════════════════════════════════════════════ */
+
+.mobileGrid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 100%;
+  grid-template-rows: auto 0 1fr auto;
+  overflow: hidden;
+}
+
+.mobileTopRow {
+  grid-row: 1;
+  grid-column: 1;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* Row 3: map */
+.mobileMapRow {
+  grid-row: 3;
+  grid-column: 1;
+  position: relative;
+  z-index: 0;
+}
+
+/* Floating map controls overlay on mobile */
+.mobileControls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Row 4: bottom sheet container */
+.mobileBottomRow {
+  grid-row: 4;
+  grid-column: 1;
+  position: relative;
+  z-index: 10;
 }

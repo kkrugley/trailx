@@ -5,8 +5,17 @@ import {
   useRef,
   useState,
 } from 'react'
-import maplibregl from 'maplibre-gl'
+import maplibregl, { setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+// Fix for Vite production builds: MapLibre's default blob-URL worker gets
+// corrupted by Vite's minifier (variables renamed, "Rt is not defined").
+// Use the pre-built standalone CSP worker instead — Vite copies it as an
+// asset and provides a stable URL, so the worker scope is self-contained.
+setWorkerUrl(new URL(
+  'maplibre-gl/dist/maplibre-gl-csp-worker.js',
+  import.meta.url,
+).href)
 import type { GeoJSONSource } from 'maplibre-gl'
 import type { POICategory } from '@trailx/shared'
 import { POI_COLORS } from '@trailx/shared'
@@ -239,7 +248,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
       setMapReady(true)
       setMapVersion((v) => v + 1)
-      console.log('[MapView] load fired, sources added')
     })
 
     // POI click: open POICard
@@ -282,14 +290,11 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   // ── Route polyline sync ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    console.log('[MapView] route sync: mapVersion=', mapVersion, 'map=', !!map, 'routeResult=', !!routeResult)
     if (!map || mapVersion === 0) return
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined
-    console.log('[MapView] route source=', !!source)
     if (!source) return
     if (routeResult) {
       source.setData({ type: 'Feature', properties: {}, geometry: routeResult.geometry })
-      console.log('[MapView] route setData called with geometry, coords count=', routeResult.geometry.coordinates.length)
     } else {
       source.setData({ type: 'FeatureCollection', features: [] })
     }
@@ -300,7 +305,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     const map = mapRef.current
     if (!map || mapVersion === 0) return
     const source = map.getSource(WP_SOURCE) as GeoJSONSource | undefined
-    console.log('[MapView] wp sync: source=', !!source, 'waypoints=', waypoints.filter(p => !isNaN(p.lat)).length)
     if (!source) return
 
     const features = waypoints

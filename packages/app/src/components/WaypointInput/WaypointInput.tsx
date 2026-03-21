@@ -41,13 +41,15 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
 
   // Sync label when point is updated externally (e.g. map click, context menu).
   // Use a ref to track the last point id+coords so we only sync on actual changes.
+  // NOTE: NaN !== NaN is always true in JS, so we need explicit NaN handling.
   const prevPointRef = useRef<{ id: string; lat: number; lng: number } | null>(null)
   const prev = prevPointRef.current
+  const sameNum = (a: number, b: number) => (isNaN(a) && isNaN(b)) || a === b
   const coordChanged =
     !prev ||
     prev.id !== point.id ||
-    prev.lat !== point.lat ||
-    prev.lng !== point.lng
+    !sameNum(prev.lat, point.lat) ||
+    !sameNum(prev.lng, point.lng)
   if (coordChanged) {
     prevPointRef.current = { id: point.id, lat: point.lat, lng: point.lng }
     if (isResolved) {

@@ -70,6 +70,10 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const [mapReady, setMapReady] = useState(false)
+  // mapVersion increments on every map 'load' event (initial load AND after setStyle).
+  // Effects that depend on map sources use mapVersion so they re-run after style reloads,
+  // which wipe all custom sources/layers. mapReady (bool) is kept for UI-only checks.
+  const [mapVersion, setMapVersion] = useState(0)
   const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
 
   const waypoints = useMapStore((s) => s.waypoints)
@@ -236,6 +240,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       })
 
       setMapReady(true)
+      setMapVersion((v) => v + 1)
     })
 
     // POI click: open POICard
@@ -271,13 +276,14 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       map.remove()
       mapRef.current = null
       setMapReady(false)
+      setMapVersion(0)
     }
   }, [])
 
   // ── Route polyline sync ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
+    if (!map || mapVersion === 0) return
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined
     if (!source) return
     if (routeResult) {
@@ -285,12 +291,12 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     } else {
       source.setData({ type: 'FeatureCollection', features: [] })
     }
-  }, [mapReady, routeResult])
+  }, [mapVersion, routeResult])
 
   // ── Waypoint marker sync ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
+    if (!map || mapVersion === 0) return
     const source = map.getSource(WP_SOURCE) as GeoJSONSource | undefined
     if (!source) return
 
@@ -306,12 +312,12 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       })
 
     source.setData({ type: 'FeatureCollection', features })
-  }, [mapReady, waypoints])
+  }, [mapVersion, waypoints])
 
   // ── POI source sync ───────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapReady) return
+    if (!map || mapVersion === 0) return
     const source = map.getSource(POI_SOURCE) as GeoJSONSource | undefined
     if (!source) return
     const savedIds = new Set(standalonePois.map((p) => p.id))
@@ -332,7 +338,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         }
       }),
     })
-  }, [mapReady, pois, standalonePois])
+  }, [mapVersion, pois, standalonePois])
 
   function handleContextSetStart() {
     if (!contextMenu) return
@@ -356,6 +362,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
   return (
     <div ref={containerRef} className={styles.container}>
+      <div className={`${styles.skeleton} ${mapReady ? styles.skeletonHidden : ''}`} />
       {isRouting && (
         <div className={styles.spinnerOverlay}>
           <span className={styles.spinner} />

@@ -1,8 +1,22 @@
 import { useEffect, useRef } from 'react'
+import {
+  Drop, Wrench, House, Bicycle, Tent, ForkKnife, CastleTurret, Binoculars,
+} from '@phosphor-icons/react'
 import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
 import type { POICategory } from '@trailx/shared'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import styles from './POIFilter.module.css'
+
+const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
+  drinking_water: <Drop size={14} weight="fill" />,
+  bicycle_repair: <Wrench size={14} weight="fill" />,
+  shelter:        <House size={14} weight="fill" />,
+  bicycle_shop:   <Bicycle size={14} weight="fill" />,
+  camp_site:      <Tent size={14} weight="fill" />,
+  food:           <ForkKnife size={14} weight="fill" />,
+  historic:       <CastleTurret size={14} weight="fill" />,
+  viewpoint:      <Binoculars size={14} weight="fill" />,
+}
 
 interface POIFilterProps {
   onClose: () => void
@@ -49,7 +63,9 @@ export function POIFilter({ onClose }: POIFilterProps) {
                 style={{ '--chip-color': POI_COLORS[cat] } as React.CSSProperties}
                 onClick={() => toggleCategory(cat)}
               >
-                <span className={styles.dot} />
+                <span className={styles.icon} style={{ color: POI_COLORS[cat] }}>
+                  {CATEGORY_ICONS[cat]}
+                </span>
                 <span className={styles.label}>{POI_LABELS[cat]}</span>
               </button>
             )

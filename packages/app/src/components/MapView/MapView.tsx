@@ -8,12 +8,13 @@ import {
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { GeoJSONSource } from 'maplibre-gl'
-import type { RoutePoint, POICategory } from '@trailx/shared'
+import type { POICategory } from '@trailx/shared'
 import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useRoute } from '../../hooks/useRoute'
 import { usePOISearch } from '../../hooks/usePOISearch'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
+import { generateWaypointIcon } from '../../utils/waypointIcon'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -37,30 +38,27 @@ export interface MapViewHandle {
   setStyle: (url: string) => void
 }
 
-/** Per-type color — applied via inline style so className mutations don't
- *  conflict with MapLibre v5 transform-based marker positioning. */
-const TYPE_COLOR: Record<RoutePoint['type'], string> = {
+const WP_SOURCE = 'route-waypoints'
+const WP_LAYER = 'route-waypoints-layer'
+
+const TYPE_COLOR: Record<string, string> = {
   start: '#2a8f4a',
   end: '#c0392b',
   intermediate: '#4456b5',
 }
 
-/** Build a styled HTMLElement for a MapLibre Marker */
-function buildMarkerEl(type: RoutePoint['type'], number: number): HTMLElement {
-  const el = document.createElement('div')
-  el.className = styles.marker
-  el.style.color = TYPE_COLOR[type]
-  const label = document.createElement('span')
-  label.className = styles.markerLabel
-  label.textContent = String(number)
-  el.appendChild(label)
-  return el
+function ensureWaypointIcon(map: maplibregl.Map, type: string, number: number): string {
+  const id = `wp-${type}-${number}`
+  if (!map.hasImage(id)) {
+    const img = generateWaypointIcon(TYPE_COLOR[type] ?? '#4456b5', number)
+    map.addImage(id, img, { pixelRatio: 2 })
+  }
+  return id
 }
 
 export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const [mapReady, setMapReady] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
 
@@ -207,6 +205,25 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         },
       })
 
+      // ── Waypoint markers (symbol layer) ──
+      map.addSource(WP_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+
+      map.addLayer({
+        id: WP_LAYER,
+        type: 'symbol',
+        source: WP_SOURCE,
+        layout: {
+          'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
+          'icon-size': 1,
+          'icon-allow-overlap': true,
+          'icon-anchor': 'bottom',
+          'icon-ignore-placement': true,
+        },
+      })
+
       setMapReady(true)
     })
 
@@ -232,14 +249,14 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     map.on('mouseleave', POI_LAYER_UNCLUSTERED, () => { map.getCanvas().style.cursor = '' })
     map.on('mouseenter', POI_LAYER_CLUSTERS, () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', POI_LAYER_CLUSTERS, () => { map.getCanvas().style.cursor = '' })
+    map.on('mouseenter', WP_LAYER, () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', WP_LAYER, () => { map.getCanvas().style.cursor = '' })
 
     const observer = new ResizeObserver(() => map.resize())
     observer.observe(containerRef.current)
 
     return () => {
       observer.disconnect()
-      for (const marker of markersRef.current.values()) marker.remove()
-      markersRef.current.clear()
       map.remove()
       mapRef.current = null
       setMapReady(false)
@@ -263,33 +280,21 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
+    const source = map.getSource(WP_SOURCE) as GeoJSONSource | undefined
+    if (!source) return
 
-    const activeIds = new Set(waypoints.map((p) => p.id))
-    for (const [id, marker] of markersRef.current) {
-      if (!activeIds.has(id)) {
-        marker.remove()
-        markersRef.current.delete(id)
-      }
-    }
+    const features = waypoints
+      .filter((p) => !isNaN(p.lat))
+      .map((point, i) => {
+        const iconId = ensureWaypointIcon(map, point.type, i + 1)
+        return {
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [point.lng, point.lat] },
+          properties: { id: point.id, icon: iconId, number: i + 1, type: point.type },
+        }
+      })
 
-    waypoints.filter((p) => !isNaN(p.lat)).forEach((point, i) => {
-      const number = i + 1
-      const existing = markersRef.current.get(point.id)
-      if (existing) {
-        const span = existing.getElement().querySelector('span')
-        if (span) span.textContent = String(number)
-        // Update colour via inline style — avoids className mutation which causes
-        // layout invalidation and position drift in MapLibre v5.
-        existing.getElement().style.color = TYPE_COLOR[point.type]
-        existing.setLngLat([point.lng, point.lat])
-      } else {
-        const el = buildMarkerEl(point.type, number)
-        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-          .setLngLat([point.lng, point.lat])
-          .addTo(map)
-        markersRef.current.set(point.id, marker)
-      }
-    })
+    source.setData({ type: 'FeatureCollection', features })
   }, [mapReady, waypoints])
 
   // ── POI source sync ───────────────────────────────────────────────────────

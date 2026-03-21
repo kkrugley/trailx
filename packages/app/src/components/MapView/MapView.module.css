@@ -4,56 +4,6 @@
   position: relative;
 }
 
-/* ── Waypoint markers — map-pin shape ────────────────────────────────────
-   Rotated rounded-square gives the classic teardrop pin silhouette.
-   Color is set via inline `color` style in MapView.tsx so that
-   className mutations don't conflict with MapLibre v5 marker positioning.
-──────────────────────────────────────────────────────────────────────────── */
-.marker {
-  width: 32px;
-  height: 38px;
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 5px;
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  filter: drop-shadow(0 3px 8px rgba(29, 27, 24, 0.3));
-}
-
-.marker:hover {
-  transform: scale(1.2) translateY(-3px);
-}
-
-/* Pin body: rotated rounded square = teardrop. Uses currentColor so the
-   inline `color` style on the parent drives the fill. */
-.marker::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%) rotate(-45deg);
-  width: 26px;
-  height: 26px;
-  border-radius: 50% 50% 50% 0;
-  background: currentColor;
-  border: 2.5px solid rgba(255, 255, 255, 0.9);
-}
-
-.markerLabel {
-  position: relative;
-  z-index: 1;
-  line-height: 1;
-  pointer-events: none;
-  font-family: var(--font-family, 'Space Grotesk', system-ui, sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-top: 2px;
-}
-
 /* ── Routing / POI spinner overlay ───────────────────────────────────────── */
 .spinnerOverlay {
   position: absolute;

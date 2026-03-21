@@ -239,6 +239,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
       setMapReady(true)
       setMapVersion((v) => v + 1)
+      console.log('[MapView] load fired, sources added')
     })
 
     // POI click: open POICard
@@ -281,11 +282,14 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   // ── Route polyline sync ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
+    console.log('[MapView] route sync: mapVersion=', mapVersion, 'map=', !!map, 'routeResult=', !!routeResult)
     if (!map || mapVersion === 0) return
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined
+    console.log('[MapView] route source=', !!source)
     if (!source) return
     if (routeResult) {
       source.setData({ type: 'Feature', properties: {}, geometry: routeResult.geometry })
+      console.log('[MapView] route setData called with geometry, coords count=', routeResult.geometry.coordinates.length)
     } else {
       source.setData({ type: 'FeatureCollection', features: [] })
     }
@@ -296,6 +300,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     const map = mapRef.current
     if (!map || mapVersion === 0) return
     const source = map.getSource(WP_SOURCE) as GeoJSONSource | undefined
+    console.log('[MapView] wp sync: source=', !!source, 'waypoints=', waypoints.filter(p => !isNaN(p.lat)).length)
     if (!source) return
 
     const features = waypoints

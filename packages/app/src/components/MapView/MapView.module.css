@@ -4,6 +4,48 @@
   position: relative;
 }
 
+/* ── Map skeleton — shown before tiles load ──────────────────────────────── */
+.skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-color: #e8e0d0;
+  background-image:
+    /* Water areas */
+    radial-gradient(ellipse 60% 30% at 75% 65%, #97B4DE44 0%, transparent 70%),
+    radial-gradient(ellipse 30% 15% at 20% 80%, #97B4DE33 0%, transparent 70%),
+    /* Terrain contours — soft horizontal bands */
+    repeating-linear-gradient(
+      168deg,
+      transparent 0px,
+      transparent 28px,
+      #DCD0BE26 28px,
+      #DCD0BE26 29px
+    ),
+    repeating-linear-gradient(
+      12deg,
+      transparent 0px,
+      transparent 48px,
+      #c8bfae1a 48px,
+      #c8bfae1a 49px
+    ),
+    /* Base terrain gradient */
+    linear-gradient(
+      175deg,
+      #ddd5c4 0%,
+      #e8e0d0 35%,
+      #d8d0c0 60%,
+      #e0d8c8 100%
+    );
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.skeletonHidden {
+  opacity: 0;
+}
+
 /* ── Routing / POI spinner overlay ───────────────────────────────────────── */
 .spinnerOverlay {
   position: absolute;

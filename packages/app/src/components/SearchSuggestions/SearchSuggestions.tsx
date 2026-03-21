@@ -9,7 +9,7 @@ interface SearchSuggestionsProps {
   suggestions: PhotonFeature[]
   onSelect: (feature: PhotonFeature) => void
   onClose: () => void
-  anchorRef: React.RefObject<HTMLInputElement>
+  anchorRef: React.RefObject<HTMLInputElement | null>
 }
 
 export function SearchSuggestions({ suggestions, onSelect, onClose, anchorRef }: SearchSuggestionsProps) {

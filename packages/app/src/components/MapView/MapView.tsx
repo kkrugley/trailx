@@ -29,15 +29,43 @@ import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 
-const MAP_STYLE_URLS: Record<string, string> = {
-  liberty:  'https://tiles.openfreemap.org/styles/liberty',
-  bright:   'https://tiles.openfreemap.org/styles/bright',
-  positron: 'https://tiles.openfreemap.org/styles/positron',
+type MapStyle = string | maplibregl.StyleSpecification
+
+function esriStyle(serviceUrl: string, attribution: string): maplibregl.StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      esri: {
+        type: 'raster',
+        tiles: [`${serviceUrl}/tile/{z}/{y}/{x}`],
+        tileSize: 256,
+        attribution,
+      },
+    },
+    layers: [{ id: 'esri-layer', type: 'raster', source: 'esri' }],
+  }
+}
+
+const MAP_STYLES: Record<string, MapStyle> = {
+  liberty:       'https://tiles.openfreemap.org/styles/liberty',
+  bright:        'https://tiles.openfreemap.org/styles/bright',
+  positron:      'https://tiles.openfreemap.org/styles/positron',
+  esri_imagery:  esriStyle(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
+    '© Esri, Maxar, Earthstar Geographics',
+  ),
+  esri_topo:     esriStyle(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer',
+    '© Esri, HERE, Garmin, © OpenStreetMap contributors',
+  ),
 }
 const INITIAL_CENTER: [number, number] = [23.68, 52.09]
 const INITIAL_ZOOM = 10
 const ROUTE_SOURCE = 'route-line'
 const ROUTE_LAYER = 'route-line-layer'
+const HOVER_DOT_SOURCE = 'route-hover-dot'
+const HOVER_DOT_LAYER = 'route-hover-dot-layer'
+const HOVER_DOT_PULSE_LAYER = 'route-hover-dot-pulse-layer'
 const POI_SOURCE = 'poi-source'
 const POI_LAYER_CLUSTERS = 'poi-clusters'
 const POI_LAYER_CLUSTER_COUNT = 'poi-cluster-count'
@@ -88,6 +116,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
   const isRouting = useMapStore((s) => s.isRouting)
+  const hoveredRoutePosition = useMapStore((s) => s.hoveredRoutePosition)
   const pois = useMapStore((s) => s.pois)
   const standalonePois = useMapStore((s) => s.standalonePois)
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
@@ -136,9 +165,9 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   // ── Set style command ──────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
-      const { style } = (e as CustomEvent<{ style: string }>).detail
-      const url = MAP_STYLE_URLS[style]
-      if (url) mapRef.current?.setStyle(url)
+      const { style: key } = (e as CustomEvent<{ style: string }>).detail
+      const mapStyle = MAP_STYLES[key]
+      if (mapStyle) mapRef.current?.setStyle(mapStyle as string)
     }
     window.addEventListener('trailx:setstyle', handler)
     return () => window.removeEventListener('trailx:setstyle', handler)
@@ -173,6 +202,35 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
           'line-color': '#4456b5',
           'line-width': 5,
           'line-opacity': 0.9,
+        },
+      })
+
+      // ── Route hover dot ──
+      map.addSource(HOVER_DOT_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: HOVER_DOT_PULSE_LAYER,
+        type: 'circle',
+        source: HOVER_DOT_SOURCE,
+        paint: {
+          'circle-radius': 12,
+          'circle-color': '#4456b5',
+          'circle-opacity': 0.25,
+          'circle-stroke-width': 0,
+        },
+      })
+      map.addLayer({
+        id: HOVER_DOT_LAYER,
+        type: 'circle',
+        source: HOVER_DOT_SOURCE,
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#ffffff',
+          'circle-stroke-color': '#4456b5',
+          'circle-stroke-width': 3,
+          'circle-opacity': 1,
         },
       })
 
@@ -348,6 +406,23 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       }),
     })
   }, [mapVersion, pois, standalonePois])
+
+  // ── Hover dot sync ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || mapVersion === 0) return
+    const source = map.getSource(HOVER_DOT_SOURCE) as GeoJSONSource | undefined
+    if (!source) return
+    if (hoveredRoutePosition) {
+      source.setData({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Point', coordinates: hoveredRoutePosition },
+      })
+    } else {
+      source.setData({ type: 'FeatureCollection', features: [] })
+    }
+  }, [mapVersion, hoveredRoutePosition])
 
   function handleContextSetStart() {
     if (!contextMenu) return

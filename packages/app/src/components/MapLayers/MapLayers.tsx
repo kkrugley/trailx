@@ -4,9 +4,11 @@ import type { AppSettings } from '../../store/useMapStore'
 import styles from './MapLayers.module.css'
 
 const MAP_STYLES: { value: AppSettings['mapStyle']; label: string; description: string }[] = [
-  { value: 'liberty',   label: 'Стандарт',  description: 'OpenFreeMap Liberty'  },
-  { value: 'bright',    label: 'Яркий',     description: 'OpenFreeMap Bright'   },
-  { value: 'positron',  label: 'Светлый',   description: 'OpenFreeMap Positron' },
+  { value: 'liberty',      label: 'Liberty',   description: 'OpenFreeMap Liberty'  },
+  { value: 'bright',       label: 'Bright',    description: 'OpenFreeMap Bright'   },
+  { value: 'positron',     label: 'Positron',  description: 'OpenFreeMap Positron' },
+  { value: 'esri_imagery', label: 'Спутник',   description: 'Esri World Imagery'   },
+  { value: 'esri_topo',    label: 'Топо',      description: 'Esri World Topo'      },
 ]
 
 interface MapLayersProps {

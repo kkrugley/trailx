@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { CaretUp, CaretDown, X, ArrowsOutSimple, ArrowsInSimple } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
 import { Chip } from '../ui/Chip'
@@ -29,10 +29,22 @@ function computeGain(elevation: number[]): number {
 
 export function ElevationBar() {
   const routeResult = useMapStore((s) => s.routeResult)
+  const { setHoveredRoutePosition } = useMapStore((s) => s.actions)
   const [mode, setMode] = useState<ElevMode>('expanded')
   const [view, setView] = useState<ViewMode>('elevation')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [wide, setWide] = useState(false)
+
+  const handleHoverFraction = useCallback((fraction: number | null) => {
+    if (fraction === null || !routeResult) {
+      setHoveredRoutePosition(null)
+      return
+    }
+    const coords = routeResult.geometry.coordinates
+    const idx = Math.round(fraction * (coords.length - 1))
+    const [lng, lat] = coords[Math.max(0, Math.min(idx, coords.length - 1))]
+    setHoveredRoutePosition([lng, lat])
+  }, [routeResult, setHoveredRoutePosition])
 
   if (!routeResult || routeResult.elevation.length === 0) return null
 
@@ -117,16 +129,16 @@ export function ElevationBar() {
       {isExpanded && (
         <div className={styles.chart}>
           {view === 'elevation' && (
-            <ElevationChart elevation={elevation} distance={routeResult.distance} height={100} />
+            <ElevationChart elevation={elevation} distance={routeResult.distance} height={100} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'surface' && surface && surface.length > 0 && (
-            <SurfaceChart surface={surface} distance={routeResult.distance} />
+            <SurfaceChart surface={surface} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'surface' && (!surface || surface.length === 0) && (
             <div className={styles.noData}>Нет данных о покрытии</div>
           )}
           {view === 'roadclass' && roadClass && roadClass.length > 0 && (
-            <RoadClassChart roadClass={roadClass} distance={routeResult.distance} />
+            <RoadClassChart roadClass={roadClass} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'roadclass' && (!roadClass || roadClass.length === 0) && (
             <div className={styles.noData}>Нет данных о типе дороги</div>

@@ -3,6 +3,7 @@ import { useState } from 'react'
 interface SurfaceChartProps {
   surface: string[]
   distance?: number
+  onHoverFraction?: (fraction: number | null) => void
 }
 
 const SURFACE_COLORS: Record<string, string> = {
@@ -56,7 +57,7 @@ function buildSegments(surface: string[]): Segment[] {
   return segments
 }
 
-export function SurfaceChart({ surface, distance }: SurfaceChartProps) {
+export function SurfaceChart({ surface, distance, onHoverFraction }: SurfaceChartProps) {
   const [hoverSeg, setHoverSeg] = useState<Segment | null>(null)
   const segments = buildSegments(surface)
 
@@ -72,7 +73,7 @@ export function SurfaceChart({ surface, distance }: SurfaceChartProps) {
       {/* Segmented bar + absolute tooltip */}
       <div
         style={{ position: 'relative', paddingBottom: '1.25rem' }}
-        onMouseLeave={() => setHoverSeg(null)}
+        onMouseLeave={() => { setHoverSeg(null); onHoverFraction?.(null) }}
       >
         <div
           style={{
@@ -92,7 +93,7 @@ export function SurfaceChart({ surface, distance }: SurfaceChartProps) {
                 transition: 'opacity 0.12s',
                 cursor: 'default',
               }}
-              onMouseEnter={() => setHoverSeg(seg)}
+              onMouseEnter={() => { setHoverSeg(seg); onHoverFraction?.((seg.start + seg.end) / 2) }}
             />
           ))}
         </div>

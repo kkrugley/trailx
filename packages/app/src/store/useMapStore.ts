@@ -54,6 +54,7 @@ interface MapStoreActions {
   insertWaypointNear: (lat: number, lng: number, label?: string) => void
   updateWaypoint: (id: string, lat: number, lng: number, label?: string) => void
   addEmptyIntermediate: () => void
+  addIntermediateAt: (lat: number, lng: number) => void
   removeWaypoint: (id: string) => void
   reorderWaypoints: (from: number, to: number) => void
   clearRoute: () => void
@@ -216,6 +217,15 @@ export const useMapStore = create<MapStore>((set) => ({
           id: crypto.randomUUID(), lat: NaN, lng: NaN, order: 0, type: 'intermediate',
         }
         items.splice(items.length - 1, 0, newPoint)
+        return { waypoints: assignTypes(items) }
+      }),
+
+    addIntermediateAt: (lat, lng) =>
+      set((state) => {
+        const items = [...state.waypoints]
+        items.splice(items.length - 1, 0, {
+          id: crypto.randomUUID(), lat, lng, order: 0, type: 'intermediate',
+        })
         return { waypoints: assignTypes(items) }
       }),
 

@@ -11,7 +11,7 @@ type ElevMode = 'compact' | 'expanded' | 'closed'
 type ViewMode = 'elevation' | 'surface' | 'roadclass'
 
 const VIEW_LABELS: Record<ViewMode, string> = {
-  elevation: 'Высота',
+  elevation: 'Набор высоты',
   surface:   'Покрытие',
   roadclass: 'Тип дороги',
 }

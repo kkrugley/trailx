@@ -39,9 +39,23 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
   const [inputValue, setInputValue] = useState(defaultLabel)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Sync label when point gets resolved externally (e.g. map click)
-  if (isResolved && inputValue === '' && point.label) {
-    setInputValue(point.label)
+  // Sync label when point is updated externally (e.g. map click, context menu).
+  // Use a ref to track the last point id+coords so we only sync on actual changes.
+  const prevPointRef = useRef<{ id: string; lat: number; lng: number } | null>(null)
+  const prev = prevPointRef.current
+  const coordChanged =
+    !prev ||
+    prev.id !== point.id ||
+    prev.lat !== point.lat ||
+    prev.lng !== point.lng
+  if (coordChanged) {
+    prevPointRef.current = { id: point.id, lat: point.lat, lng: point.lng }
+    if (isResolved) {
+      const newLabel = point.label ?? `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`
+      if (inputValue !== newLabel) setInputValue(newLabel)
+    } else {
+      if (inputValue !== '') setInputValue('')
+    }
   }
 
   const { suggestions } = usePhotonSearch(showSuggestions ? inputValue : '')

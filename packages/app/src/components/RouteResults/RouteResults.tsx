@@ -1,18 +1,19 @@
-import { Clock, Path, ArrowUp } from '@phosphor-icons/react'
+import { useState } from 'react'
+import { Clock, Path, ArrowUp, ArrowDown, Gauge } from '@phosphor-icons/react'
 import type { RouteResult } from '@trailx/shared'
-import { Chip } from '../ui/Chip'
+import { useMapStore } from '../../store/useMapStore'
 import styles from './RouteResults.module.css'
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m} min`
+  if (h > 0) return `${h} ч ${m} мин`
+  return `${m} мин`
 }
 
 function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`
-  return `${Math.round(meters)} m`
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
+  return `${Math.round(meters)} м`
 }
 
 function computeGain(elevation: number[]): number {
@@ -22,33 +23,86 @@ function computeGain(elevation: number[]): number {
   )
 }
 
+function computeLoss(elevation: number[]): number {
+  return elevation.reduce(
+    (acc, v, i) => (i > 0 && v < elevation[i - 1] ? acc + (elevation[i - 1] - v) : acc),
+    0,
+  )
+}
+
+interface StatChipProps {
+  icon: React.ReactNode
+  label: string
+  tooltip: string
+  accent?: boolean
+}
+
+function StatChip({ icon, label, tooltip, accent }: StatChipProps) {
+  const [show, setShow] = useState(false)
+  return (
+    <div
+      className={`${styles.chip} ${accent ? styles.chipAccent : ''}`}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className={styles.chipIcon}>{icon}</span>
+      <span className={styles.chipLabel}>{label}</span>
+      {show && (
+        <div className={styles.tooltip}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface RouteResultsProps {
   result: RouteResult
 }
 
 export function RouteResults({ result }: RouteResultsProps) {
+  const profile = useMapStore((s) => s.profile)
+  const speeds = useMapStore((s) => s.appSettings.speeds)
+
   const gain = computeGain(result.elevation)
+  const loss = computeLoss(result.elevation)
+  const speedKmh = speeds[profile]
+  const customDurationSec = (result.distance / 1000 / speedKmh) * 3600
 
   return (
     <div className={styles.wrapper}>
-      <p className={styles.label}>Route</p>
+      <div className={styles.header}>
+        <p className={styles.label}>Маршрут</p>
+        <span className={styles.speedBadge}>
+          <Gauge size={10} weight="fill" />
+          {speedKmh} км/ч
+        </span>
+      </div>
       <div className={styles.card}>
         <div className={styles.chips}>
-          <Chip
+          <StatChip
             icon={<Clock size={12} weight="fill" />}
-            label={formatDuration(result.duration)}
-            title="Duration"
+            label={formatDuration(customDurationSec)}
+            tooltip={`Расчётное время при скорости ${speedKmh} км/ч`}
+            accent
           />
-          <Chip
+          <StatChip
             icon={<Path size={12} weight="fill" />}
             label={formatDistance(result.distance)}
-            title="Distance"
+            tooltip="Общая длина маршрута"
           />
           {gain > 0 && (
-            <Chip
+            <StatChip
               icon={<ArrowUp size={12} weight="bold" />}
-              label={`+${Math.round(gain)} m`}
-              title="Elevation gain"
+              label={`+${Math.round(gain)} м`}
+              tooltip="Суммарный набор высоты"
+            />
+          )}
+          {loss > 0 && (
+            <StatChip
+              icon={<ArrowDown size={12} weight="bold" />}
+              label={`−${Math.round(loss)} м`}
+              tooltip="Суммарный сброс высоты"
             />
           )}
         </div>

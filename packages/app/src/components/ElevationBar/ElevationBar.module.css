@@ -3,10 +3,20 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: all;
   box-shadow: var(--shadow-overlay), 0 -2px 12px rgba(68, 86, 181, 0.06);
   animation: slideUpBar 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Wide mode — fixed, keeps same bottom/left margins as elevationRow padding */
+.wide {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  width: calc(50vw - 0.75rem);
+  z-index: 400;
 }
 
 @keyframes slideUpBar {
@@ -26,13 +36,88 @@
   gap: 0.75rem;
 }
 
-.label {
+/* ── View selector ─────────────────────────────────────────────────────── */
+.viewSelector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.viewBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--secondary);
   opacity: 0.7;
+  font-family: var(--font-family);
+  border-radius: var(--radius-sm);
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.viewBtn:hover {
+  opacity: 1;
+  background: rgba(68, 86, 181, 0.07);
+}
+
+.dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(68, 86, 181, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  z-index: 500;
+  overflow: hidden;
+  min-width: 130px;
+  animation: dropIn 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: var(--font-family);
+  color: var(--primary);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.dropdownItem:hover {
+  background: rgba(68, 86, 181, 0.07);
+}
+
+.dropdownItemActive {
+  color: var(--primary);
+  font-weight: 600;
+  background: rgba(68, 86, 181, 0.1);
+}
+
+.noData {
+  font-size: 0.75rem;
+  color: var(--primary);
+  opacity: 0.4;
+  font-family: var(--font-family);
+  text-align: center;
+  padding: 1rem 0;
 }
 
 .chips {

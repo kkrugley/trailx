@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { Funnel } from '@phosphor-icons/react'
 import { usePlatform } from '../../hooks/usePlatform'
 import { useMapStore } from '../../store/useMapStore'
 import { MapView } from '../MapView/MapView'
@@ -7,6 +8,7 @@ import { Sidebar } from '../Sidebar/Sidebar'
 import { MobileHeader } from '../MobileHeader/MobileHeader'
 import { ExportPanel } from '../ExportPanel/ExportPanel'
 import { POICard } from '../POICard/POICard'
+import { POIFilter } from '../POIFilter/POIFilter'
 import { BottomSheet } from './BottomSheet'
 import { MapControls } from '../MapControls/MapControls'
 import { ElevationBar } from '../ElevationBar/ElevationBar'
@@ -16,6 +18,7 @@ export function AppShell() {
   const { isMobile, isTMA } = usePlatform()
   const isDesktop = !isMobile && !isTMA
   const mapRef = useRef<MapViewHandle>(null)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   const isExportOpen = useMapStore((s) => s.isExportOpen)
   const selectedPOI = useMapStore((s) => s.selectedPOI)
@@ -34,14 +37,8 @@ export function AppShell() {
           <Sidebar />
         </div>
 
-        {/* Center column: empty space (map shows through) */}
-        <div className={styles.centerCol}>
-          {isExportOpen && (
-            <div className={styles.searchOverlay}>
-              <ExportPanel />
-            </div>
-          )}
-        </div>
+        {/* Center column: transparent (map shows through) */}
+        <div className={styles.centerCol} />
 
         {/* Right column: map controls */}
         <div className={styles.controlsCol}>
@@ -54,6 +51,18 @@ export function AppShell() {
         </div>
 
         <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
+
+        {/* POI filter — fixed bottom-right */}
+        <button
+          className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
+          onClick={() => setFilterOpen((v) => !v)}
+          aria-label="Фильтр POI"
+          title="Фильтр POI"
+        >
+          <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
+          <span>Фильтр</span>
+        </button>
+        {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
       </div>
     )
   }
@@ -89,6 +98,18 @@ export function AppShell() {
       )}
 
       <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
+
+      {/* POI filter — fixed bottom-right */}
+      <button
+        className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
+        onClick={() => setFilterOpen((v) => !v)}
+        aria-label="Фильтр POI"
+        title="Фильтр POI"
+      >
+        <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
+        <span>Фильтр</span>
+      </button>
+      {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
     </div>
   )
 }

@@ -1,9 +1,6 @@
 .list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 50;
+  /* position + top/left/width set dynamically via portal */
+  z-index: 9999;
   list-style: none;
   background: var(--surface);
   border-radius: var(--radius-md);

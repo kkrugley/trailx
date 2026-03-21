@@ -16,6 +16,12 @@ import { usePOISearch } from '../../hooks/usePOISearch'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+
+const MAP_STYLE_URLS: Record<string, string> = {
+  liberty:  'https://tiles.openfreemap.org/styles/liberty',
+  bright:   'https://tiles.openfreemap.org/styles/bright',
+  positron: 'https://tiles.openfreemap.org/styles/positron',
+}
 const INITIAL_CENTER: [number, number] = [23.68, 52.09]
 const INITIAL_ZOOM = 10
 const ROUTE_SOURCE = 'route-line'
@@ -27,6 +33,7 @@ const POI_LAYER_UNCLUSTERED = 'poi-unclustered'
 
 export interface MapViewHandle {
   getMap: () => maplibregl.Map | null
+  setStyle: (url: string) => void
 }
 
 /** Per-type color — applied via inline style so className mutations don't
@@ -60,18 +67,19 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const isRouting = useMapStore((s) => s.isRouting)
   const pois = useMapStore((s) => s.pois)
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
-  const { addWaypoint } = useRoute()
+  useRoute()
   usePOISearch()
 
-  const setSelectedPOI = useMapStore((s) => s.actions.setSelectedPOI)
+  const { setSelectedPOI } = useMapStore((s) => s.actions)
 
   // Stable refs for imperative handlers
-  const addWaypointRef = useRef(addWaypoint)
-  useEffect(() => { addWaypointRef.current = addWaypoint }, [addWaypoint])
   const setSelectedPOIRef = useRef(setSelectedPOI)
-  useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])
+  useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])  // eslint-disable-line
 
-  useImperativeHandle(ref, () => ({ getMap: () => mapRef.current }))
+  useImperativeHandle(ref, () => ({
+    getMap: () => mapRef.current,
+    setStyle: (url: string) => mapRef.current?.setStyle(url),
+  }))
 
   // ── FlyTo command ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -83,6 +91,17 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     return () => window.removeEventListener('trailx:flyto', handler)
   }, [])
 
+  // ── Set style command ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { style } = (e as CustomEvent<{ style: string }>).detail
+      const url = MAP_STYLE_URLS[style]
+      if (url) mapRef.current?.setStyle(url)
+    }
+    window.addEventListener('trailx:setstyle', handler)
+    return () => window.removeEventListener('trailx:setstyle', handler)
+  }, [])
+
   // ── Map initialisation ────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return
@@ -92,6 +111,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       style: STYLE_URL,
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
+      attributionControl: false,
     })
 
     mapRef.current = map
@@ -170,15 +190,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       setMapReady(true)
     })
 
-    // Map click: add waypoint (only when not clicking a POI layer)
-    map.on('click', (e) => {
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: [POI_LAYER_UNCLUSTERED, POI_LAYER_CLUSTERS],
-      })
-      if (features.length > 0) return
-      addWaypointRef.current(e.lngLat.lat, e.lngLat.lng)
-    })
-
     // POI click: open POICard
     map.on('click', POI_LAYER_UNCLUSTERED, (e) => {
       if (!e.features?.[0]) return
@@ -241,7 +252,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       }
     }
 
-    waypoints.forEach((point, i) => {
+    waypoints.filter((p) => !isNaN(p.lat)).forEach((point, i) => {
       const number = i + 1
       const existing = markersRef.current.get(point.id)
       if (existing) {

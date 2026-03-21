@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { DotsSixVertical, X } from '@phosphor-icons/react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -13,7 +13,7 @@ interface WaypointInputProps {
   point: RoutePoint
   placeholder: string
   onRemove: (id: string) => void
-  onSelect: (id: string, lat: number, lng: number, label: string) => void
+  onUpdate: (id: string, lat: number, lng: number, label: string) => void
 }
 
 const TYPE_COLORS: Record<RoutePoint['type'], string> = {
@@ -22,7 +22,7 @@ const TYPE_COLORS: Record<RoutePoint['type'], string> = {
   intermediate: '#4456b5',
 }
 
-export function WaypointInput({ point, placeholder, onRemove, onSelect }: WaypointInputProps) {
+export function WaypointInput({ point, placeholder, onRemove, onUpdate }: WaypointInputProps) {
   const {
     attributes,
     listeners,
@@ -32,9 +32,17 @@ export function WaypointInput({ point, placeholder, onRemove, onSelect }: Waypoi
     isDragging,
   } = useSortable({ id: point.id })
 
-  const displayLabel = point.label ?? `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`
-  const [inputValue, setInputValue] = useState(displayLabel)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const isResolved = !isNaN(point.lat)
+  const defaultLabel = isResolved ? (point.label ?? `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`) : ''
+  const [inputValue, setInputValue] = useState(defaultLabel)
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Sync label when point gets resolved externally (e.g. map click)
+  if (isResolved && inputValue === '' && point.label) {
+    setInputValue(point.label)
+  }
 
   const { suggestions } = usePhotonSearch(showSuggestions ? inputValue : '')
 
@@ -43,7 +51,7 @@ export function WaypointInput({ point, placeholder, onRemove, onSelect }: Waypoi
     const [lng, lat] = feature.geometry.coordinates
     setInputValue(label)
     setShowSuggestions(false)
-    onSelect(point.id, lat, lng, label)
+    onUpdate(point.id, lat, lng, label)
   }
 
   return (
@@ -72,6 +80,7 @@ export function WaypointInput({ point, placeholder, onRemove, onSelect }: Waypoi
 
       <div className={styles.inputWrapper}>
         <input
+          ref={inputRef}
           type="text"
           className={styles.input}
           value={inputValue}
@@ -88,6 +97,7 @@ export function WaypointInput({ point, placeholder, onRemove, onSelect }: Waypoi
             suggestions={suggestions}
             onSelect={handleSelect}
             onClose={() => setShowSuggestions(false)}
+            anchorRef={inputRef}
           />
         )}
       </div>

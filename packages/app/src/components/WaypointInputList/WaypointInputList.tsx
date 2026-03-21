@@ -1,4 +1,5 @@
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { Plus, GearSix, Trash } from '@phosphor-icons/react'
 import {
   DndContext,
   closestCenter,
@@ -14,19 +15,24 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
 import { WaypointInput } from '../WaypointInput/WaypointInput'
+import { RouteSettings } from '../RouteSettings/RouteSettings'
 import { useMapStore } from '../../store/useMapStore'
 import { useRoute } from '../../hooks/useRoute'
+import { useProfile } from '../../hooks/useProfile'
 import styles from './WaypointInputList.module.css'
 
 const PLACEHOLDERS: Record<string, string> = {
-  start: 'Choose starting point',
-  intermediate: 'Add stop',
-  end: 'Choose destination',
+  start: 'Начальная точка',
+  intermediate: 'Промежуточная точка',
+  end: 'Конечная точка',
 }
 
 export function WaypointInputList() {
-  const { waypoints, removeWaypoint, reorderWaypoints } = useRoute()
-  const { addWaypoint } = useMapStore((s) => s.actions)
+  const { waypoints, removeWaypoint, reorderWaypoints, clearRoute } = useRoute()
+  const { updateWaypoint, addEmptyIntermediate } = useMapStore((s) => s.actions)
+  const { profile } = useProfile()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsBtnRef = useRef<HTMLButtonElement>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -44,17 +50,6 @@ export function WaypointInputList() {
     [waypoints, reorderWaypoints],
   )
 
-  const handleSelect = useCallback(
-    (id: string, lat: number, lng: number, label: string) => {
-      const point = waypoints.find((p) => p.id === id)
-      if (!point) return
-      // Remove old, re-add with new coords — keeps order/type via store
-      removeWaypoint(id)
-      addWaypoint({ ...point, lat, lng, label })
-    },
-    [waypoints, removeWaypoint, addWaypoint],
-  )
-
   const ids = waypoints.map((p) => p.id)
 
   return (
@@ -70,17 +65,48 @@ export function WaypointInputList() {
               <WaypointInput
                 key={point.id}
                 point={point}
-                placeholder={PLACEHOLDERS[point.type] ?? 'Add stop'}
+                placeholder={PLACEHOLDERS[point.type] ?? 'Промежуточная точка'}
                 onRemove={removeWaypoint}
-                onSelect={handleSelect}
+                onUpdate={updateWaypoint}
               />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
 
-      {waypoints.length === 0 && (
-        <p className={styles.hint}>Click the map to add waypoints</p>
+      {/* Actions row */}
+      <div className={styles.actionsRow}>
+        <button className={styles.addBtn} onClick={addEmptyIntermediate}>
+          <Plus size={13} weight="bold" />
+          Добавить остановку
+        </button>
+        <button
+          ref={settingsBtnRef}
+          className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
+          onClick={() => setSettingsOpen((v) => !v)}
+          aria-label="Настройки маршрута"
+          title="Настройки"
+        >
+          <GearSix size={16} weight={settingsOpen ? 'fill' : 'regular'} />
+        </button>
+        <button
+          className={styles.iconBtn}
+          onClick={clearRoute}
+          aria-label="Очистить маршрут"
+          title="Очистить маршрут"
+        >
+          <Trash size={16} weight="regular" />
+        </button>
+      </div>
+
+      {settingsOpen && (
+        <div className={styles.settingsWrapper}>
+          <RouteSettings
+            profile={profile}
+            onClose={() => setSettingsOpen(false)}
+            anchorRef={settingsBtnRef}
+          />
+        </div>
       )}
     </div>
   )

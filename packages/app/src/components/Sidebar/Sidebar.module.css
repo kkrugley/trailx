@@ -2,6 +2,8 @@
 .card {
   position: relative;
   margin: 0.75rem;
+  width: calc(var(--sidebar-width) - 1.5rem);
+  flex-shrink: 0;
   background: var(--surface-variant);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -9,7 +11,8 @@
   box-shadow: var(--shadow-float), 0 8px 48px rgba(68, 86, 181, 0.08);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 1.5rem);
+  min-height: 50vh;
+  max-height: 90vh;
   pointer-events: all;
   overflow: hidden;
   animation: slideInCard 0.35s cubic-bezier(0.22, 1, 0.36, 1);
@@ -117,6 +120,17 @@
 .footer {
   margin-top: auto;
   padding-top: 0.75rem;
+}
+
+.exportDivider {
+  height: 1px;
+  background: var(--ghost-border);
+  margin: 0 -0.875rem;
+}
+
+/* Pull ExportPanel flush with card edges so its own padding aligns correctly */
+.exportWrap {
+  margin: 0 -0.875rem;
 }
 
 /* ── Close button ───────────────────────────────────────────────────────── */

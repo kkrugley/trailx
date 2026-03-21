@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { PhotonFeature } from '../../services/photon'
 import { photonFeatureLabel } from '../../services/photon'
 import { MapPin } from '@phosphor-icons/react'
@@ -8,32 +9,47 @@ interface SearchSuggestionsProps {
   suggestions: PhotonFeature[]
   onSelect: (feature: PhotonFeature) => void
   onClose: () => void
+  anchorRef: React.RefObject<HTMLInputElement>
 }
 
-export function SearchSuggestions({ suggestions, onSelect, onClose }: SearchSuggestionsProps) {
-  const ref = useRef<HTMLUListElement>(null)
+export function SearchSuggestions({ suggestions, onSelect, onClose, anchorRef }: SearchSuggestionsProps) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const [style, setStyle] = useState<React.CSSProperties>({})
+
+  useLayoutEffect(() => {
+    if (!anchorRef.current) return
+    const rect = anchorRef.current.getBoundingClientRect()
+    setStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    })
+  }, [anchorRef, suggestions])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        listRef.current && !listRef.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) {
         onClose()
       }
     }
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('mousedown', handler)
     document.addEventListener('keydown', keyHandler)
     return () => {
       document.removeEventListener('mousedown', handler)
       document.removeEventListener('keydown', keyHandler)
     }
-  }, [onClose])
+  }, [onClose, anchorRef])
 
   if (suggestions.length === 0) return null
 
-  return (
-    <ul ref={ref} className={styles.list} role="listbox">
+  return createPortal(
+    <ul ref={listRef} className={styles.list} role="listbox" style={style}>
       {suggestions.map((feature, i) => {
         const label = photonFeatureLabel(feature)
         return (
@@ -41,7 +57,7 @@ export function SearchSuggestions({ suggestions, onSelect, onClose }: SearchSugg
             <button
               className={styles.item}
               onMouseDown={(e) => {
-                e.preventDefault() // prevent input blur before click registers
+                e.preventDefault()
                 onSelect(feature)
               }}
             >
@@ -51,6 +67,7 @@ export function SearchSuggestions({ suggestions, onSelect, onClose }: SearchSugg
           </li>
         )
       })}
-    </ul>
+    </ul>,
+    document.body,
   )
 }

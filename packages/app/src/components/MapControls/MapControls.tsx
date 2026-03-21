@@ -1,6 +1,9 @@
-import type { RefObject } from 'react'
-import { Plus, Minus, Crosshair } from '@phosphor-icons/react'
+import { useState, useRef, type RefObject } from 'react'
+import { Plus, Minus, Crosshair, GearSix, Stack, Question } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
+import { AppSettingsPanel } from '../AppSettings/AppSettings'
+import { MapLayers } from '../MapLayers/MapLayers'
+import { AppInfo } from '../AppInfo/AppInfo'
 import styles from './MapControls.module.css'
 
 interface MapControlsProps {
@@ -8,7 +11,12 @@ interface MapControlsProps {
 }
 
 export function MapControls({ mapRef }: MapControlsProps) {
-  const zoomIn = () => mapRef.current?.getMap()?.zoomIn()
+  const [infoOpen, setInfoOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [layersOpen, setLayersOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const zoomIn  = () => mapRef.current?.getMap()?.zoomIn()
   const zoomOut = () => mapRef.current?.getMap()?.zoomOut()
 
   const locate = () => {
@@ -24,7 +32,61 @@ export function MapControls({ mapRef }: MapControlsProps) {
   }
 
   return (
-    <div className={styles.controls}>
+    <div ref={containerRef} className={styles.controls}>
+      {/* Info button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${infoOpen ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => { setInfoOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false) }}
+          aria-label="Справка"
+        >
+          <Question size={17} weight={infoOpen ? 'fill' : 'regular'} />
+        </button>
+        {infoOpen && (
+          <div className={styles.popover}>
+            <AppInfo onClose={() => setInfoOpen(false)} />
+          </div>
+        )}
+      </div>
+
+      {/* Settings button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => { setSettingsOpen((v) => !v); setLayersOpen(false); setInfoOpen(false) }}
+          aria-label="Настройки"
+        >
+          <GearSix size={17} weight={settingsOpen ? 'fill' : 'regular'} />
+        </button>
+        {settingsOpen && (
+          <div className={styles.popover}>
+            <AppSettingsPanel onClose={() => setSettingsOpen(false)} />
+          </div>
+        )}
+      </div>
+
+      {/* Map layers button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${layersOpen ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false) }}
+          aria-label="Слои карты"
+        >
+          <Stack size={17} weight={layersOpen ? 'fill' : 'regular'} />
+        </button>
+        {layersOpen && (
+          <div className={styles.popover}>
+            <MapLayers onClose={() => setLayersOpen(false)} />
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className={styles.divider} />
+
       {/* Zoom — stacked pill */}
       <div className={styles.zoomGroup}>
         <button className={styles.btn} onClick={zoomIn} aria-label="Zoom in">
@@ -36,7 +98,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         </button>
       </div>
 
-      {/* Locate — separate pill */}
+      {/* Locate */}
       <button className={styles.locateBtn} onClick={locate} aria-label="My location">
         <Crosshair size={17} weight="bold" />
       </button>

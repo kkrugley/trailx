@@ -26,13 +26,24 @@ interface GHPoint {
   coordinates: number[][] // [lng, lat, ele?]
 }
 
+type GHDetail = [number, number, string]
+
 interface GHPath {
   points: GHPoint
   distance: number
   time: number // milliseconds
   details?: {
-    elevation?: number[]
+    surface?: GHDetail[]
+    road_class?: GHDetail[]
   }
+}
+
+function expandDetail(segments: GHDetail[], length: number): string[] {
+  const result = new Array<string>(length).fill('unknown')
+  for (const [from, to, value] of segments) {
+    for (let i = from; i < to && i < length; i++) result[i] = value
+  }
+  return result
 }
 
 interface GHResponse {
@@ -57,8 +68,10 @@ export async function buildRoute(
     profile,
     points_encoded: 'false',
     elevation: 'true',
+    details: 'surface',
     ...(apiKey ? { key: apiKey } : { key: 'LijBPDQGfu7Iiq80w3HzwB4RUDJbMbj6M3ECbZ-iqhg' }),
   })
+  params.append('details', 'road_class')
 
   // Build point params — GH expects multiple `point` query params
   const pointParams = waypoints
@@ -112,9 +125,12 @@ export async function buildRoute(
   if (!path) {
     throw new RoutingError('GraphHopper returned no route.')
   }
+  console.debug('[GH] path.details:', path.details)
 
   const coords = path.points.coordinates
   const elevation = coords.map((c) => c[2] ?? 0)
+
+  const n = coords.length
 
   return {
     geometry: {
@@ -124,5 +140,7 @@ export async function buildRoute(
     distance: path.distance,
     duration: Math.round(path.time / 1000), // ms → s
     elevation,
+    surface: path.details?.surface ? expandDetail(path.details.surface, n) : undefined,
+    roadClass: path.details?.road_class ? expandDetail(path.details.road_class, n) : undefined,
   }
 }

@@ -65,7 +65,8 @@ export function POICard({ poi, onClose }: POICardProps) {
   // Keep last non-null poi so the card content stays visible during the slide-out animation
   const [displayPoi, setDisplayPoi] = useState<POI | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const { addStandalonePoi, insertWaypointNear } = useMapStore((s) => s.actions)
+  const standalonePois = useMapStore((s) => s.standalonePois)
+  const { addStandalonePoi, removeStandalonePoi, insertWaypointNear } = useMapStore((s) => s.actions)
 
   useEffect(() => {
     if (poi) setDisplayPoi(poi)
@@ -84,10 +85,16 @@ export function POICard({ poi, onClose }: POICardProps) {
     onClose()
   }
 
+  const isSaved = displayPoi ? standalonePois.some((p) => p.id === displayPoi.id) : false
+
   function handleSaveAsPOI() {
     if (!displayPoi) return
     addStandalonePoi(displayPoi)
-    onClose()
+  }
+
+  function handleRemovePOI() {
+    if (!displayPoi) return
+    removeStandalonePoi(displayPoi.id)
   }
 
   const isVisible = poi !== null
@@ -149,7 +156,7 @@ export function POICard({ poi, onClose }: POICardProps) {
               </div>
               {displayPoi.tags.opening_hours && (
                 <div className={styles.tag}>
-                  <span className={styles.tagKey}>Часы</span>
+                  <span className={styles.tagKey}>Часы работы:</span>
                   <span className={styles.tagVal}>{displayPoi.tags.opening_hours}</span>
                 </div>
               )}
@@ -176,9 +183,15 @@ export function POICard({ poi, onClose }: POICardProps) {
 
             {/* ── Actions ── */}
             <div className={styles.actions}>
-              <button className={styles.btnSecondary} onClick={handleSaveAsPOI}>
-                Сохранить как POI
-              </button>
+              {isSaved ? (
+                <button className={styles.btnDanger} onClick={handleRemovePOI}>
+                  Удалить POI
+                </button>
+              ) : (
+                <button className={styles.btnSecondary} onClick={handleSaveAsPOI}>
+                  Сохранить как POI
+                </button>
+              )}
               <button className={styles.btnPrimary} onClick={handleAddToRoute}>
                 Добавить в маршрут
               </button>

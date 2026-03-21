@@ -15,6 +15,7 @@ import { useRoute } from '../../hooks/useRoute'
 import { usePOISearch } from '../../hooks/usePOISearch'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
+import { generatePOIIcon } from '../../utils/poiIcon'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -31,7 +32,17 @@ const ROUTE_LAYER = 'route-line-layer'
 const POI_SOURCE = 'poi-source'
 const POI_LAYER_CLUSTERS = 'poi-clusters'
 const POI_LAYER_CLUSTER_COUNT = 'poi-cluster-count'
-const POI_LAYER_UNCLUSTERED = 'poi-unclustered'
+const POI_LAYER_UNCLUSTERED = 'poi-unclustered' // kept for click/hover handler name compat
+const POI_LAYER_ICONS = 'poi-icons'
+
+function ensurePOIIcon(map: maplibregl.Map, category: string, color: string, saved: boolean): string {
+  const id = `poi-${category}${saved ? '-saved' : ''}`
+  if (!map.hasImage(id)) {
+    const img = generatePOIIcon(color, category, saved)
+    map.addImage(id, img, { pixelRatio: 2 })
+  }
+  return id
+}
 
 export interface MapViewHandle {
   getMap: () => maplibregl.Map | null
@@ -66,6 +77,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const routeResult = useMapStore((s) => s.routeResult)
   const isRouting = useMapStore((s) => s.isRouting)
   const pois = useMapStore((s) => s.pois)
+  const standalonePois = useMapStore((s) => s.standalonePois)
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
   useRoute()
   usePOISearch()
@@ -193,15 +205,15 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
       map.addLayer({
         id: POI_LAYER_UNCLUSTERED,
-        type: 'circle',
+        type: 'symbol',
         source: POI_SOURCE,
         filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': 7,
-          'circle-color': ['get', 'color'] as maplibregl.ExpressionSpecification,
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': 'rgba(255, 255, 255, 0.9)',
-          'circle-opacity': 0.9,
+        layout: {
+          'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
+          'icon-size': 1,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-anchor': 'center',
         },
       })
 
@@ -303,19 +315,25 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     if (!map || !mapReady) return
     const source = map.getSource(POI_SOURCE) as GeoJSONSource | undefined
     if (!source) return
+    const savedIds = new Set(standalonePois.map((p) => p.id))
     source.setData({
       type: 'FeatureCollection',
-      features: pois.map((poi) => ({
-        type: 'Feature' as const,
-        geometry: { type: 'Point' as const, coordinates: [poi.lng, poi.lat] },
-        properties: {
-          id: poi.id, name: poi.name ?? '', category: poi.category,
-          color: POI_COLORS[poi.category], osmId: poi.osmId, osmType: poi.osmType,
-          tags: JSON.stringify(poi.tags), lat: poi.lat, lng: poi.lng,
-        },
-      })),
+      features: pois.map((poi) => {
+        const saved = savedIds.has(poi.id)
+        const icon = ensurePOIIcon(map, poi.category, POI_COLORS[poi.category], saved)
+        return {
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [poi.lng, poi.lat] },
+          properties: {
+            id: poi.id, name: poi.name ?? '', category: poi.category,
+            color: POI_COLORS[poi.category], osmId: poi.osmId, osmType: poi.osmType,
+            tags: JSON.stringify(poi.tags), lat: poi.lat, lng: poi.lng,
+            icon,
+          },
+        }
+      }),
     })
-  }, [mapReady, pois])
+  }, [mapReady, pois, standalonePois])
 
   function handleContextSetStart() {
     if (!contextMenu) return

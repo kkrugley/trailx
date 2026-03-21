@@ -6,7 +6,7 @@ import styles from './RouteSettings.module.css'
 interface RouteSettingsProps {
   profile: RoutingProfile
   onClose: () => void
-  anchorRef: React.RefObject<HTMLButtonElement>
+  anchorRef: React.RefObject<HTMLButtonElement | null>
 }
 
 export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProps) {

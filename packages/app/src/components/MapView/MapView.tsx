@@ -33,7 +33,6 @@ const POI_SOURCE = 'poi-source'
 const POI_LAYER_CLUSTERS = 'poi-clusters'
 const POI_LAYER_CLUSTER_COUNT = 'poi-cluster-count'
 const POI_LAYER_UNCLUSTERED = 'poi-unclustered' // kept for click/hover handler name compat
-const POI_LAYER_ICONS = 'poi-icons'
 
 function ensurePOIIcon(map: maplibregl.Map, category: string, color: string, saved: boolean): string {
   const id = `poi-${category}${saved ? '-saved' : ''}`

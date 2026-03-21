@@ -1,10 +1,11 @@
 import { useState, useRef, type RefObject } from 'react'
-import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug } from '@phosphor-icons/react'
+import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Wrench } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
 import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
 import { DebugPanel } from '../DebugPanel/DebugPanel'
+import { ToolsPanel } from '../ToolsPanel/ToolsPanel'
 import styles from './MapControls.module.css'
 
 interface MapControlsProps {
@@ -15,6 +16,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
   const [infoOpen, setInfoOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [debugOpen, setDebugOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -74,7 +76,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         <button
           className={`${styles.iconBtn} ${layersOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false); setDebugOpen(false) }}
+          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false); setToolsOpen(false); setDebugOpen(false) }}
           aria-label="Слои карты"
         >
           <Stack size={17} weight={layersOpen ? 'fill' : 'regular'} />
@@ -82,6 +84,23 @@ export function MapControls({ mapRef }: MapControlsProps) {
         {layersOpen && (
           <div className={styles.popover}>
             <MapLayers onClose={() => setLayersOpen(false)} />
+          </div>
+        )}
+      </div>
+
+      {/* Tools button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${toolsOpen ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => { setToolsOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
+          aria-label="Инструменты"
+        >
+          <Wrench size={17} weight={toolsOpen ? 'fill' : 'regular'} />
+        </button>
+        {toolsOpen && (
+          <div className={styles.popover}>
+            <ToolsPanel onClose={() => setToolsOpen(false)} />
           </div>
         )}
       </div>

@@ -2,6 +2,29 @@ import { create } from 'zustand'
 import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
+// ── Measure tool ─────────────────────────────────────────────────────────────
+export interface MeasureSession {
+  id: string
+  nodes: [number, number][] // [lng, lat]
+  distance: number          // km
+}
+
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(b[1] - a[1])
+  const dLon = toRad(b[0] - a[0])
+  const x = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+}
+
+export function calcMeasureDistance(nodes: [number, number][]): number {
+  let d = 0
+  for (let i = 1; i < nodes.length; i++) d += haversineKm(nodes[i - 1], nodes[i])
+  return d
+}
+
 export interface AppSettings {
   language: 'ru' | 'en'
   distanceUnit: 'km' | 'mi'
@@ -78,6 +101,13 @@ interface MapStoreActions {
   loadRouteFromGPX: (gpxFile: GPXFile) => void
   // Settings
   updateSettings: (patch: Partial<AppSettings>) => void
+  // Measure tool
+  setMeasureActive: (v: boolean) => void
+  addMeasureNode: (coord: [number, number]) => void
+  removeMeasureNode: (sessionId: string, nodeIndex: number) => void
+  startMeasureSession: () => void
+  deleteMeasureSession: (id: string) => void
+  deleteAllMeasureSessions: () => void
 }
 
 interface MapStore {
@@ -99,6 +129,10 @@ interface MapStore {
   standalonePois: POI[]
   // App settings
   appSettings: AppSettings
+  // Measure tool
+  measureActive: boolean
+  measureSessions: MeasureSession[]
+  measureActiveSessionId: string | null
   actions: MapStoreActions
 }
 
@@ -138,6 +172,9 @@ export const useMapStore = create<MapStore>((set) => ({
   selectedPOI: null,
   standalonePois: [],
   appSettings: DEFAULT_SETTINGS,
+  measureActive: false,
+  measureSessions: [],
+  measureActiveSessionId: null,
 
   actions: {
     addWaypoint: (point) =>
@@ -298,6 +335,58 @@ export const useMapStore = create<MapStore>((set) => ({
 
     updateSettings: (patch) =>
       set((state) => ({ appSettings: { ...state.appSettings, ...patch } })),
+
+    setMeasureActive: (v) =>
+      set((state) => {
+        if (v && state.measureSessions.length === 0) {
+          const id = crypto.randomUUID()
+          return { measureActive: true, measureSessions: [{ id, nodes: [], distance: 0 }], measureActiveSessionId: id }
+        }
+        return { measureActive: v }
+      }),
+
+    addMeasureNode: (coord) =>
+      set((state) => {
+        const sid = state.measureActiveSessionId
+        if (!sid) return state
+        return {
+          measureSessions: state.measureSessions.map((s) => {
+            if (s.id !== sid) return s
+            const nodes = [...s.nodes, coord] as [number, number][]
+            return { ...s, nodes, distance: calcMeasureDistance(nodes) }
+          }),
+        }
+      }),
+
+    removeMeasureNode: (sessionId, nodeIndex) =>
+      set((state) => ({
+        measureSessions: state.measureSessions.map((s) => {
+          if (s.id !== sessionId) return s
+          const nodes = s.nodes.filter((_, i) => i !== nodeIndex) as [number, number][]
+          return { ...s, nodes, distance: calcMeasureDistance(nodes) }
+        }),
+      })),
+
+    startMeasureSession: () =>
+      set((state) => {
+        const id = crypto.randomUUID()
+        return {
+          measureSessions: [...state.measureSessions, { id, nodes: [], distance: 0 }],
+          measureActiveSessionId: id,
+        }
+      }),
+
+    deleteMeasureSession: (id) =>
+      set((state) => {
+        const next = state.measureSessions.filter((s) => s.id !== id)
+        const activeId = state.measureActiveSessionId === id
+          ? (next.length > 0 ? next[next.length - 1].id : null)
+          : state.measureActiveSessionId
+        return { measureSessions: next, measureActiveSessionId: activeId }
+      }),
+
+    deleteAllMeasureSessions: () =>
+      set({ measureSessions: [], measureActiveSessionId: null }),
 
     loadRouteFromGPX: (gpxFile) =>
       set((state) => {

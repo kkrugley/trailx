@@ -93,8 +93,11 @@ export function POICard({ poi, onClose }: POICardProps) {
   const isVisible = poi !== null
 
   return (
-    <div className={`${styles.overlay} ${isVisible ? styles.overlayActive : ''}`}>
-      <div className={styles.card}>
+    <div
+      className={`${styles.overlay} ${isVisible ? styles.overlayActive : ''}`}
+      onClick={isVisible ? onClose : undefined}
+    >
+      <div className={styles.card} onClick={(e) => e.stopPropagation()}>
         {displayPoi && (
           <>
             {/* ── Header ── */}

@@ -49,7 +49,7 @@ export function MapContextMenu({
 
   function openOSM() {
     window.open(
-      `https://www.openstreetmap.org/edit?lat=${lat}&lon=${lng}&zoom=17`,
+      `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`,
       '_blank',
       'noreferrer',
     )
@@ -91,7 +91,7 @@ export function MapContextMenu({
       </button>
       <button className={styles.item} onClick={openOSM}>
         <PencilSimpleLine size={15} className={styles.iconUtil} />
-        Редактировать в OSM
+        Открыть в OSM
       </button>
     </div>
   )

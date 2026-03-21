@@ -21,6 +21,7 @@ import type { POICategory } from '@trailx/shared'
 import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { usePOISearch } from '../../hooks/usePOISearch'
+import { useMeasureSync } from '../../hooks/useMeasureSync'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
 import { generatePOIIcon } from '../../utils/poiIcon'
@@ -91,6 +92,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const standalonePois = useMapStore((s) => s.standalonePois)
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
   usePOISearch()
+  useMeasureSync(mapRef.current, mapVersion)
 
   const { setSelectedPOI, updateWaypoint, addIntermediateAt } = useMapStore((s) => s.actions)
 

@@ -78,14 +78,18 @@ export function POIFilter({ onClose }: POIFilterProps) {
             <input
               type="range"
               min={50}
-              max={1000}
+              max={5000}
               step={50}
               value={poiBuffer}
-              onChange={(e) => updateSettings({ poiBuffer: Number(e.target.value) } as Partial<AppSettings>)}
+              onChange={(e) => {
+                let v = Number(e.target.value)
+                if (v > 1000) v = Math.round(v / 500) * 500
+                updateSettings({ poiBuffer: v } as Partial<AppSettings>)
+              }}
               className={styles.slider}
             />
             <span className={styles.sliderValue}>
-              {poiBuffer >= 1000 ? `${poiBuffer / 1000} км` : `${poiBuffer} м`}
+              {poiBuffer >= 1000 ? `${(poiBuffer / 1000).toFixed(poiBuffer % 1000 === 0 ? 0 : 1)} км` : `${poiBuffer} м`}
             </span>
           </div>
         </div>

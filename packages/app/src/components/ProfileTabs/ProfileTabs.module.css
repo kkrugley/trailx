@@ -23,9 +23,15 @@
   transition: opacity 0.18s ease, background 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.tab:hover {
+.tab:hover:not(:disabled) {
   opacity: 0.75;
   transform: scale(1.05);
+}
+
+.tab:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 .tab.active {

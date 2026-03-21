@@ -73,6 +73,7 @@ interface MapStoreActions {
   // POI card
   setSelectedPOI: (poi: POI | null) => void
   addStandalonePoi: (poi: POI) => void
+  removeStandalonePoi: (id: string) => void
   // GPX import
   loadRouteFromGPX: (gpxFile: GPXFile) => void
   // Settings
@@ -288,6 +289,11 @@ export const useMapStore = create<MapStore>((set) => ({
     addStandalonePoi: (poi) =>
       set((state) => ({
         standalonePois: [...state.standalonePois, poi],
+      })),
+
+    removeStandalonePoi: (id) =>
+      set((state) => ({
+        standalonePois: state.standalonePois.filter((p) => p.id !== id),
       })),
 
     updateSettings: (patch) =>

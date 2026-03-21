@@ -210,6 +210,23 @@
   background-color: var(--surface-container);
 }
 
+.btnDanger {
+  padding: 0.625rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: rgba(192, 57, 43, 0.12);
+  color: #c0392b;
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btnDanger:hover {
+  background-color: rgba(192, 57, 43, 0.22);
+}
+
 .btnPrimary {
   padding: 0.625rem 0.75rem;
   border: none;

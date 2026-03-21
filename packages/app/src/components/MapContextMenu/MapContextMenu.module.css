@@ -1,0 +1,97 @@
+.menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay), 0 8px 32px rgba(68, 86, 181, 0.12);
+  min-width: 210px;
+  overflow: hidden;
+  animation: popIn 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: all;
+  border: 1px solid rgba(68, 86, 181, 0.1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Coord header ── */
+.coordRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem 0.4rem;
+}
+
+.coordIcon {
+  color: var(--secondary);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.coordText {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--ghost-border);
+  margin: 0.15rem 0;
+}
+
+/* ── Menu item ── */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--primary);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.item:hover {
+  background: rgba(68, 86, 181, 0.07);
+}
+
+.item:active {
+  background: rgba(68, 86, 181, 0.13);
+}
+
+/* ── Icon colors ── */
+.iconStart {
+  color: #2a8f4a;
+  flex-shrink: 0;
+}
+
+.iconMid {
+  color: #4456b5;
+  flex-shrink: 0;
+}
+
+.iconEnd {
+  color: #c0392b;
+  flex-shrink: 0;
+}
+
+.iconUtil {
+  color: var(--primary);
+  opacity: 0.45;
+  flex-shrink: 0;
+}

@@ -13,6 +13,7 @@ import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useRoute } from '../../hooks/useRoute'
 import { usePOISearch } from '../../hooks/usePOISearch'
+import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -61,6 +62,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
   const [mapReady, setMapReady] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
 
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
@@ -70,7 +72,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useRoute()
   usePOISearch()
 
-  const { setSelectedPOI } = useMapStore((s) => s.actions)
+  const { setSelectedPOI, updateWaypoint, addIntermediateAt } = useMapStore((s) => s.actions)
 
   // Stable refs for imperative handlers
   const setSelectedPOIRef = useRef(setSelectedPOI)
@@ -80,6 +82,24 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     getMap: () => mapRef.current,
     setStyle: (url: string) => mapRef.current?.setStyle(url),
   }))
+
+  // ── Context menu (right-click) ────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    const handler = (e: maplibregl.MapMouseEvent) => {
+      e.preventDefault()
+      const rect = map.getCanvas().getBoundingClientRect()
+      const rawX = rect.left + e.point.x
+      const rawY = rect.top + e.point.y
+      // Prevent menu from going off-screen (menu is ~210px wide, ~180px tall)
+      const x = Math.min(rawX, window.innerWidth - 220)
+      const y = Math.min(rawY, window.innerHeight - 200)
+      setContextMenu({ lat: e.lngLat.lat, lng: e.lngLat.lng, x, y })
+    }
+    map.on('contextmenu', handler)
+    return () => { map.off('contextmenu', handler) }
+  }, [mapReady])
 
   // ── FlyTo command ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -292,6 +312,26 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     })
   }, [mapReady, pois])
 
+  function handleContextSetStart() {
+    if (!contextMenu) return
+    const label = `${contextMenu.lat.toFixed(5)}, ${contextMenu.lng.toFixed(5)}`
+    const start = useMapStore.getState().waypoints.find((p) => p.type === 'start')
+    if (start) updateWaypoint(start.id, contextMenu.lat, contextMenu.lng, label)
+  }
+
+  function handleContextAddIntermediate() {
+    if (!contextMenu) return
+    addIntermediateAt(contextMenu.lat, contextMenu.lng)
+  }
+
+  function handleContextSetEnd() {
+    if (!contextMenu) return
+    const label = `${contextMenu.lat.toFixed(5)}, ${contextMenu.lng.toFixed(5)}`
+    const pts = useMapStore.getState().waypoints
+    const end = pts.find((p) => p.type === 'end') ?? pts[pts.length - 1]
+    if (end) updateWaypoint(end.id, contextMenu.lat, contextMenu.lng, label)
+  }
+
   return (
     <div ref={containerRef} className={styles.container}>
       {isRouting && (
@@ -305,6 +345,18 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
           <span className={styles.spinner} />
           Searching POI…
         </div>
+      )}
+      {contextMenu && (
+        <MapContextMenu
+          lat={contextMenu.lat}
+          lng={contextMenu.lng}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onSetStart={handleContextSetStart}
+          onAddIntermediate={handleContextAddIntermediate}
+          onSetEnd={handleContextSetEnd}
+        />
       )}
     </div>
   )

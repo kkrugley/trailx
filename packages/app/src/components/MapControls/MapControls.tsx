@@ -1,9 +1,10 @@
 import { useState, useRef, type RefObject } from 'react'
-import { Plus, Minus, Crosshair, GearSix, Stack, Question } from '@phosphor-icons/react'
+import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
 import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
+import { DebugPanel } from '../DebugPanel/DebugPanel'
 import styles from './MapControls.module.css'
 
 interface MapControlsProps {
@@ -14,6 +15,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
   const [infoOpen, setInfoOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [debugOpen, setDebugOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const zoomIn  = () => mapRef.current?.getMap()?.zoomIn()
@@ -38,7 +40,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         <button
           className={`${styles.iconBtn} ${infoOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setInfoOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false) }}
+          onClick={() => { setInfoOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setDebugOpen(false) }}
           aria-label="Справка"
         >
           <Question size={17} weight={infoOpen ? 'fill' : 'regular'} />
@@ -55,7 +57,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         <button
           className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setSettingsOpen((v) => !v); setLayersOpen(false); setInfoOpen(false) }}
+          onClick={() => { setSettingsOpen((v) => !v); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
           aria-label="Настройки"
         >
           <GearSix size={17} weight={settingsOpen ? 'fill' : 'regular'} />
@@ -72,7 +74,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         <button
           className={`${styles.iconBtn} ${layersOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false) }}
+          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false); setDebugOpen(false) }}
           aria-label="Слои карты"
         >
           <Stack size={17} weight={layersOpen ? 'fill' : 'regular'} />
@@ -102,6 +104,26 @@ export function MapControls({ mapRef }: MapControlsProps) {
       <button className={styles.locateBtn} onClick={locate} aria-label="My location">
         <Crosshair size={17} weight="bold" />
       </button>
+
+      {/* Divider */}
+      <div className={styles.divider} />
+
+      {/* Debug button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${debugOpen ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => { setDebugOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false) }}
+          aria-label="Debug"
+        >
+          <Bug size={17} weight={debugOpen ? 'fill' : 'regular'} />
+        </button>
+        {debugOpen && (
+          <div className={styles.popover}>
+            <DebugPanel onClose={() => setDebugOpen(false)} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

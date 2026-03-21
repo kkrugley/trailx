@@ -13,7 +13,6 @@ import {
 } from '@phosphor-icons/react'
 import type { POI, POICategory } from '@trailx/shared'
 import { POI_LABELS, POI_COLORS } from '@trailx/shared'
-import { useRoute } from '../../hooks/useRoute'
 import { useMapStore } from '../../store/useMapStore'
 import styles from './POICard.module.css'
 
@@ -66,8 +65,7 @@ export function POICard({ poi, onClose }: POICardProps) {
   // Keep last non-null poi so the card content stays visible during the slide-out animation
   const [displayPoi, setDisplayPoi] = useState<POI | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const { addWaypoint } = useRoute()
-  const { addStandalonePoi } = useMapStore((s) => s.actions)
+  const { addStandalonePoi, insertWaypointNear } = useMapStore((s) => s.actions)
 
   useEffect(() => {
     if (poi) setDisplayPoi(poi)
@@ -82,7 +80,7 @@ export function POICard({ poi, onClose }: POICardProps) {
 
   function handleAddToRoute() {
     if (!displayPoi) return
-    addWaypoint(displayPoi.lat, displayPoi.lng, displayPoi.name)
+    insertWaypointNear(displayPoi.lat, displayPoi.lng, displayPoi.name)
     onClose()
   }
 

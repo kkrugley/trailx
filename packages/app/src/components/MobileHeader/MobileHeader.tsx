@@ -1,13 +1,14 @@
-import { Bicycle, Lightning, PersonSimpleWalk } from '@phosphor-icons/react'
+import { Bicycle, Lightning, PersonSimpleWalk, Mountains } from '@phosphor-icons/react'
 import type { RoutingProfile } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useProfile } from '../../hooks/useProfile'
 import styles from './MobileHeader.module.css'
 
 const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
-  bike: Bicycle,
-  racingbike: Lightning,
   foot: PersonSimpleWalk,
+  bike: Bicycle,
+  mtb: Mountains,
+  racingbike: Lightning,
 }
 
 export function MobileHeader() {

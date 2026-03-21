@@ -28,7 +28,9 @@ export function useRoute(): UseRouteReturn {
   useEffect(() => {
     if (timerRef.current !== null) clearTimeout(timerRef.current)
 
-    if (waypoints.length < 2) {
+    const resolvedWaypoints = waypoints.filter((p) => !isNaN(p.lat))
+
+    if (resolvedWaypoints.length < 2) {
       abortRef.current?.abort()
       setRouteResult(null)
       setIsRouting(false)
@@ -44,7 +46,7 @@ export function useRoute(): UseRouteReturn {
 
       setIsRouting(true)
       try {
-        const result = await buildRoute(waypoints, profile, controller.signal)
+        const result = await buildRoute(resolvedWaypoints, profile, controller.signal)
         setRouteResult(result)
         setRouteError(null)
       } catch (err) {

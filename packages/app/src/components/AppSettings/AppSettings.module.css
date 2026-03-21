@@ -1,0 +1,335 @@
+.panel {
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float), 0 8px 48px rgba(68, 86, 181, 0.1);
+  width: 280px;
+  overflow: hidden;
+  animation: slideIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: all;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem 0.5rem;
+  border-bottom: 1px solid var(--ghost-border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  opacity: 0.45;
+}
+
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  border: 1px dashed rgba(68, 86, 181, 0.25);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.resetBtn:hover {
+  opacity: 1;
+  background: rgba(68, 86, 181, 0.05);
+}
+
+.section {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--ghost-border);
+}
+
+.section:last-of-type {
+  border-bottom: none;
+}
+
+.sectionTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--primary);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+/* Segmented control */
+.segmented {
+  display: flex;
+  background: var(--surface-container);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+  width: 100%;
+}
+
+.seg {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: none;
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--primary);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+  white-space: nowrap;
+}
+
+.segActive {
+  background: var(--surface-container-lowest);
+  opacity: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Slider row */
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.slider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface-container-high);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--secondary);
+  box-shadow: 0 1px 4px rgba(68, 86, 181, 0.3);
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--secondary);
+  border: none;
+  box-shadow: 0 1px 4px rgba(68, 86, 181, 0.3);
+  cursor: pointer;
+}
+
+.sliderValue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--secondary);
+  min-width: 3rem;
+  text-align: right;
+}
+
+/* Accordion */
+.accordionSection {
+  padding: 0;
+}
+
+.accordionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: 0.5rem;
+  transition: background 0.1s;
+}
+
+.accordionBtn:hover {
+  background: rgba(68, 86, 181, 0.03);
+}
+
+.accordionCaret {
+  color: var(--primary);
+  opacity: 0.35;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+
+.accordionCaretOpen {
+  transform: rotate(180deg);
+  opacity: 0.6;
+}
+
+.accordionBody {
+  padding: 0 0.875rem 0.625rem;
+}
+
+/* Speed grid — 2 columns */
+.speedGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.speedItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.speedLabel {
+  font-size: 0.6875rem;
+  color: var(--primary);
+  opacity: 0.55;
+  font-weight: 500;
+}
+
+/* Spinner (number input) — styled to match segmented/slider controls */
+.spinnerWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--surface-container);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(68, 86, 181, 0.08);
+  padding: 0.25rem 0.4rem 0.25rem 0.5rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.spinnerWrap:focus-within {
+  border-color: rgba(68, 86, 181, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 0 2px rgba(68, 86, 181, 0.08);
+}
+
+.spinnerInput {
+  width: 2.5rem;
+  border: none;
+  background: none;
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary);
+  outline: none;
+  text-align: right;
+  padding-right: 0.125rem;
+  /* Keep spin arrows visible */
+  -moz-appearance: number-input;
+}
+
+.spinnerInput::-webkit-inner-spin-button {
+  opacity: 0.45;
+  cursor: pointer;
+  height: 1.2em;
+}
+
+.spinnerInput::-webkit-outer-spin-button {
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.spinnerUnit {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--secondary);
+  opacity: 0.55;
+  white-space: nowrap;
+  padding-left: 0.1rem;
+}
+
+/* Toggle row */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  cursor: pointer;
+}
+
+.toggleLabel {
+  font-size: 0.8125rem;
+  color: var(--primary);
+  opacity: 0.75;
+  flex: 1;
+}
+
+.toggle {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  background: var(--surface-container-high);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.toggleOn {
+  background: var(--secondary);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggleOn .toggleThumb {
+  transform: translateX(14px);
+}
+
+/* Footer info */
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.875rem;
+  border-top: 1px solid var(--ghost-border);
+}
+
+.infoText {
+  font-size: 0.6875rem;
+  color: var(--primary);
+  opacity: 0.3;
+}
+
+.infoVersion {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--secondary);
+  opacity: 0.5;
+}

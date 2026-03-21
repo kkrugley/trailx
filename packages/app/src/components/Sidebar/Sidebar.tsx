@@ -4,6 +4,7 @@ import { useMapStore } from '../../store/useMapStore'
 import { ProfileTabs } from '../ProfileTabs/ProfileTabs'
 import { WaypointInputList } from '../WaypointInputList/WaypointInputList'
 import { RouteResults } from '../RouteResults/RouteResults'
+import { ExportPanel } from '../ExportPanel/ExportPanel'
 import { ErrorMessage } from '../ErrorMessage/ErrorMessage'
 import { PoweredBy } from '../PoweredBy/PoweredBy'
 import styles from './Sidebar.module.css'
@@ -60,6 +61,10 @@ export function Sidebar() {
         )}
 
         <div className={styles.footer}>
+          <div className={styles.exportDivider} />
+          <div className={styles.exportWrap}>
+            <ExportPanel />
+          </div>
           <PoweredBy />
         </div>
       </div>

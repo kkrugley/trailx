@@ -1,0 +1,79 @@
+import { useEffect, useRef } from 'react'
+import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
+import type { POICategory } from '@trailx/shared'
+import { useMapStore, type AppSettings } from '../../store/useMapStore'
+import styles from './POIFilter.module.css'
+
+interface POIFilterProps {
+  onClose: () => void
+}
+
+export function POIFilter({ onClose }: POIFilterProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const activeCategories = useMapStore((s) => s.activeCategories)
+  const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
+  const { toggleCategory, setActiveCategories, updateSettings } = useMapStore((s) => s.actions)
+
+  const allOn = activeCategories.length === POI_CATEGORIES.length
+  const allOff = activeCategories.length === 0
+
+  useEffect(() => {
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', keyHandler)
+    return () => document.removeEventListener('keydown', keyHandler)
+  }, [onClose])
+
+  return (
+    <div
+      className={styles.overlay}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div ref={panelRef} className={styles.panel}>
+        <div className={styles.header}>
+          <span className={styles.title}>Фильтр POI</span>
+          <button
+            className={`${styles.toggleAll} ${allOn ? styles.toggleAllActive : ''}`}
+            onClick={() => setActiveCategories(allOn ? [] : [...POI_CATEGORIES])}
+          >
+            {allOn ? 'Скрыть все' : allOff ? 'Показать все' : 'Выбрать все'}
+          </button>
+        </div>
+
+        <div className={styles.grid}>
+          {POI_CATEGORIES.map((cat: POICategory) => {
+            const active = activeCategories.includes(cat)
+            return (
+              <button
+                key={cat}
+                className={`${styles.chip} ${active ? styles.chipActive : ''}`}
+                style={{ '--chip-color': POI_COLORS[cat] } as React.CSSProperties}
+                onClick={() => toggleCategory(cat)}
+              >
+                <span className={styles.dot} />
+                <span className={styles.label}>{POI_LABELS[cat]}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className={styles.bufferSection}>
+          <span className={styles.bufferLabel}>Радиус поиска</span>
+          <div className={styles.sliderRow}>
+            <input
+              type="range"
+              min={50}
+              max={1000}
+              step={50}
+              value={poiBuffer}
+              onChange={(e) => updateSettings({ poiBuffer: Number(e.target.value) } as Partial<AppSettings>)}
+              className={styles.slider}
+            />
+            <span className={styles.sliderValue}>
+              {poiBuffer >= 1000 ? `${poiBuffer / 1000} км` : `${poiBuffer} м`}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

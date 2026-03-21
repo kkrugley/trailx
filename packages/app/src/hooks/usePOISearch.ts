@@ -1,21 +1,20 @@
 import { useEffect, useRef } from 'react'
 import { useMapStore } from '../store/useMapStore'
 import { fetchPOIsAlongRoute } from '../services/overpass'
+import { POI_CATEGORIES } from '@trailx/shared'
 
 const DEBOUNCE_MS = 800
-const BUFFER_METRES = 500
 
 export function usePOISearch(): void {
   const routeResult = useMapStore((s) => s.routeResult)
-  const activeCategories = useMapStore((s) => s.activeCategories)
-  const { setPois, setIsSearchingPOI } = useMapStore((s) => s.actions)
+  const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
+  const { setAllPois, setIsSearchingPOI } = useMapStore((s) => s.actions)
 
-  // Track in-flight request to ignore stale responses
   const requestIdRef = useRef(0)
 
   useEffect(() => {
-    if (!routeResult || activeCategories.length === 0) {
-      setPois([])
+    if (!routeResult) {
+      setAllPois([])
       return
     }
 
@@ -23,22 +22,23 @@ export function usePOISearch(): void {
     const timerId = setTimeout(async () => {
       setIsSearchingPOI(true)
       try {
+        // Always fetch all categories — filtering is done client-side
         const found = await fetchPOIsAlongRoute(
           routeResult.geometry,
-          BUFFER_METRES,
-          activeCategories,
+          poiBuffer,
+          [...POI_CATEGORIES],
         )
         if (requestIdRef.current !== currentId) return
-        setPois(found)
+        setAllPois(found)
       } catch (err) {
         if (requestIdRef.current !== currentId) return
         console.error('[poi] fetchPOIsAlongRoute failed:', err)
-        setPois([])
+        setAllPois([])
       } finally {
         if (requestIdRef.current === currentId) setIsSearchingPOI(false)
       }
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timerId)
-  }, [routeResult, activeCategories, setPois, setIsSearchingPOI])
+  }, [routeResult, poiBuffer, setAllPois, setIsSearchingPOI])
 }

@@ -2,6 +2,34 @@ import { create } from 'zustand'
 import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
+export interface AppSettings {
+  language: 'ru' | 'en'
+  distanceUnit: 'km' | 'mi'
+  gpxExport: { includeTrk: boolean; includeRte: boolean; includeWpt: boolean }
+  poiBuffer: number
+  mapStyle: 'liberty' | 'bright' | 'positron'
+  showPois: boolean
+  speeds: { foot: number; bike: number; mtb: number; racingbike: number }
+  foot: { preferFootpaths: boolean; avoidRoads: boolean }
+  bike: { routeType: 'fastest' | 'safest' | 'short'; avoidHighways: boolean }
+  mtb: { difficulty: 'low' | 'medium' | 'high'; avoidPaved: boolean }
+  racingbike: { routeType: 'fastest' | 'short'; avoidCobblestones: boolean }
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  language: 'ru',
+  distanceUnit: 'km',
+  gpxExport: { includeTrk: true, includeRte: false, includeWpt: true },
+  poiBuffer: 500,
+  mapStyle: 'liberty',
+  showPois: true,
+  speeds: { foot: 5, bike: 20, mtb: 15, racingbike: 28 },
+  foot: { preferFootpaths: true, avoidRoads: false },
+  bike: { routeType: 'fastest', avoidHighways: false },
+  mtb: { difficulty: 'medium', avoidPaved: false },
+  racingbike: { routeType: 'fastest', avoidCobblestones: true },
+}
+
 // Re-assigns order and type to every point based on array position.
 function assignTypes(points: RoutePoint[]): RoutePoint[] {
   const last = points.length - 1
@@ -22,6 +50,10 @@ function sampleIndices(length: number, count: number): number[] {
 
 interface MapStoreActions {
   addWaypoint: (point: RoutePoint) => void
+  smartAddWaypoint: (lat: number, lng: number) => void
+  insertWaypointNear: (lat: number, lng: number, label?: string) => void
+  updateWaypoint: (id: string, lat: number, lng: number, label?: string) => void
+  addEmptyIntermediate: () => void
   removeWaypoint: (id: string) => void
   reorderWaypoints: (from: number, to: number) => void
   clearRoute: () => void
@@ -32,6 +64,7 @@ interface MapStoreActions {
   setSearchOpen: (open: boolean) => void
   setExportOpen: (open: boolean) => void
   // POI
+  setAllPois: (pois: POI[]) => void
   setPois: (pois: POI[]) => void
   setIsSearchingPOI: (value: boolean) => void
   toggleCategory: (category: POICategory) => void
@@ -41,6 +74,8 @@ interface MapStoreActions {
   addStandalonePoi: (poi: POI) => void
   // GPX import
   loadRouteFromGPX: (gpxFile: GPXFile) => void
+  // Settings
+  updateSettings: (patch: Partial<AppSettings>) => void
 }
 
 interface MapStore {
@@ -53,17 +88,40 @@ interface MapStore {
   isSearchOpen: boolean
   isExportOpen: boolean
   // POI search
-  pois: POI[]
+  allPois: POI[]        // all fetched POIs (unfiltered)
+  pois: POI[]           // filtered by activeCategories — derived, kept in sync
   isSearchingPOI: boolean
   activeCategories: POICategory[]
   // POI card
   selectedPOI: POI | null
   standalonePois: POI[]
+  // App settings
+  appSettings: AppSettings
   actions: MapStoreActions
 }
 
+/** Squared distance from point P to segment AB */
+function sqDistToSegment(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const dx = bx - ax, dy = by - ay
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return (px - ax) ** 2 + (py - ay) ** 2
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+  return (px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2
+}
+
+function makeEmptyWaypoints(): RoutePoint[] {
+  return [
+    { id: crypto.randomUUID(), lat: NaN, lng: NaN, order: 0, type: 'start' },
+    { id: crypto.randomUUID(), lat: NaN, lng: NaN, order: 1, type: 'end' },
+  ]
+}
+
 export const useMapStore = create<MapStore>((set) => ({
-  waypoints: [],
+  waypoints: makeEmptyWaypoints(),
   activeRouteId: null,
   routeResult: null,
   isRouting: false,
@@ -71,17 +129,95 @@ export const useMapStore = create<MapStore>((set) => ({
   routeError: null,
   isSearchOpen: false,
   isExportOpen: false,
+  allPois: [],
   pois: [],
   isSearchingPOI: false,
   activeCategories: [...POI_CATEGORIES],
   selectedPOI: null,
   standalonePois: [],
+  appSettings: DEFAULT_SETTINGS,
 
   actions: {
     addWaypoint: (point) =>
       set((state) => ({
         waypoints: assignTypes([...state.waypoints, point]),
       })),
+
+    // Fills the first unresolved (NaN) slot, or inserts before last if all resolved
+    smartAddWaypoint: (lat, lng) =>
+      set((state) => {
+        const nanIdx = state.waypoints.findIndex((p) => isNaN(p.lat))
+        if (nanIdx !== -1) {
+          return {
+            waypoints: state.waypoints.map((p, i) =>
+              i === nanIdx ? { ...p, lat, lng } : p,
+            ),
+          }
+        }
+        const items = [...state.waypoints]
+        const newPoint: RoutePoint = {
+          id: crypto.randomUUID(), lat, lng, order: 0, type: 'intermediate',
+        }
+        items.splice(items.length - 1, 0, newPoint)
+        return { waypoints: assignTypes(items) }
+      }),
+
+    insertWaypointNear: (lat, lng, label) =>
+      set((state) => {
+        const resolved = state.waypoints
+          .map((p, i) => ({ p, i }))
+          .filter(({ p }) => !isNaN(p.lat))
+        if (resolved.length < 2) {
+          // Fallback: fill first NaN slot or append before last
+          const nanIdx = state.waypoints.findIndex((p) => isNaN(p.lat))
+          if (nanIdx !== -1) {
+            return {
+              waypoints: state.waypoints.map((p, i) =>
+                i === nanIdx ? { ...p, lat, lng, label } : p,
+              ),
+            }
+          }
+          const items = [...state.waypoints]
+          items.splice(items.length - 1, 0, {
+            id: crypto.randomUUID(), lat, lng, label, order: 0, type: 'intermediate',
+          })
+          return { waypoints: assignTypes(items) }
+        }
+        // Find the segment with minimum distance from the POI
+        let bestAfterIdx = resolved[resolved.length - 2].i
+        let bestDist = Infinity
+        for (let k = 0; k < resolved.length - 1; k++) {
+          const a = resolved[k].p
+          const b = resolved[k + 1].p
+          const d = sqDistToSegment(lng, lat, a.lng, a.lat, b.lng, b.lat)
+          if (d < bestDist) {
+            bestDist = d
+            bestAfterIdx = resolved[k].i
+          }
+        }
+        const items = [...state.waypoints]
+        items.splice(bestAfterIdx + 1, 0, {
+          id: crypto.randomUUID(), lat, lng, label, order: 0, type: 'intermediate',
+        })
+        return { waypoints: assignTypes(items) }
+      }),
+
+    updateWaypoint: (id, lat, lng, label) =>
+      set((state) => ({
+        waypoints: state.waypoints.map((p) =>
+          p.id === id ? { ...p, lat, lng, label } : p,
+        ),
+      })),
+
+    addEmptyIntermediate: () =>
+      set((state) => {
+        const items = [...state.waypoints]
+        const newPoint: RoutePoint = {
+          id: crypto.randomUUID(), lat: NaN, lng: NaN, order: 0, type: 'intermediate',
+        }
+        items.splice(items.length - 1, 0, newPoint)
+        return { waypoints: assignTypes(items) }
+      }),
 
     removeWaypoint: (id) =>
       set((state) => ({
@@ -96,7 +232,7 @@ export const useMapStore = create<MapStore>((set) => ({
         return { waypoints: assignTypes(items) }
       }),
 
-    clearRoute: () => set({ waypoints: [], routeResult: null, routeError: null }),
+    clearRoute: () => set({ waypoints: makeEmptyWaypoints(), routeResult: null, routeError: null }),
 
     setRouteResult: (result) => set({ routeResult: result }),
 
@@ -110,18 +246,32 @@ export const useMapStore = create<MapStore>((set) => ({
 
     setExportOpen: (open) => set({ isExportOpen: open }),
 
+    setAllPois: (pois) =>
+      set((state) => ({
+        allPois: pois,
+        pois: pois.filter((p) => state.activeCategories.includes(p.category)),
+      })),
+
     setPois: (pois) => set({ pois }),
 
     setIsSearchingPOI: (value) => set({ isSearchingPOI: value }),
 
     toggleCategory: (category) =>
-      set((state) => ({
-        activeCategories: state.activeCategories.includes(category)
+      set((state) => {
+        const next = state.activeCategories.includes(category)
           ? state.activeCategories.filter((c) => c !== category)
-          : [...state.activeCategories, category],
-      })),
+          : [...state.activeCategories, category]
+        return {
+          activeCategories: next,
+          pois: state.allPois.filter((p) => next.includes(p.category)),
+        }
+      }),
 
-    setActiveCategories: (categories) => set({ activeCategories: categories }),
+    setActiveCategories: (categories) =>
+      set((state) => ({
+        activeCategories: categories,
+        pois: state.allPois.filter((p) => categories.includes(p.category)),
+      })),
 
     setSelectedPOI: (poi) => set({ selectedPOI: poi }),
 
@@ -129,6 +279,9 @@ export const useMapStore = create<MapStore>((set) => ({
       set((state) => ({
         standalonePois: [...state.standalonePois, poi],
       })),
+
+    updateSettings: (patch) =>
+      set((state) => ({ appSettings: { ...state.appSettings, ...patch } })),
 
     loadRouteFromGPX: (gpxFile) =>
       set((state) => {

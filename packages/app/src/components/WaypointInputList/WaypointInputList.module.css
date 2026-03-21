@@ -12,11 +12,10 @@
   position: relative;
 }
 
-/* Vertical connector line — runs through the dot column of each item */
+/* Vertical connector line */
 .list::before {
   content: '';
   position: absolute;
-  /* 18px drag handle + 0.5rem gap + half-dot width (5px) ≈ left: 30px */
   left: 30px;
   top: 20px;
   bottom: 20px;
@@ -31,21 +30,76 @@
   z-index: 0;
 }
 
-/* Only show connector line when there are at least 2 items */
-.list:has(li:nth-child(2))::before {
-  display: block;
+.list:has(li:nth-child(2))::before { display: block; }
+.list:not(:has(li:nth-child(2)))::before { display: none; }
+
+/* Actions row: add button + icon buttons */
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
 }
 
-/* Hide line when only 1 item */
-.list:not(:has(li:nth-child(2)))::before {
-  display: none;
-}
-
-.hint {
-  font-size: 0.8125rem;
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  padding: 0.375rem 0.625rem;
+  background: none;
+  border: 1.5px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
   color: var(--primary);
-  opacity: 0.4;
-  text-align: center;
-  padding: 0.875rem 0;
-  letter-spacing: 0.01em;
+  opacity: 0.55;
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.addBtn:hover {
+  opacity: 1;
+  border-color: var(--secondary);
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+/* Small icon-only buttons for settings / clear */
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1.5px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  opacity: 0.45;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.iconBtn:hover {
+  opacity: 0.9;
+  background: var(--surface-container-low);
+  border-color: var(--primary);
+}
+
+.iconBtnActive {
+  opacity: 1;
+  background: var(--secondary-container);
+  border-color: var(--secondary);
+  color: var(--on-secondary-container);
+}
+
+/* Settings panel wrapper — appears below the actions row */
+.settingsWrapper {
+  margin-top: 0.375rem;
+  position: relative;
+  z-index: 20;
 }

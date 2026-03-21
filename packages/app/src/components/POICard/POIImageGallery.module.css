@@ -1,0 +1,110 @@
+.gallery {
+  position: relative;
+  width: 100%;
+  background-color: var(--surface-container-high);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  overflow: hidden;
+}
+
+.imageWrap {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+/* Trigger re-mount via key= so transition fires */
+.image[data-entering] {
+  opacity: 0;
+}
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────── */
+
+.skeleton {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--surface-container-high) 25%,
+    var(--surface-container) 50%,
+    var(--surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Source badge ─────────────────────────────────────────────────────── */
+
+.badge {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--on-surface);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--outline-variant);
+  pointer-events: none;
+}
+
+/* ── Dots navigation ──────────────────────────────────────────────────── */
+
+.dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0 0.4rem;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--outline-variant);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.dot:hover {
+  background-color: var(--secondary-container);
+}
+
+.dotActive {
+  background-color: var(--secondary);
+  transform: scale(1.3);
+}
+
+.dotLoading {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--outline-variant);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

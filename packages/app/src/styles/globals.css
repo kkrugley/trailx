@@ -17,7 +17,7 @@
   --surface-container-low: #f8f3ed;
   --surface-container: #f2ede7;
   --surface-container-high: #e7e2dc;
-  --surface-variant: rgba(242, 237, 231, 0.85);
+  --surface-variant: #f2ede7;
 
   /* ── Ink / text colors ── */
   --primary: #151415;
@@ -61,7 +61,7 @@
   --ghost-border: rgba(204, 196, 201, 0.15);
 
   /* ── Glassmorphism ── */
-  --glass-bg: rgba(242, 237, 231, 0.85);
+  --glass-bg: #f2ede7;
   --glass-blur: 20px;
 }
 

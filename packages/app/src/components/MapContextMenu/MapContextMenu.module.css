@@ -2,8 +2,6 @@
   position: fixed;
   z-index: 200;
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay), 0 8px 32px rgba(68, 86, 181, 0.12);
   min-width: 210px;

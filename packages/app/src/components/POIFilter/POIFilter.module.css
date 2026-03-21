@@ -11,8 +11,6 @@
 
 .panel {
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-float), 0 8px 40px rgba(68, 86, 181, 0.12);
   /* Wide enough for 2 chip rows but not overlapping the sidebar */

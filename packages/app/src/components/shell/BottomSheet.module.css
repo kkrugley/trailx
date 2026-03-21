@@ -4,8 +4,6 @@
   right: 0;
   bottom: env(safe-area-inset-bottom, 0);
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-overlay);
   display: flex;

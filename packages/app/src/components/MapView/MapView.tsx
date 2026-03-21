@@ -11,7 +11,6 @@ import type { GeoJSONSource } from 'maplibre-gl'
 import type { POICategory } from '@trailx/shared'
 import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
-import { useRoute } from '../../hooks/useRoute'
 import { usePOISearch } from '../../hooks/usePOISearch'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
@@ -82,7 +81,6 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const pois = useMapStore((s) => s.pois)
   const standalonePois = useMapStore((s) => s.standalonePois)
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
-  useRoute()
   usePOISearch()
 
   const { setSelectedPOI, updateWaypoint, addIntermediateAt } = useMapStore((s) => s.actions)

@@ -1,7 +1,5 @@
 .bar {
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: visible;
   pointer-events: all;
@@ -71,8 +69,6 @@
   bottom: calc(100% + 4px);
   left: 0;
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(68, 86, 181, 0.12);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
@@ -164,8 +160,6 @@
   gap: 0.3rem;
   padding: 0.3rem 0.75rem;
   background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: none;
   border-radius: var(--radius-md);
   color: var(--secondary);

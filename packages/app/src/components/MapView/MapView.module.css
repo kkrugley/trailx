@@ -56,9 +56,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--surface-variant, rgba(242, 237, 231, 0.75));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-variant, #f2ede7);
   border-radius: var(--radius-full, 9999px);
   padding: 0.4rem 1rem;
   font-size: 0.8125rem;

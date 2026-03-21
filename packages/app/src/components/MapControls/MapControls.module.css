@@ -29,7 +29,6 @@
   cursor: pointer;
   box-shadow: var(--shadow-float), 0 4px 20px rgba(68, 86, 181, 0.08);
   transition: background 0.12s ease, transform 0.15s ease, color 0.12s ease;
-  opacity: 0.88;
 }
 
 .iconBtn:hover {

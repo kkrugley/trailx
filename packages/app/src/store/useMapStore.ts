@@ -30,7 +30,7 @@ export interface AppSettings {
   distanceUnit: 'km' | 'mi'
   gpxExport: { includeTrk: boolean; includeRte: boolean; includeWpt: boolean }
   poiBuffer: number
-  mapStyle: 'liberty' | 'bright' | 'positron'
+  mapStyle: 'liberty' | 'bright' | 'positron' | 'esri_imagery' | 'esri_topo'
   showPois: boolean
   speeds: { foot: number; bike: number; mtb: number; racingbike: number }
   foot: { preferFootpaths: boolean; avoidRoads: boolean }
@@ -108,6 +108,8 @@ interface MapStoreActions {
   startMeasureSession: () => void
   deleteMeasureSession: (id: string) => void
   deleteAllMeasureSessions: () => void
+  // Chart hover position
+  setHoveredRoutePosition: (pos: [number, number] | null) => void
 }
 
 interface MapStore {
@@ -133,6 +135,8 @@ interface MapStore {
   measureActive: boolean
   measureSessions: MeasureSession[]
   measureActiveSessionId: string | null
+  // Chart hover position
+  hoveredRoutePosition: [number, number] | null
   actions: MapStoreActions
 }
 
@@ -175,6 +179,7 @@ export const useMapStore = create<MapStore>((set) => ({
   measureActive: false,
   measureSessions: [],
   measureActiveSessionId: null,
+  hoveredRoutePosition: null,
 
   actions: {
     addWaypoint: (point) =>
@@ -387,6 +392,8 @@ export const useMapStore = create<MapStore>((set) => ({
 
     deleteAllMeasureSessions: () =>
       set({ measureSessions: [], measureActiveSessionId: null }),
+
+    setHoveredRoutePosition: (pos) => set({ hoveredRoutePosition: pos }),
 
     loadRouteFromGPX: (gpxFile) =>
       set((state) => {

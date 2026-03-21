@@ -4,6 +4,7 @@ interface ElevationChartProps {
   elevation: number[]
   distance?: number   // total route distance in metres
   height?: number
+  onHoverFraction?: (fraction: number | null) => void
 }
 
 interface HoverState {
@@ -20,7 +21,7 @@ function downsample(arr: number[], maxPoints: number): number[] {
 
 const PAD_LEFT = 32
 
-export function ElevationChart({ elevation, distance, height = 100 }: ElevationChartProps) {
+export function ElevationChart({ elevation, distance, height = 100, onHoverFraction }: ElevationChartProps) {
   const data = downsample(elevation, 200)
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -85,9 +86,13 @@ export function ElevationChart({ elevation, distance, height = 100 }: ElevationC
     const fraction = Math.max(0, Math.min(1, (svgX - PAD_LEFT) / drawW))
     const index = Math.round(fraction * (data.length - 1))
     setHover({ x: svgX, svgWidth: rect.width, index })
-  }, [data.length, drawW, svgW])
+    onHoverFraction?.(fraction)
+  }, [data.length, drawW, svgW, onHoverFraction])
 
-  const handleMouseLeave = useCallback(() => setHover(null), [])
+  const handleMouseLeave = useCallback(() => {
+    setHover(null)
+    onHoverFraction?.(null)
+  }, [onHoverFraction])
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>

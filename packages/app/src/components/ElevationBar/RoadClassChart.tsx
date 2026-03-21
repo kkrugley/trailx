@@ -3,6 +3,7 @@ import { useState } from 'react'
 interface RoadClassChartProps {
   roadClass: string[]
   distance?: number
+  onHoverFraction?: (fraction: number | null) => void
 }
 
 const ROAD_CLASS_COLORS: Record<string, string> = {
@@ -55,7 +56,7 @@ function buildSegments(data: string[]): Segment[] {
   return segments
 }
 
-export function RoadClassChart({ roadClass, distance }: RoadClassChartProps) {
+export function RoadClassChart({ roadClass, distance, onHoverFraction }: RoadClassChartProps) {
   const [hoverSeg, setHoverSeg] = useState<Segment | null>(null)
   const segments = buildSegments(roadClass)
 
@@ -70,7 +71,7 @@ export function RoadClassChart({ roadClass, distance }: RoadClassChartProps) {
       {/* Segmented bar + absolute tooltip */}
       <div
         style={{ position: 'relative', paddingBottom: '1.25rem' }}
-        onMouseLeave={() => setHoverSeg(null)}
+        onMouseLeave={() => { setHoverSeg(null); onHoverFraction?.(null) }}
       >
         <div
           style={{
@@ -90,7 +91,7 @@ export function RoadClassChart({ roadClass, distance }: RoadClassChartProps) {
                 transition: 'opacity 0.12s',
                 cursor: 'default',
               }}
-              onMouseEnter={() => setHoverSeg(seg)}
+              onMouseEnter={() => { setHoverSeg(seg); onHoverFraction?.((seg.start + seg.end) / 2) }}
             />
           ))}
         </div>

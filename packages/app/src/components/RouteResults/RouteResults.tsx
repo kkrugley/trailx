@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Clock, Path, ArrowUp, ArrowDown, Gauge } from '@phosphor-icons/react'
 import type { RouteResult } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
+import { fmtDist, fmtElev, fmtSpeed } from '../../utils/units'
 import styles from './RouteResults.module.css'
 
 function formatDuration(seconds: number): string {
@@ -9,11 +10,6 @@ function formatDuration(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   if (h > 0) return `${h} ч ${m} мин`
   return `${m} мин`
-}
-
-function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
-  return `${Math.round(meters)} м`
 }
 
 function computeGain(elevation: number[]): number {
@@ -63,6 +59,7 @@ interface RouteResultsProps {
 export function RouteResults({ result }: RouteResultsProps) {
   const profile = useMapStore((s) => s.profile)
   const speeds = useMapStore((s) => s.appSettings.speeds)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
 
   const gain = computeGain(result.elevation)
   const loss = computeLoss(result.elevation)
@@ -75,7 +72,7 @@ export function RouteResults({ result }: RouteResultsProps) {
         <p className={styles.label}>Маршрут</p>
         <span className={styles.speedBadge}>
           <Gauge size={10} weight="fill" />
-          {speedKmh} км/ч
+          {fmtSpeed(speedKmh, unit)}
         </span>
       </div>
       <div className={styles.card}>
@@ -83,25 +80,25 @@ export function RouteResults({ result }: RouteResultsProps) {
           <StatChip
             icon={<Clock size={12} weight="fill" />}
             label={formatDuration(customDurationSec)}
-            tooltip={`Расчётное время при скорости ${speedKmh} км/ч`}
+            tooltip={`Расчётное время при скорости ${fmtSpeed(speedKmh, unit)}`}
             accent
           />
           <StatChip
             icon={<Path size={12} weight="fill" />}
-            label={formatDistance(result.distance)}
+            label={fmtDist(result.distance, unit)}
             tooltip="Общая длина маршрута"
           />
           {gain > 0 && (
             <StatChip
               icon={<ArrowUp size={12} weight="bold" />}
-              label={`+${Math.round(gain)} м`}
+              label={`+${fmtElev(gain, unit)}`}
               tooltip="Суммарный набор высоты"
             />
           )}
           {loss > 0 && (
             <StatChip
               icon={<ArrowDown size={12} weight="bold" />}
-              label={`−${Math.round(loss)} м`}
+              label={`−${fmtElev(loss, unit)}`}
               tooltip="Суммарный сброс высоты"
             />
           )}

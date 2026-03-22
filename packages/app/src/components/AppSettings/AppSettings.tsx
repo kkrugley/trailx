@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CaretDown, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
+import { kphToDisplay, displayToKph, speedUnit } from '../../utils/units'
 import styles from './AppSettings.module.css'
 
 const DEFAULT_SPEEDS = { foot: 5, bike: 20, mtb: 15, racingbike: 28 }
@@ -96,14 +97,14 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
                 <input
                   type="number"
                   step={1}
-                  value={settings.speeds[key]}
+                  value={kphToDisplay(settings.speeds[key], settings.distanceUnit)}
                   onChange={(e) => {
                     const v = Number(e.target.value)
-                    if (!isNaN(v) && v > 0) patchNested('speeds', { [key]: v })
+                    if (!isNaN(v) && v > 0) patchNested('speeds', { [key]: displayToKph(v, settings.distanceUnit) })
                   }}
                   className={styles.spinnerInput}
                 />
-                <span className={styles.spinnerUnit}>км/ч</span>
+                <span className={styles.spinnerUnit}>{speedUnit(settings.distanceUnit)}</span>
               </div>
             </div>
           ))}

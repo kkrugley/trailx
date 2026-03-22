@@ -5,6 +5,7 @@ import {
 import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
 import type { POICategory } from '@trailx/shared'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
+import { fmtDist } from '../../utils/units'
 import styles from './POIFilter.module.css'
 
 const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
@@ -26,6 +27,7 @@ export function POIFilter({ onClose }: POIFilterProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const activeCategories = useMapStore((s) => s.activeCategories)
   const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { toggleCategory, setActiveCategories, updateSettings } = useMapStore((s) => s.actions)
 
   const allOn = activeCategories.length === POI_CATEGORIES.length
@@ -89,7 +91,7 @@ export function POIFilter({ onClose }: POIFilterProps) {
               className={styles.slider}
             />
             <span className={styles.sliderValue}>
-              {poiBuffer >= 1000 ? `${(poiBuffer / 1000).toFixed(poiBuffer % 1000 === 0 ? 0 : 1)} км` : `${poiBuffer} м`}
+              {fmtDist(poiBuffer, unit)}
             </span>
           </div>
         </div>

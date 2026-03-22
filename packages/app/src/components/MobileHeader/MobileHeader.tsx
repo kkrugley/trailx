@@ -3,6 +3,7 @@ import type { RoutingProfile } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useProfile } from '../../hooks/useProfile'
 import { exportRoute } from '../../services/gpx'
+import { fmtDist } from '../../utils/units'
 import styles from './MobileHeader.module.css'
 
 const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
@@ -25,16 +26,12 @@ function formatDurationCompact(seconds: number): string {
   return `${Math.round(seconds / 60)} мин`
 }
 
-function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
-  return `${Math.round(meters)} м`
-}
-
 export function MobileHeader() {
   const { profile } = useProfile()
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
   const speeds = useMapStore((s) => s.appSettings.speeds)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
 
   const ProfileIcon = PROFILE_ICONS[profile]
 
@@ -58,7 +55,7 @@ export function MobileHeader() {
           </span>
           <span className={styles.statChip}>
             <Path size={12} weight="fill" />
-            {formatDistance(routeResult.distance)}
+            {fmtDist(routeResult.distance, unit)}
           </span>
         </div>
         <div className={styles.actions}>

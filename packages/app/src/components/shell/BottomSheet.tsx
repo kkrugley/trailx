@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { CaretDown, CaretUp } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
+import { fmtDist, fmtElev } from '../../utils/units'
 import { ProfileTabs } from '../ProfileTabs/ProfileTabs'
 import { WaypointInputList } from '../WaypointInputList/WaypointInputList'
 import { ErrorMessage } from '../ErrorMessage/ErrorMessage'
@@ -37,17 +38,14 @@ function Accordion({ title, open, onToggle, children }: AccordionProps) {
 
 function PoiBufferSlider() {
   const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { updateSettings } = useMapStore((s) => s.actions)
 
   return (
     <div className={styles.sliderRow}>
       <div className={styles.sliderHeader}>
         <span className={styles.sliderLabel}>Радиус поиска</span>
-        <span className={styles.sliderValue}>
-          {poiBuffer >= 1000
-            ? `${(poiBuffer / 1000).toFixed(poiBuffer % 1000 === 0 ? 0 : 1)} км`
-            : `${poiBuffer} м`}
-        </span>
+        <span className={styles.sliderValue}>{fmtDist(poiBuffer, unit)}</span>
       </div>
       <input
         type="range"
@@ -76,10 +74,6 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   roadclass: 'Тип дороги',
 }
 
-function formatElevation(m: number): string {
-  return `${Math.round(m)} м`
-}
-
 function computeGain(elevation: number[]): number {
   return elevation.reduce(
     (acc, v, i) => (i > 0 && v > elevation[i - 1] ? acc + (v - elevation[i - 1]) : acc),
@@ -89,6 +83,7 @@ function computeGain(elevation: number[]): number {
 
 function ElevationSection() {
   const routeResult = useMapStore((s) => s.routeResult)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { setHoveredRoutePosition } = useMapStore((s) => s.actions)
   const [view, setView] = useState<ViewMode>('elevation')
 
@@ -127,25 +122,25 @@ function ElevationSection() {
       {/* Chips for elevation view */}
       {view === 'elevation' && (
         <div className={styles.elevChips}>
-          <Chip label={`+${formatElevation(gain)}`} title="Набор высоты" />
-          <Chip label={formatElevation(minElev)} title="Мин. высота" />
-          <Chip label={formatElevation(maxElev)} title="Макс. высота" />
+          <Chip label={`+${fmtElev(gain, unit)}`} title="Набор высоты" />
+          <Chip label={fmtElev(minElev, unit)} title="Мин. высота" />
+          <Chip label={fmtElev(maxElev, unit)} title="Макс. высота" />
         </div>
       )}
 
       {/* Chart */}
       <div className={styles.elevChart}>
         {view === 'elevation' && (
-          <ElevationChart elevation={elevation} distance={routeResult.distance} height={90} onHoverFraction={handleHoverFraction} />
+          <ElevationChart elevation={elevation} distance={routeResult.distance} height={90} unit={unit} onHoverFraction={handleHoverFraction} />
         )}
         {view === 'surface' && surface && surface.length > 0 && (
-          <SurfaceChart surface={surface} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
+          <SurfaceChart surface={surface} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
         )}
         {view === 'surface' && (!surface || surface.length === 0) && (
           <p className={styles.noData}>Нет данных о покрытии</p>
         )}
         {view === 'roadclass' && roadClass && roadClass.length > 0 && (
-          <RoadClassChart roadClass={roadClass} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
+          <RoadClassChart roadClass={roadClass} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
         )}
         {view === 'roadclass' && (!roadClass || roadClass.length === 0) && (
           <p className={styles.noData}>Нет данных о типе дороги</p>

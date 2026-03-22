@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { fmtDist, type DistanceUnit } from '../../utils/units'
 
 interface SurfaceChartProps {
   surface: string[]
   distance?: number
+  unit?: DistanceUnit
   onHoverFraction?: (fraction: number | null) => void
 }
 
@@ -31,9 +33,6 @@ function surfaceColor(s: string): string {
   return SURFACE_COLORS[s] ?? SURFACE_COLORS.unknown
 }
 
-function distFmt(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`
-}
 
 interface Segment {
   value: string
@@ -57,7 +56,7 @@ function buildSegments(surface: string[]): Segment[] {
   return segments
 }
 
-export function SurfaceChart({ surface, distance, onHoverFraction }: SurfaceChartProps) {
+export function SurfaceChart({ surface, distance, unit = 'km', onHoverFraction }: SurfaceChartProps) {
   const [hoverSeg, setHoverSeg] = useState<Segment | null>(null)
   const segments = buildSegments(surface)
 
@@ -119,7 +118,7 @@ export function SurfaceChart({ surface, distance, onHoverFraction }: SurfaceChar
           <strong>{hoverSeg?.value}</strong>
           {distance && hoverSeg && (
             <span style={{ opacity: 0.55 }}>
-              {distFmt((hoverSeg.end - hoverSeg.start) * distance)}
+              {fmtDist((hoverSeg.end - hoverSeg.start) * distance, unit)}
               {' '}({Math.round((hoverSeg.end - hoverSeg.start) * 100)}%)
             </span>
           )}
@@ -130,7 +129,7 @@ export function SurfaceChart({ surface, distance, onHoverFraction }: SurfaceChar
       {distance && (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.5625rem', color: 'rgba(68,86,181,0.45)', fontFamily: 'var(--font-family)' }}>
           {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-            <span key={f}>{distFmt(distance * f)}</span>
+            <span key={f}>{fmtDist(distance * f, unit)}</span>
           ))}
         </div>
       )}

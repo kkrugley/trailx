@@ -1,5 +1,5 @@
-import { useEffect, useRef, type RefObject } from 'react'
-import { Ruler, Plus, Trash, ArrowsLeftRight, FrameCorners } from '@phosphor-icons/react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import { Ruler, Plus, Trash, ArrowsLeftRight, FrameCorners, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
 import type { MapViewHandle } from '../MapView/MapView'
 import styles from './ToolsPanel.module.css'
@@ -24,12 +24,14 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
   const {
     setMeasureActive, startMeasureSession,
     deleteMeasureSession, deleteAllMeasureSessions,
-    reverseWaypoints,
+    reverseWaypoints, clearRoute,
   } = useMapStore((s) => s.actions)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   useEffect(() => {
     const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     const clickHandler = (e: MouseEvent) => {
+      if (measureActive) return
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('keydown', keyHandler)
@@ -38,7 +40,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
       document.removeEventListener('keydown', keyHandler)
       document.removeEventListener('mousedown', clickHandler)
     }
-  }, [onClose])
+  }, [onClose, measureActive])
 
   const hasValidWaypoints = waypoints.filter((w) => !isNaN(w.lat)).length >= 2
 
@@ -84,15 +86,45 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <ArrowsLeftRight size={14} weight="bold" className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>Обратить маршрут</span>
+          <span className={styles.sectionTitle}>Развернуть маршрут</span>
           <button
             className={styles.actionBtn}
             onClick={handleReverse}
             disabled={!hasValidWaypoints}
             title={!hasValidWaypoints ? 'Добавьте точки маршрута' : undefined}
           >
-            Обратить
+            Развернуть
           </button>
+        </div>
+      </div>
+
+      {/* ── New route ── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <ArrowCounterClockwise size={14} weight="bold" className={styles.sectionIcon} />
+          <span className={styles.sectionTitle}>Очистить маршрут</span>
+          {confirmClear ? (
+            <div className={styles.confirmRow}>
+              <button
+                className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                onClick={() => { clearRoute(); setConfirmClear(false); onClose() }}
+              >
+                Да!
+              </button>
+              <button className={styles.actionBtn} onClick={() => setConfirmClear(false)}>
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <button
+              className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+              onClick={() => setConfirmClear(true)}
+              disabled={!hasValidWaypoints}
+              title={!hasValidWaypoints ? 'Маршрут уже пустой' : undefined}
+            >
+              Очистить
+            </button>
+          )}
         </div>
       </div>
 
@@ -114,7 +146,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
         {measureActive && (
           <div className={styles.measureBody}>
             {measureSessions.length === 0 ? (
-              <p className={styles.hint}>Кликните по карте, чтобы добавить точку</p>
+              <p className={styles.hint}>Начните новое измерение, а затем кликните по карте, чтобы добавить точку</p>
             ) : (
               <ul className={styles.sessionList}>
                 {measureSessions.map((s, i) => (
@@ -122,6 +154,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
                     key={s.id}
                     className={`${styles.sessionRow} ${s.id === measureActiveSessionId ? styles.sessionActive : ''}`}
                   >
+                    <span className={styles.sessionColor} style={{ background: s.color }} />
                     <span className={styles.sessionName}>Замер {i + 1}</span>
                     <span className={styles.sessionDist}>
                       {s.nodes.length < 2 ? '—' : fmtDistance(s.distance)}

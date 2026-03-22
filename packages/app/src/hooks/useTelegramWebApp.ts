@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMapStore } from '../store/useMapStore'
 import { getRoute } from '../services/api'
+import { useTelegramRouteSync } from './useTelegramRouteSync'
 
 // ── Type declarations ──────────────────────────────────────────────────────
 
@@ -13,9 +14,16 @@ interface TelegramUser {
   is_premium?: boolean
 }
 
+interface TelegramChat {
+  id: number
+  type: string
+  title?: string
+}
+
 interface TelegramInitDataUnsafe {
   start_param?: string
   user?: TelegramUser
+  chat?: TelegramChat
   chat_type?: string
   auth_date?: number
   hash?: string
@@ -197,6 +205,10 @@ export function useTelegramWebApp(): TelegramWebAppResult {
   )
 
   const deepLinkHandled = useRef(false)
+
+  // Group sync: listen for route updates broadcast by the bot via WebSocket
+  const chatId = webApp?.initDataUnsafe.chat?.id
+  useTelegramRouteSync(chatId)
 
   // Initialization — runs once when webApp becomes available
   useEffect(() => {

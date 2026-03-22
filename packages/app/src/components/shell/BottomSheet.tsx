@@ -227,14 +227,16 @@ export function BottomSheet() {
     if (!d || !d.active || !sheet) return
     d.active = false
 
-    // восстанавливаем CSS-переход
+    // Измеряем высоту ДО сброса инлайн-стиля — это реальная позиция после свайпа
+    const currentH = sheet.getBoundingClientRect().height
+
+    // восстанавливаем CSS-переход и сбрасываем инлайн-высоту
     sheet.style.transition = ''
     sheet.style.height = ''
 
     const collH = COLLAPSED_H()
     const expH  = EXPANDED_H()
     const midH  = (collH + expH) / 2
-    const currentH = sheet.getBoundingClientRect().height
 
     // скорость px/ms (вверх — положительная)
     const dt = Date.now() - d.lastT

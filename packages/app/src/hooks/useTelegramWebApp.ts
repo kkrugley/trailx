@@ -200,8 +200,11 @@ export function useTelegramWebApp(): TelegramWebAppResult {
   const webApp = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
   const isAvailable = webApp !== undefined
 
+  // Use window.innerHeight as the initial baseline — with viewport-fit=cover it
+  // correctly reflects the full webview height including safe-area insets,
+  // whereas viewportStableHeight from the TMA SDK may not account for them.
   const [stableHeight, setStableHeight] = useState<number>(
-    () => webApp?.viewportStableHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 0),
+    () => typeof window !== 'undefined' ? window.innerHeight : 0,
   )
 
   const deepLinkHandled = useRef(false)
@@ -217,7 +220,8 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     webApp.ready()
     if (!webApp.isExpanded) webApp.expand()
     applyThemeParams(webApp.themeParams)
-    setStableHeight(webApp.viewportStableHeight)
+    // After expand(), re-read innerHeight — it now reflects the full TMA viewport
+    setStableHeight(window.innerHeight)
 
     if (!deepLinkHandled.current) {
       deepLinkHandled.current = true
@@ -229,7 +233,9 @@ export function useTelegramWebApp(): TelegramWebAppResult {
   // Sync viewport height on every resize/expand
   useEffect(() => {
     if (!webApp) return
-    const handler = () => setStableHeight(webApp.viewportStableHeight)
+    // Use window.innerHeight (accounts for viewport-fit=cover safe areas)
+    // but only if it's larger than current — prevents keyboard-open shrink
+    const handler = () => setStableHeight((prev) => Math.max(prev, window.innerHeight))
     webApp.onEvent('viewportChanged', handler)
     return () => webApp.offEvent('viewportChanged', handler)
   }, [webApp])

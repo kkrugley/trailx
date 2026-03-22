@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Ruler, Plus, Trash, ArrowsLeftRight, FrameCorners, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
+import { fmtDist } from '../../utils/units'
 import type { MapViewHandle } from '../MapView/MapView'
 import styles from './ToolsPanel.module.css'
 
 interface ToolsPanelProps {
   onClose: () => void
   mapRef?: RefObject<MapViewHandle | null>
-}
-
-function fmtDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} м`
-  return `${km.toFixed(2)} км`
 }
 
 export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
@@ -21,6 +17,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
   const measureActiveSessionId = useMapStore((s) => s.measureActiveSessionId)
   const routeResult            = useMapStore((s) => s.routeResult)
   const waypoints              = useMapStore((s) => s.waypoints)
+  const unit                   = useMapStore((s) => s.appSettings.distanceUnit)
   const {
     setMeasureActive, startMeasureSession,
     deleteMeasureSession, deleteAllMeasureSessions,
@@ -157,7 +154,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
                     <span className={styles.sessionColor} style={{ background: s.color }} />
                     <span className={styles.sessionName}>Замер {i + 1}</span>
                     <span className={styles.sessionDist}>
-                      {s.nodes.length < 2 ? '—' : fmtDistance(s.distance)}
+                      {s.nodes.length < 2 ? '—' : fmtDist(s.distance * 1000, unit)}
                     </span>
                     <button
                       className={styles.deleteBtn}

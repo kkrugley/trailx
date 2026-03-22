@@ -1,5 +1,7 @@
 import { Clock, Path, ArrowUp } from '@phosphor-icons/react'
 import type { RouteResult } from '@trailx/shared'
+import { useMapStore } from '../../store/useMapStore'
+import { fmtDist, fmtElev } from '../../utils/units'
 import { Chip } from '../ui/Chip'
 import styles from './CollapsedFooter.module.css'
 
@@ -8,11 +10,6 @@ function formatDuration(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   if (h > 0) return `${h}h ${m}m`
   return `${m} min`
-}
-
-function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`
-  return `${Math.round(meters)} m`
 }
 
 function computeGain(elevation: number[]): number {
@@ -28,6 +25,7 @@ interface CollapsedFooterProps {
 }
 
 export function CollapsedFooter({ result, onClick }: CollapsedFooterProps) {
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const gain = computeGain(result.elevation)
 
   return (
@@ -38,12 +36,12 @@ export function CollapsedFooter({ result, onClick }: CollapsedFooterProps) {
       />
       <Chip
         icon={<Path size={12} weight="fill" />}
-        label={formatDistance(result.distance)}
+        label={fmtDist(result.distance, unit)}
       />
       {gain > 0 && (
         <Chip
           icon={<ArrowUp size={12} weight="bold" />}
-          label={`+${Math.round(gain)} m`}
+          label={`+${fmtElev(gain, unit)}`}
         />
       )}
     </div>

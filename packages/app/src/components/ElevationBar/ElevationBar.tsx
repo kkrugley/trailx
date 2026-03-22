@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { CaretUp, CaretDown, X, ArrowsOutSimple, ArrowsInSimple } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
+import { fmtElev } from '../../utils/units'
 import { Chip } from '../ui/Chip'
 import { ElevationChart } from './ElevationChart'
 import { SurfaceChart } from './SurfaceChart'
@@ -16,10 +17,6 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   roadclass: 'Тип дороги',
 }
 
-function formatElevation(m: number): string {
-  return `${Math.round(m)} m`
-}
-
 function computeGain(elevation: number[]): number {
   return elevation.reduce(
     (acc, v, i) => (i > 0 && v > elevation[i - 1] ? acc + (v - elevation[i - 1]) : acc),
@@ -29,6 +26,7 @@ function computeGain(elevation: number[]): number {
 
 export function ElevationBar() {
   const routeResult = useMapStore((s) => s.routeResult)
+  const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { setHoveredRoutePosition } = useMapStore((s) => s.actions)
   const [mode, setMode] = useState<ElevMode>('expanded')
   const [view, setView] = useState<ViewMode>('elevation')
@@ -93,9 +91,9 @@ export function ElevationBar() {
         {/* Chips (elevation only) */}
         {view === 'elevation' && (
           <div className={styles.chips}>
-            <Chip label={`+${formatElevation(gain)}`} title="Набор высоты" />
-            <Chip label={`${formatElevation(minElev)}`} title="Мин. высота" />
-            <Chip label={`${formatElevation(maxElev)}`} title="Макс. высота" />
+            <Chip label={`+${fmtElev(gain, unit)}`} title="Набор высоты" />
+            <Chip label={`${fmtElev(minElev, unit)}`} title="Мин. высота" />
+            <Chip label={`${fmtElev(maxElev, unit)}`} title="Макс. высота" />
           </div>
         )}
 
@@ -129,16 +127,16 @@ export function ElevationBar() {
       {isExpanded && (
         <div className={styles.chart}>
           {view === 'elevation' && (
-            <ElevationChart elevation={elevation} distance={routeResult.distance} height={100} onHoverFraction={handleHoverFraction} />
+            <ElevationChart elevation={elevation} distance={routeResult.distance} height={100} unit={unit} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'surface' && surface && surface.length > 0 && (
-            <SurfaceChart surface={surface} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
+            <SurfaceChart surface={surface} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'surface' && (!surface || surface.length === 0) && (
             <div className={styles.noData}>Нет данных о покрытии</div>
           )}
           {view === 'roadclass' && roadClass && roadClass.length > 0 && (
-            <RoadClassChart roadClass={roadClass} distance={routeResult.distance} onHoverFraction={handleHoverFraction} />
+            <RoadClassChart roadClass={roadClass} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'roadclass' && (!roadClass || roadClass.length === 0) && (
             <div className={styles.noData}>Нет данных о типе дороги</div>

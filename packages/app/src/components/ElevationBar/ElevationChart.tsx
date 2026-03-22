@@ -1,9 +1,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { fmtDist, fmtElev, type DistanceUnit } from '../../utils/units'
 
 interface ElevationChartProps {
   elevation: number[]
   distance?: number   // total route distance in metres
   height?: number
+  unit?: DistanceUnit
   onHoverFraction?: (fraction: number | null) => void
 }
 
@@ -21,7 +23,7 @@ function downsample(arr: number[], maxPoints: number): number[] {
 
 const PAD_LEFT = 32
 
-export function ElevationChart({ elevation, distance, height = 100, onHoverFraction }: ElevationChartProps) {
+export function ElevationChart({ elevation, distance, height = 100, unit = 'km', onHoverFraction }: ElevationChartProps) {
   const data = downsample(elevation, 200)
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -73,7 +75,7 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
   const distLabels = distance
     ? [0, 0.25, 0.5, 0.75, 1].map((frac) => ({
         x: PAD_LEFT + frac * drawW,
-        label: distFmt(distance * frac),
+        label: fmtDist(distance * frac, unit),
       }))
     : []
 
@@ -204,6 +206,7 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
         <HoverTooltip
           elev={hoverPoint}
           dist={hoverDist}
+          unit={unit}
           svgFraction={(hoverX - PAD_LEFT) / (svgW - PAD_LEFT)}
         />
       )}
@@ -211,15 +214,12 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
   )
 }
 
-function distFmt(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`
-}
-
 function HoverTooltip({
-  elev, dist, svgFraction,
+  elev, dist, unit, svgFraction,
 }: {
   elev: number
   dist: number | null
+  unit: DistanceUnit
   svgFraction: number   // 0–1, used to flip tooltip side
 }) {
   const onRight = svgFraction < 0.75
@@ -246,11 +246,11 @@ function HoverTooltip({
       }}
     >
       <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-family)' }}>
-        {Math.round(elev)} м
+        {fmtElev(elev, unit)}
       </span>
       {dist != null && (
         <span style={{ fontSize: '0.625rem', color: 'var(--primary)', opacity: 0.55, fontFamily: 'var(--font-family)' }}>
-          {distFmt(dist)}
+          {fmtDist(dist, unit)}
         </span>
       )}
     </div>

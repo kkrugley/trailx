@@ -41,25 +41,6 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
 
   return (
     <div ref={panelRef} className={styles.panel}>
-      {/* General */}
-      <div className={styles.section}>
-        <div className={styles.sectionTitle}>Общие</div>
-        <label className={styles.row}>
-          <span className={styles.label}>Единицы расстояния</span>
-          <div className={styles.segmented}>
-            {(['km', 'mi'] as const).map((unit) => (
-              <button
-                key={unit}
-                className={`${styles.seg} ${settings.distanceUnit === unit ? styles.segActive : ''}`}
-                onClick={() => updateSettings({ distanceUnit: unit })}
-              >
-                {unit === 'km' ? 'км' : 'миль'}
-              </button>
-            ))}
-          </div>
-        </label>
-      </div>
-
       {/* Profile-specific */}
       {profile === 'foot' && (
         <div className={styles.section}>

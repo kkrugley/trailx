@@ -109,6 +109,9 @@ export interface TelegramWebApp {
   setBackgroundColor(color: string): void
   enableClosingConfirmation(): void
   disableClosingConfirmation(): void
+  // Bot API 7.7+
+  disableVerticalSwipes?(): void
+  enableVerticalSwipes?(): void
   onEvent(eventType: string, eventHandler: () => void): void
   offEvent(eventType: string, eventHandler: () => void): void
 }
@@ -222,6 +225,10 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     applyThemeParams(webApp.themeParams)
     // After expand(), re-read innerHeight — it now reflects the full TMA viewport
     setStableHeight(window.innerHeight)
+    // Prevent accidental close by swipe-down on content (Bot API 7.7+)
+    webApp.disableVerticalSwipes?.()
+    // CSS fallback for older clients: mark body so the +1px trick applies
+    document.body.classList.add('tma-active')
 
     if (!deepLinkHandled.current) {
       deepLinkHandled.current = true

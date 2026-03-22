@@ -79,6 +79,17 @@ body {
   overscroll-behavior: none;
 }
 
+/* CSS fallback for older Telegram clients that don't support disableVerticalSwipes().
+   The extra 1px makes the document technically scrollable so Telegram doesn't
+   intercept the downward swipe as a "close Mini App" gesture. */
+body.tma-active {
+  overflow: hidden;
+}
+
+body.tma-active #root {
+  min-height: calc(100% + 1px);
+}
+
 #root {
   width: 100%;
   height: 100%;

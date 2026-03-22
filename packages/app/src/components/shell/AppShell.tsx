@@ -70,15 +70,7 @@ export function AppShell() {
   // Mobile / TMA layout
   return (
     <div className={styles.mobileGrid}>
-      {/* Row 1: top search bar */}
-      <div className={styles.mobileTopRow}>
-        <MobileHeader />
-      </div>
-
-      {/* Row 2: spacer (grid gap) */}
-      <div />
-
-      {/* Row 3: full-screen map */}
+      {/* Row 1: full-screen map */}
       <div className={styles.mobileMapRow}>
         <MapView ref={mapRef} />
         <div className={styles.mobileControls}>
@@ -86,9 +78,12 @@ export function AppShell() {
         </div>
       </div>
 
-      {/* Row 4: bottom sheet */}
-      <div className={styles.mobileBottomRow}>
-        <BottomSheet />
+      {/* BottomSheet — absolute over map, sits above bottom bar */}
+      <BottomSheet />
+
+      {/* Row 2: persistent bottom bar with route info / hint */}
+      <div className={styles.mobileBottomBar}>
+        <MobileHeader />
       </div>
 
       {isExportOpen && (

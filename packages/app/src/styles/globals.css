@@ -45,6 +45,7 @@
   --bottom-sheet-handle-height: 28px;
   --bottom-sheet-peek: 52px;
   --elevation-bar-height: 48px;
+  --mobile-bottom-bar-height: 68px;
 
   /* ── Border radius (organic, no sharp corners) ── */
   --radius-sm: 0.25rem;

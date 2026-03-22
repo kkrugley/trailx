@@ -81,7 +81,7 @@ export function MobileHeader() {
         <div className={styles.hintIcon}>
           <MapPin size={18} weight="duotone" />
         </div>
-        <p className={styles.hintText}>Добавьте точки маршрута в нижнем меню</p>
+        <p className={styles.hintText}>Добавьте точки маршрута в выдвижном меню</p>
       </div>
     )
   }

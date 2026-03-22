@@ -2,7 +2,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--mobile-bottom-bar-height);
+  bottom: calc(var(--mobile-bottom-bar-height) + env(safe-area-inset-bottom, 0px));
   background: var(--surface-variant);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-overlay);
@@ -32,6 +32,7 @@
   border: none;
   width: 100%;
   padding: 0;
+  touch-action: none;
 }
 
 .handleBar {

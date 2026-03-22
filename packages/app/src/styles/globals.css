@@ -84,8 +84,8 @@ body {
    intercept the downward swipe as a "close Mini App" gesture. */
 body.tma-active {
   overflow: hidden;
-  /* Push spinner below the native TMA header buttons */
-  --spinner-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  /* Push spinner below native TMA header buttons (notch + ~56px header height) */
+  --spinner-top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
 }
 
 body.tma-active #root {

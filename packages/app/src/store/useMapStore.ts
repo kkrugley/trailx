@@ -1,10 +1,17 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
 // ── Measure tool ─────────────────────────────────────────────────────────────
+export const MEASURE_COLORS = [
+  '#e74c3c', '#2ecc71', '#3498db', '#f39c12',
+  '#9b59b6', '#1abc9c', '#e67e22', '#e91e63',
+]
+
 export interface MeasureSession {
   id: string
+  color: string
   nodes: [number, number][] // [lng, lat]
   distance: number          // km
 }
@@ -161,7 +168,7 @@ function makeEmptyWaypoints(): RoutePoint[] {
   ]
 }
 
-export const useMapStore = create<MapStore>((set) => ({
+export const useMapStore = create<MapStore>()(persist((set) => ({
   waypoints: makeEmptyWaypoints(),
   activeRouteId: null,
   routeResult: null,
@@ -352,7 +359,8 @@ export const useMapStore = create<MapStore>((set) => ({
       set((state) => {
         if (v && state.measureSessions.length === 0) {
           const id = crypto.randomUUID()
-          return { measureActive: true, measureSessions: [{ id, nodes: [], distance: 0 }], measureActiveSessionId: id }
+          const color = MEASURE_COLORS[0]
+          return { measureActive: true, measureSessions: [{ id, color, nodes: [], distance: 0 }], measureActiveSessionId: id }
         }
         return { measureActive: v }
       }),
@@ -382,8 +390,9 @@ export const useMapStore = create<MapStore>((set) => ({
     startMeasureSession: () =>
       set((state) => {
         const id = crypto.randomUUID()
+        const color = MEASURE_COLORS[state.measureSessions.length % MEASURE_COLORS.length]
         return {
-          measureSessions: [...state.measureSessions, { id, nodes: [], distance: 0 }],
+          measureSessions: [...state.measureSessions, { id, color, nodes: [], distance: 0 }],
           measureActiveSessionId: id,
         }
       }),
@@ -443,4 +452,15 @@ export const useMapStore = create<MapStore>((set) => ({
         }
       }),
   },
+}), {
+  name: 'trailx-session',
+  version: 1,
+  migrate: (persisted, _version) => persisted,
+  partialize: (state) => ({
+    waypoints: state.waypoints,
+    routeResult: state.routeResult,
+    profile: state.profile,
+    standalonePois: state.standalonePois,
+    appSettings: state.appSettings,
+  }),
 }))

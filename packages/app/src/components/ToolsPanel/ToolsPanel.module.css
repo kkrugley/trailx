@@ -120,6 +120,13 @@
   outline: 1px solid color-mix(in srgb, var(--secondary) 25%, transparent);
 }
 
+.sessionColor {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
 .sessionName {
   font-size: 0.75rem;
   font-weight: 500;
@@ -183,6 +190,12 @@
 
 .actionBtn:hover {
   background: color-mix(in srgb, var(--secondary) 15%, transparent);
+}
+
+.confirmRow {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .actionBtnDanger {

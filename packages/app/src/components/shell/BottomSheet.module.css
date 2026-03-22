@@ -13,6 +13,14 @@
   z-index: 10;
 }
 
+/* In PWA the bar loses its bottom margin (margin-bottom: 0), making it 8px
+   shorter — shift the sheet down by the same amount to stay flush with the bar */
+@media (display-mode: standalone) {
+  .sheet {
+    bottom: calc(var(--mobile-bottom-bar-height) - 0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .collapsed {
   height: calc(var(--bottom-sheet-handle-height) + var(--bottom-sheet-peek));
 }

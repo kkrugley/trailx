@@ -41,7 +41,14 @@ function PoiBufferSlider() {
 
   return (
     <div className={styles.sliderRow}>
-      <span className={styles.sliderLabel}>Радиус поиска</span>
+      <div className={styles.sliderHeader}>
+        <span className={styles.sliderLabel}>Радиус поиска</span>
+        <span className={styles.sliderValue}>
+          {poiBuffer >= 1000
+            ? `${(poiBuffer / 1000).toFixed(poiBuffer % 1000 === 0 ? 0 : 1)} км`
+            : `${poiBuffer} м`}
+        </span>
+      </div>
       <input
         type="range"
         min={50}
@@ -55,11 +62,6 @@ function PoiBufferSlider() {
         }}
         className={styles.slider}
       />
-      <span className={styles.sliderValue}>
-        {poiBuffer >= 1000
-          ? `${(poiBuffer / 1000).toFixed(poiBuffer % 1000 === 0 ? 0 : 1)} км`
-          : `${poiBuffer} м`}
-      </span>
     </div>
   )
 }

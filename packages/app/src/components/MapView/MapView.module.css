@@ -49,7 +49,7 @@
 /* ── Routing / POI spinner overlay ───────────────────────────────────────── */
 .spinnerOverlay {
   position: absolute;
-  top: 12px;
+  top: var(--spinner-top, 12px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;

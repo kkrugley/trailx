@@ -1,7 +1,8 @@
-import { Bicycle, Lightning, PersonSimpleWalk, Mountains } from '@phosphor-icons/react'
+import { Bicycle, Lightning, PersonSimpleWalk, Mountains, Clock, Path, MapPin, DownloadSimple, ShareNetwork } from '@phosphor-icons/react'
 import type { RoutingProfile } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useProfile } from '../../hooks/useProfile'
+import { exportRoute } from '../../services/gpx'
 import styles from './MobileHeader.module.css'
 
 const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
@@ -11,11 +12,80 @@ const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
   racingbike: Lightning,
 }
 
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h} ч ${m} мин`
+  return `${m} мин`
+}
+
+function formatDurationCompact(seconds: number): string {
+  const h = seconds / 3600
+  if (h >= 1) return `${h.toFixed(1).replace('.0', '')} ч`
+  return `${Math.round(seconds / 60)} мин`
+}
+
+function formatDistance(meters: number): string {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
+  return `${Math.round(meters)} м`
+}
+
 export function MobileHeader() {
   const { profile } = useProfile()
   const waypoints = useMapStore((s) => s.waypoints)
+  const routeResult = useMapStore((s) => s.routeResult)
+  const speeds = useMapStore((s) => s.appSettings.speeds)
 
   const ProfileIcon = PROFILE_ICONS[profile]
+
+  if (routeResult) {
+    const speedKmh = speeds[profile]
+    const durationSec = (routeResult.distance / 1000 / speedKmh) * 3600
+
+    return (
+      <div className={styles.bar}>
+        <div className={styles.profileIcon}>
+          <ProfileIcon size={20} weight="fill" />
+        </div>
+        <div className={styles.stats}>
+          <span className={`${styles.statChipAccent} ${styles.durationFull}`}>
+            <Clock size={12} weight="fill" />
+            {formatDuration(durationSec)}
+          </span>
+          <span className={`${styles.statChipAccent} ${styles.durationCompact}`}>
+            <Clock size={12} weight="fill" />
+            {formatDurationCompact(durationSec)}
+          </span>
+          <span className={styles.statChip}>
+            <Path size={12} weight="fill" />
+            {formatDistance(routeResult.distance)}
+          </span>
+        </div>
+        <div className={styles.actions}>
+          <button className={styles.actionBtn} onClick={() => {}} aria-label="Поделиться" title="Поделиться">
+            <ShareNetwork size={16} weight="regular" />
+          </button>
+          <button className={styles.actionBtn} onClick={exportRoute} aria-label="Скачать GPX" title="Скачать GPX">
+            <DownloadSimple size={16} weight="regular" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const hasWaypoints = waypoints.some((w) => !isNaN(w.lat) && !isNaN(w.lng))
+
+  if (!hasWaypoints) {
+    return (
+      <div className={styles.bar}>
+        <div className={styles.hintIcon}>
+          <MapPin size={18} weight="duotone" />
+        </div>
+        <p className={styles.hintText}>Добавьте точки маршрута в нижнем меню</p>
+      </div>
+    )
+  }
+
   const start = waypoints[0]?.label ?? 'Choose starting point'
   const end = waypoints[waypoints.length - 1]?.label ?? 'Choose destination'
 

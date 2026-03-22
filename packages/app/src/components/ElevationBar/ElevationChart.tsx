@@ -38,6 +38,14 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
     return () => obs.disconnect()
   }, [])
 
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onTouchMoveNative = (e: TouchEvent) => { e.preventDefault() }
+    svg.addEventListener('touchmove', onTouchMoveNative, { passive: false })
+    return () => svg.removeEventListener('touchmove', onTouchMoveNative)
+  }, [])
+
   if (data.length < 2) return null
 
   const min = Math.min(...data)
@@ -76,12 +84,11 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
     ? (hover.index / (data.length - 1)) * distance
     : null
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+  const applyClientX = useCallback((clientX: number) => {
     const svg = svgRef.current
     if (!svg) return
     const rect = svg.getBoundingClientRect()
-    const relX = e.clientX - rect.left
-    // SVG coords now match pixel coords (viewBox = actual width)
+    const relX = clientX - rect.left
     const svgX = Math.max(PAD_LEFT, Math.min(svgW, relX))
     const fraction = Math.max(0, Math.min(1, (svgX - PAD_LEFT) / drawW))
     const index = Math.round(fraction * (data.length - 1))
@@ -89,7 +96,21 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
     onHoverFraction?.(fraction)
   }, [data.length, drawW, svgW, onHoverFraction])
 
+  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    applyClientX(e.clientX)
+  }, [applyClientX])
+
   const handleMouseLeave = useCallback(() => {
+    setHover(null)
+    onHoverFraction?.(null)
+  }, [onHoverFraction])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
+    e.preventDefault()
+    applyClientX(e.touches[0].clientX)
+  }, [applyClientX])
+
+  const handleTouchEnd = useCallback(() => {
     setHover(null)
     onHoverFraction?.(null)
   }, [onHoverFraction])
@@ -103,6 +124,8 @@ export function ElevationChart({ elevation, distance, height = 100, onHoverFract
         style={{ width: '100%', height: `${height}px`, display: 'block', overflow: 'visible', cursor: 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         aria-hidden
       >
         <defs>

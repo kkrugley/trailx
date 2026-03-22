@@ -1,6 +1,7 @@
 import { useState, useRef, type RefObject } from 'react'
-import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Wrench } from '@phosphor-icons/react'
+import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Toolbox } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
+import { usePlatform } from '../../hooks/usePlatform'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
 import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
@@ -13,6 +14,8 @@ interface MapControlsProps {
 }
 
 export function MapControls({ mapRef }: MapControlsProps) {
+  const { isMobile, isTMA } = usePlatform()
+  const debugPopoverClass = (isMobile || isTMA) ? styles.popoverUp : styles.popover
   const [infoOpen, setInfoOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
@@ -96,11 +99,11 @@ export function MapControls({ mapRef }: MapControlsProps) {
           onClick={() => { setToolsOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
           aria-label="Инструменты"
         >
-          <Wrench size={17} weight={toolsOpen ? 'fill' : 'regular'} />
+          <Toolbox size={17} weight={toolsOpen ? 'fill' : 'regular'} />
         </button>
         {toolsOpen && (
           <div className={styles.popover}>
-            <ToolsPanel onClose={() => setToolsOpen(false)} />
+            <ToolsPanel onClose={() => setToolsOpen(false)} mapRef={mapRef} />
           </div>
         )}
       </div>
@@ -138,7 +141,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
           <Bug size={17} weight={debugOpen ? 'fill' : 'regular'} />
         </button>
         {debugOpen && (
-          <div className={styles.popover}>
+          <div className={debugPopoverClass}>
             <DebugPanel onClose={() => setDebugOpen(false)} />
           </div>
         )}

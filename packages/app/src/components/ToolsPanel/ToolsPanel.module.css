@@ -2,7 +2,7 @@
   background: var(--surface-variant);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay), 0 8px 32px rgba(68, 86, 181, 0.12);
-  min-width: 220px;
+  min-width: 270px;
   overflow: hidden;
   animation: popIn 0.14s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: all;
@@ -192,4 +192,13 @@
 
 .actionBtnDanger:hover {
   background: rgba(192, 57, 43, 0.15);
+}
+
+.actionBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.actionBtn:disabled:hover {
+  background: color-mix(in srgb, var(--secondary) 8%, transparent);
 }

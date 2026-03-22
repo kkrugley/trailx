@@ -105,7 +105,7 @@
 /* Floating map controls overlay on mobile */
 .mobileControls {
   position: absolute;
-  top: 0;
+  top: max(env(safe-area-inset-top, 0px) + 0.5rem, 3.5rem);
   right: 0;
   z-index: 10;
   pointer-events: none;

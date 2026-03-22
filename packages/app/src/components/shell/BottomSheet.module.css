@@ -190,33 +190,37 @@
 
 .sliderRow {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 1rem 0.25rem;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.25rem 1rem 0.5rem;
+}
+
+.sliderHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .sliderLabel {
   font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--primary);
-  opacity: 0.6;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.slider {
-  flex: 1;
-  accent-color: var(--secondary);
-  height: 4px;
-  cursor: pointer;
+  opacity: 0.55;
 }
 
 .sliderValue {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--primary);
-  white-space: nowrap;
-  min-width: 3rem;
-  text-align: right;
+  color: var(--secondary);
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--secondary);
+  height: 4px;
+  cursor: pointer;
 }
 
 .footerAttrib {

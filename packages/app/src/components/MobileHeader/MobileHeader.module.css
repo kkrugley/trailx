@@ -2,19 +2,17 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0.625rem 0.75rem;
+  margin: 0.5rem 0.75rem;
   padding: 0.625rem 1rem;
-  background: var(--surface-variant);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-container-high);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-float), 0 4px 24px rgba(68, 86, 181, 0.07);
+  box-shadow: 0 -1px 0 rgba(68, 86, 181, 0.06);
   pointer-events: all;
-  animation: slideDownBar 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: slideUpBar 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes slideDownBar {
-  from { opacity: 0; transform: translateY(-10px); }
+@keyframes slideUpBar {
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 

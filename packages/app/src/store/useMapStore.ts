@@ -80,6 +80,7 @@ interface MapStoreActions {
   addIntermediateAt: (lat: number, lng: number) => void
   removeWaypoint: (id: string) => void
   reorderWaypoints: (from: number, to: number) => void
+  reverseWaypoints: () => void
   clearRoute: () => void
   setRouteResult: (result: RouteResult | null) => void
   setIsRouting: (value: boolean) => void
@@ -284,6 +285,12 @@ export const useMapStore = create<MapStore>((set) => ({
         items.splice(to, 0, moved)
         return { waypoints: assignTypes(items) }
       }),
+
+    reverseWaypoints: () =>
+      set((state) => ({
+        waypoints: assignTypes([...state.waypoints].reverse()),
+        routeResult: null,
+      })),
 
     clearRoute: () => set({ waypoints: makeEmptyWaypoints(), routeResult: null, routeError: null }),
 

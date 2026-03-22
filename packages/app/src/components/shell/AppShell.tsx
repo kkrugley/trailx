@@ -98,18 +98,6 @@ export function AppShell() {
       )}
 
       <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
-
-      {/* POI filter — fixed bottom-right */}
-      <button
-        className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
-        onClick={() => setFilterOpen((v) => !v)}
-        aria-label="Фильтр POI"
-        title="Фильтр POI"
-      >
-        <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
-        <span>Фильтр</span>
-      </button>
-      {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
     </div>
   )
 }

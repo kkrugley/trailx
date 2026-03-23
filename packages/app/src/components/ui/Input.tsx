@@ -30,7 +30,7 @@ export function Input({ icon, style, ...rest }: InputProps) {
           borderRadius: 'var(--radius-md)',
           padding: icon ? '0.5rem 0.75rem 0.5rem 2.25rem' : '0.5rem 0.75rem',
           fontFamily: 'var(--font-family)',
-          fontSize: '0.875rem',
+          fontSize: '1rem',
           color: 'var(--primary)',
           outline: 'none',
           ...style,

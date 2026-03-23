@@ -97,6 +97,13 @@ body.tma-active #root {
   height: 100%;
 }
 
+/* ── Prevent WebView zoom on input focus (iOS/Android WebView zooms when font-size < 16px) ── */
+input,
+textarea,
+select {
+  font-size: 1rem;
+}
+
 /* ── Scrollbar styling (thin, tonal) ── */
 ::-webkit-scrollbar {
   width: 4px;

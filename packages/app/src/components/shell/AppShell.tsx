@@ -12,6 +12,7 @@ import { POIFilter } from '../POIFilter/POIFilter'
 import { BottomSheet } from './BottomSheet'
 import { MapControls } from '../MapControls/MapControls'
 import { ElevationBar } from '../ElevationBar/ElevationBar'
+import { KeyboardDismissBar } from '../KeyboardDismissBar/KeyboardDismissBar'
 import styles from './AppShell.module.css'
 
 export function AppShell() {
@@ -93,6 +94,8 @@ export function AppShell() {
       )}
 
       <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
+
+      <KeyboardDismissBar />
     </div>
   )
 }

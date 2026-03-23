@@ -1,0 +1,28 @@
+.bar {
+  position: fixed;
+  /* Sits just above the virtual keyboard — using bottom: 0 and relying on
+     the keyboard pushing the viewport up in TMA resize mode */
+  bottom: 0;
+  right: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  padding: 0.5rem 1rem;
+  background: var(--surface-container-high);
+  color: var(--secondary);
+  border: none;
+  border-top-left-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  /* Safe-area: on devices with a home bar the keyboard sits above it */
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.bar:active {
+  opacity: 0.75;
+}

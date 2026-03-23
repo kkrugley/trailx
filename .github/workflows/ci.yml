@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  quality:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (all packages)
+        run: pnpm turbo typecheck
+
+      - name: Lint (app)
+        run: pnpm --filter app lint
+
+  test-app:
+    name: Tests · app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm --filter @trailx/app test -- --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-app
+          path: packages/app/coverage/
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [quality, test-app]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app
+        run: pnpm --filter @trailx/app build
+        env:
+          VITE_GRAPHHOPPER_API_KEY: ""
+          VITE_API_URL: "https://example.com"
+          VITE_BOT_WS_URL: "wss://example.com"
+          VITE_MAPILLARY_TOKEN: ""
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dist
+          path: packages/app/dist/
+          retention-days: 3
+
+  runtime:
+    name: Runtime check
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-dist
+          path: packages/app/dist/
+
+      - name: Start app
+        run: pnpm --filter @trailx/app preview &
+
+      - name: Wait for app
+        run: npx wait-on http://localhost:4173
+
+      - name: Health check
+        run: curl -f http://localhost:4173

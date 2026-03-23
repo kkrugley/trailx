@@ -19,5 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // react-hooks v7 added these two rules which flag valid established patterns
+      // in this codebase (setState in effects for early-return resets, refs read
+      // during render as a sync-external-state optimisation).
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+    },
   },
 ])

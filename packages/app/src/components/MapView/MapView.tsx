@@ -127,7 +127,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
   // Stable refs for imperative handlers
   const setSelectedPOIRef = useRef(setSelectedPOI)
-  useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])  // eslint-disable-line
+  useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])
 
   useImperativeHandle(ref, () => ({
     getMap: () => mapRef.current,

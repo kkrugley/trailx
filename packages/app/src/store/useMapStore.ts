@@ -455,7 +455,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
 }), {
   name: 'trailx-session',
   version: 1,
-  migrate: (persisted, _version) => persisted,
+  migrate: (persisted) => persisted,
   partialize: (state) => ({
     waypoints: state.waypoints,
     routeResult: state.routeResult,

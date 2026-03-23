@@ -48,43 +48,7 @@ export function ElevationChart({ elevation, distance, height = 100, unit = 'km',
     return () => svg.removeEventListener('touchmove', onTouchMoveNative)
   }, [])
 
-  if (data.length < 2) return null
-
-  const min = Math.min(...data)
-  const max = Math.max(...data)
-  const range = max - min || 1
-
-  const PAD_TOP = 10
-  const PAD_BOTTOM = 18   // room for distance labels
-  const drawH = height - PAD_TOP - PAD_BOTTOM
   const drawW = svgW - PAD_LEFT
-
-  const toY = (v: number) => PAD_TOP + drawH - ((v - min) / range) * drawH
-  const toX = (i: number) => PAD_LEFT + (i / (data.length - 1)) * drawW
-
-  const pts = data.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
-  const fillPts = `${PAD_LEFT},${height - PAD_BOTTOM} ${pts} ${svgW},${height - PAD_BOTTOM}`
-
-  // Y-axis guides at 0%, 50%, 100%
-  const guides = [0, 0.5, 1].map((frac) => ({
-    y: toY(min + range * frac),
-    label: `${Math.round(min + range * frac)}`,
-  }))
-
-  // Distance labels on X axis
-  const distLabels = distance
-    ? [0, 0.25, 0.5, 0.75, 1].map((frac) => ({
-        x: PAD_LEFT + frac * drawW,
-        label: fmtDist(distance * frac, unit),
-      }))
-    : []
-
-  const hoverPoint = hover != null ? data[hover.index] : null
-  const hoverX = hover != null ? toX(hover.index) : 0
-  const hoverY = hover != null ? toY(data[hover.index]) : 0
-  const hoverDist = hover != null && distance
-    ? (hover.index / (data.length - 1)) * distance
-    : null
 
   const applyClientX = useCallback((clientX: number) => {
     const svg = svgRef.current
@@ -116,6 +80,43 @@ export function ElevationChart({ elevation, distance, height = 100, unit = 'km',
     setHover(null)
     onHoverFraction?.(null)
   }, [onHoverFraction])
+
+  if (data.length < 2) return null
+
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+
+  const PAD_TOP = 10
+  const PAD_BOTTOM = 18   // room for distance labels
+  const drawH = height - PAD_TOP - PAD_BOTTOM
+
+  const toY = (v: number) => PAD_TOP + drawH - ((v - min) / range) * drawH
+  const toX = (i: number) => PAD_LEFT + (i / (data.length - 1)) * drawW
+
+  const pts = data.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
+  const fillPts = `${PAD_LEFT},${height - PAD_BOTTOM} ${pts} ${svgW},${height - PAD_BOTTOM}`
+
+  // Y-axis guides at 0%, 50%, 100%
+  const guides = [0, 0.5, 1].map((frac) => ({
+    y: toY(min + range * frac),
+    label: `${Math.round(min + range * frac)}`,
+  }))
+
+  // Distance labels on X axis
+  const distLabels = distance
+    ? [0, 0.25, 0.5, 0.75, 1].map((frac) => ({
+        x: PAD_LEFT + frac * drawW,
+        label: fmtDist(distance * frac, unit),
+      }))
+    : []
+
+  const hoverPoint = hover != null ? data[hover.index] : null
+  const hoverX = hover != null ? toX(hover.index) : 0
+  const hoverY = hover != null ? toY(data[hover.index]) : 0
+  const hoverDist = hover != null && distance
+    ? (hover.index / (data.length - 1)) * distance
+    : null
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>

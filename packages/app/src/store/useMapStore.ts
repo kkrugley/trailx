@@ -454,13 +454,22 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   },
 }), {
   name: 'trailx-session',
-  version: 1,
-  migrate: (persisted) => persisted,
+  version: 2,
+  migrate: (persisted: unknown, version: number) => {
+    const state = persisted as Record<string, unknown>
+    if (version < 2) {
+      state.measureSessions = []
+      state.measureActiveSessionId = null
+    }
+    return state
+  },
   partialize: (state) => ({
     waypoints: state.waypoints,
     routeResult: state.routeResult,
     profile: state.profile,
     standalonePois: state.standalonePois,
+    measureSessions: state.measureSessions,
+    measureActiveSessionId: state.measureActiveSessionId,
     appSettings: state.appSettings,
   }),
 }))

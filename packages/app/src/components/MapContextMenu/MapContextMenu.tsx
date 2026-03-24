@@ -23,18 +23,20 @@ export function MapContextMenu({
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
       if (menuRef.current && menuRef.current.contains(e.target as Node)) return
       onClose()
     }
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     const t = setTimeout(() => {
-      document.addEventListener('mousedown', handleClick)
+      document.addEventListener('mousedown', handleOutside)
+      document.addEventListener('touchstart', handleOutside)
       document.addEventListener('keydown', handleKey)
     }, 0)
     return () => {
       clearTimeout(t)
-      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
       document.removeEventListener('keydown', handleKey)
     }
   }, [onClose])

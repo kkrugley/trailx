@@ -1,1 +1,1 @@
-export * from './poi'
+export * from './poi.js'

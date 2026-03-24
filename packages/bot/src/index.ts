@@ -10,7 +10,7 @@ import type { StoredWaypoint } from './types'
 
 const BOT_TOKEN = process.env.BOT_TOKEN ?? ''
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? ''
-const PORT = Number(process.env.PORT ?? 3000)
+const PORT = Number(process.env.PORT ?? 3001)
 const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN ?? ''
 
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN env var is required')
@@ -19,6 +19,10 @@ if (!BOT_TOKEN) throw new Error('BOT_TOKEN env var is required')
 
 const bot = new Bot(BOT_TOKEN)
 registerCommands(bot)
+
+bot.catch((err) => {
+  console.error('Bot error while handling update', err.ctx.update.update_id, err.error)
+})
 
 // ── Fastify ────────────────────────────────────────────────────────────────
 

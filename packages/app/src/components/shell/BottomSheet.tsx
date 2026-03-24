@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CaretDown, CaretUp } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import { fmtDist, fmtElev } from '../../utils/units'
@@ -216,6 +216,18 @@ export function BottomSheet() {
     sheet.style.height = `${newH}px`
     d.lastY = y
     d.lastT = Date.now()
+  }, [])
+
+  // Non-passive native touchmove listener to prevent Telegram from intercepting
+  // vertical swipes while the user is dragging the bottom sheet.
+  useEffect(() => {
+    const sheet = sheetRef.current
+    if (!sheet) return
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      if (drag.current?.active) e.preventDefault()
+    }
+    sheet.addEventListener('touchmove', handleNativeTouchMove, { passive: false })
+    return () => sheet.removeEventListener('touchmove', handleNativeTouchMove)
   }, [])
 
   const onTouchEnd = useCallback(() => {

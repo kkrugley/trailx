@@ -134,11 +134,13 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     setStyle: (url: string) => mapRef.current?.setStyle(url),
   }))
 
-  // ── Context menu (right-click) ────────────────────────────────────────────
+  // ── Context menu (right-click + long-press) ──────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
-    const handler = (e: maplibregl.MapMouseEvent) => {
+
+    // Desktop: right-click
+    const contextMenuHandler = (e: maplibregl.MapMouseEvent) => {
       e.preventDefault()
       const rect = map.getCanvas().getBoundingClientRect()
       const rawX = rect.left + e.point.x
@@ -148,8 +150,65 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       const y = Math.min(rawY, window.innerHeight - 200)
       setContextMenu({ lat: e.lngLat.lat, lng: e.lngLat.lng, x, y })
     }
-    map.on('contextmenu', handler)
-    return () => { map.off('contextmenu', handler) }
+    map.on('contextmenu', contextMenuHandler)
+
+    // Mobile: long-press via pointer events on the canvas
+    const canvas = map.getCanvas()
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null
+    let longPressActive = false
+
+    const cancelLongPress = () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null }
+      longPressActive = false
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return // handled by contextmenu event
+      longPressActive = false
+      cancelLongPress()
+      const startX = e.clientX
+      const startY = e.clientY
+      longPressTimer = setTimeout(() => {
+        longPressActive = true
+        const rect = canvas.getBoundingClientRect()
+        const canvasX = startX - rect.left
+        const canvasY = startY - rect.top
+        const lngLat = map.unproject([canvasX, canvasY])
+        const rawX = startX
+        const rawY = startY
+        const x = Math.min(rawX, window.innerWidth - 220)
+        const y = Math.min(rawY, window.innerHeight - 200)
+        setContextMenu({ lat: lngLat.lat, lng: lngLat.lng, x, y })
+      }, 500)
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      cancelLongPress()
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      if (longPressActive) {
+        // Prevent the subsequent tap from being treated as a map click
+        e.stopPropagation()
+      }
+      cancelLongPress()
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerup', onPointerUp)
+    canvas.addEventListener('pointercancel', cancelLongPress)
+
+    return () => {
+      map.off('contextmenu', contextMenuHandler)
+      cancelLongPress()
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', onPointerUp)
+      canvas.removeEventListener('pointercancel', cancelLongPress)
+    }
   }, [mapReady])
 
   // ── FlyTo command ─────────────────────────────────────────────────────────

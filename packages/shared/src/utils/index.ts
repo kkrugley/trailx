@@ -1,2 +1,2 @@
-export * from './coordinates'
-export * from './gpx'
+export * from './coordinates.js'
+export * from './gpx.js'

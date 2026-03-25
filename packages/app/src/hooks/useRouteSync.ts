@@ -45,7 +45,7 @@ export function useRouteSync(): void {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setRouteResult(null)
         if (err instanceof RateLimitError) {
-          setRouteError('GraphHopper rate limit reached. Add your API key via VITE_GRAPHHOPPER_API_KEY.')
+          setRouteError('GraphHopper rate limit reached.')
         } else if (err instanceof Error) {
           setRouteError(err.message)
         } else {

@@ -6,6 +6,7 @@ import { prisma } from './db'
 import { registerCommands } from './commands'
 import { registerClient, unregisterClient } from './ws/hub'
 import { sessionRoutes } from './routes/sessions'
+import { graphhopperRoutes } from './routes/graphhopper.js'
 import type { StoredWaypoint } from './types'
 
 // ── Environment ────────────────────────────────────────────────────────────
@@ -78,6 +79,9 @@ fastify.get<{ Params: { id: string } }>('/routes/:id', async (req, reply) => {
 
 // Session sharing REST API
 fastify.register(sessionRoutes, { prefix: '/api/sessions' })
+
+// GraphHopper proxy — keeps API key server-side
+fastify.register(graphhopperRoutes)
 
 // WebSocket endpoint — TMA clients subscribe by chatId
 fastify.get<{ Querystring: { chatId?: string } }>(

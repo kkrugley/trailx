@@ -180,9 +180,9 @@ describe('addStandalonePoi / removeStandalonePoi', () => {
 describe('setStandalonePois', () => {
   it('replaces standalonePois with given array', () => {
     const { addStandalonePoi, setStandalonePois } = getActions()
-    const poiA = { id: 'old', lat: 1, lng: 1, category: 'tourism' as const, tags: {}, osmId: 1, osmType: 'node' as const }
-    const poiB = { id: 'new1', lat: 2, lng: 2, category: 'tourism' as const, tags: {}, osmId: 2, osmType: 'node' as const }
-    const poiC = { id: 'new2', lat: 3, lng: 3, category: 'tourism' as const, tags: {}, osmId: 3, osmType: 'node' as const }
+    const poiA = { id: 'old', lat: 1, lng: 1, category: 'viewpoint' as const, tags: {}, osmId: 1, osmType: 'node' as const }
+    const poiB = { id: 'new1', lat: 2, lng: 2, category: 'viewpoint' as const, tags: {}, osmId: 2, osmType: 'node' as const }
+    const poiC = { id: 'new2', lat: 3, lng: 3, category: 'viewpoint' as const, tags: {}, osmId: 3, osmType: 'node' as const }
     addStandalonePoi(poiA)
     setStandalonePois([poiB, poiC])
     const pois = getState().standalonePois
@@ -192,7 +192,7 @@ describe('setStandalonePois', () => {
 
   it('clears standalonePois when given empty array', () => {
     const { addStandalonePoi, setStandalonePois } = getActions()
-    const poi = { id: 'x', lat: 1, lng: 1, category: 'tourism' as const, tags: {}, osmId: 1, osmType: 'node' as const }
+    const poi = { id: 'x', lat: 1, lng: 1, category: 'viewpoint' as const, tags: {}, osmId: 1, osmType: 'node' as const }
     addStandalonePoi(poi)
     setStandalonePois([])
     expect(getState().standalonePois).toHaveLength(0)

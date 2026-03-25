@@ -1,4 +1,5 @@
 import Fastify from 'fastify'
+import cors from '@fastify/cors'
 import websocket from '@fastify/websocket'
 import { Bot } from 'grammy'
 import { prisma } from './db'
@@ -28,6 +29,22 @@ bot.catch((err) => {
 // ── Fastify ────────────────────────────────────────────────────────────────
 
 const fastify = Fastify({ logger: true })
+
+await fastify.register(cors, {
+  origin: (origin, cb) => {
+    const allowed = [
+      'https://trailx.app',
+      'http://localhost:5173',
+    ]
+    if (!origin || allowed.some(o => origin.startsWith(o))) {
+      cb(null, true)
+    } else {
+      cb(new Error('Not allowed'), false)
+    }
+  },
+  credentials: true,
+})
+
 await fastify.register(websocket)
 
 // Telegram webhook endpoint

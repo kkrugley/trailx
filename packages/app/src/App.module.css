@@ -8,3 +8,17 @@
 .tma {
   height: var(--tma-vh, 100vh);
 }
+
+/* Session deep-link loading overlay */
+.sessionLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface, #fff);
+}
+
+.sessionLoadingText {
+  font-size: 0.9375rem;
+  color: var(--on-surface-variant, #666);
+  font-family: var(--font-family, sans-serif);
+}

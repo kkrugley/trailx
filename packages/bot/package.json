@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --env-file=.env --import tsx/esm --watch src/index.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@trailx/shared": "workspace:*",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "prisma": "^5.22.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
   }
 }

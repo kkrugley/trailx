@@ -17,7 +17,12 @@ const MOCK_ACTIONS = {
   setRouteResult: vi.fn(),
   updateSettings: vi.fn(),
   setRouteError: vi.fn(),
+  setStandalonePois: vi.fn(),
+  setMeasureSessions: vi.fn(),
 }
+
+const MOCK_POI = { id: 'poi-1', lat: 48.85, lng: 2.35, name: 'Eiffel Tower', category: 'tourism' as const }
+const MOCK_MEASURE = { id: 'ms-1', color: '#f00', nodes: [[2.3, 48.8] as [number, number]], distance: 1.2 }
 
 const MOCK_PAYLOAD = {
   waypoints: [
@@ -25,8 +30,8 @@ const MOCK_PAYLOAD = {
     { id: 'wp-2', lat: 48.9, lng: 2.4, order: 1, type: 'end' },
   ],
   routeResult: { distance: 1000, duration: 300, geometry: {}, elevation: [] },
-  standalonePois: [],
-  measureSessions: [],
+  standalonePois: [MOCK_POI],
+  measureSessions: [MOCK_MEASURE],
   appSettings: { distanceUnit: 'mi' },
 }
 
@@ -91,7 +96,7 @@ describe('useSessionLoader', () => {
     await waitFor(() => expect(mockGetSession).toHaveBeenCalledWith('session-456'))
   })
 
-  it('patches store with waypoints, routeResult and appSettings after successful load', async () => {
+  it('patches store with waypoints, routeResult, appSettings, standalonePois and measureSessions after successful load', async () => {
     setPathname('/s/session-123')
     mockGetSession.mockResolvedValue(MOCK_SESSION_RESPONSE)
 
@@ -101,7 +106,29 @@ describe('useSessionLoader', () => {
     expect(MOCK_ACTIONS.clearRoute).toHaveBeenCalled()
     expect(MOCK_ACTIONS.addWaypoint).toHaveBeenCalledTimes(MOCK_PAYLOAD.waypoints.length)
     expect(MOCK_ACTIONS.setRouteResult).toHaveBeenCalledWith(MOCK_PAYLOAD.routeResult)
+    expect(MOCK_ACTIONS.setStandalonePois).toHaveBeenCalledWith(MOCK_PAYLOAD.standalonePois)
+    expect(MOCK_ACTIONS.setMeasureSessions).toHaveBeenCalledWith(MOCK_PAYLOAD.measureSessions)
     expect(MOCK_ACTIONS.updateSettings).toHaveBeenCalledWith(MOCK_PAYLOAD.appSettings)
+  })
+
+  it('restores non-empty standalonePois from session', async () => {
+    setPathname('/s/session-123')
+    mockGetSession.mockResolvedValue(MOCK_SESSION_RESPONSE)
+
+    const { result } = renderHook(() => useSessionLoader())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(MOCK_ACTIONS.setStandalonePois).toHaveBeenCalledWith([MOCK_POI])
+  })
+
+  it('restores non-empty measureSessions from session', async () => {
+    setPathname('/s/session-123')
+    mockGetSession.mockResolvedValue(MOCK_SESSION_RESPONSE)
+
+    const { result } = renderHook(() => useSessionLoader())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(MOCK_ACTIONS.setMeasureSessions).toHaveBeenCalledWith([MOCK_MEASURE])
   })
 
   it('cleans URL after successful load', async () => {

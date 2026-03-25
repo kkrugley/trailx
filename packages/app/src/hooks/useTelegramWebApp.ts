@@ -109,6 +109,9 @@ export interface TelegramWebApp {
   setBackgroundColor(color: string): void
   enableClosingConfirmation(): void
   disableClosingConfirmation(): void
+  // Bot API 7.3+
+  requestFullscreen?(): void
+  exitFullscreen?(): void
   // Bot API 7.7+
   disableVerticalSwipes?(): void
   enableVerticalSwipes?(): void
@@ -221,10 +224,13 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     if (!webApp) return
 
     webApp.ready()
-    if (!webApp.isExpanded) webApp.expand()
+    // Always expand — isExpanded may be stale/incorrect when opened via bot menu button
+    webApp.expand()
+    // Request true fullscreen to remove native Telegram header (Bot API 7.3+)
+    webApp.requestFullscreen?.()
     applyThemeParams(webApp.themeParams)
-    // After expand(), re-read innerHeight — it now reflects the full TMA viewport
-    setStableHeight(window.innerHeight)
+    // Do NOT read window.innerHeight here — expansion is async and not yet complete.
+    // The viewportChanged listener below will capture the correct height once stable.
     // Prevent accidental close by swipe-down on content (Bot API 7.7+)
     webApp.disableVerticalSwipes?.()
     // CSS fallback for older clients: mark body so the +1px trick applies
@@ -237,14 +243,19 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     }
   }, [webApp])
 
-  // Sync viewport height on every resize/expand
+  // Sync viewport height after expand / requestFullscreen / orientation change.
+  // Math.max prevents the value from shrinking when the soft keyboard opens.
+  // We cast the event arg to access isStateStable and only commit the height when
+  // the viewport has settled — otherwise intermediate animation frames can set a
+  // too-small value that Math.max will then prevent from being corrected later.
   useEffect(() => {
     if (!webApp) return
-    // Use window.innerHeight (accounts for viewport-fit=cover safe areas)
-    // but only if it's larger than current — prevents keyboard-open shrink
-    const handler = () => setStableHeight((prev) => Math.max(prev, window.innerHeight))
-    webApp.onEvent('viewportChanged', handler)
-    return () => webApp.offEvent('viewportChanged', handler)
+    const handler = (event?: { isStateStable?: boolean }) => {
+      if (event?.isStateStable === false) return  // skip mid-animation frames
+      setStableHeight((prev) => Math.max(prev, window.innerHeight))
+    }
+    webApp.onEvent('viewportChanged', handler as () => void)
+    return () => webApp.offEvent('viewportChanged', handler as () => void)
   }, [webApp])
 
   // Re-apply theme when user switches Telegram appearance

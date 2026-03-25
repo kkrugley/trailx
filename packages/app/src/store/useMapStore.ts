@@ -105,6 +105,8 @@ interface MapStoreActions {
   setSelectedPOI: (poi: POI | null) => void
   addStandalonePoi: (poi: POI) => void
   removeStandalonePoi: (id: string) => void
+  setStandalonePois: (pois: POI[]) => void
+  setMeasureSessions: (sessions: MeasureSession[]) => void
   // GPX import
   loadRouteFromGPX: (gpxFile: GPXFile) => void
   // Settings
@@ -351,6 +353,11 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
       set((state) => ({
         standalonePois: state.standalonePois.filter((p) => p.id !== id),
       })),
+
+    setStandalonePois: (pois) => set({ standalonePois: pois }),
+
+    setMeasureSessions: (sessions) =>
+      set({ measureSessions: sessions, measureActiveSessionId: null, measureActive: false }),
 
     updateSettings: (patch) =>
       set((state) => ({ appSettings: { ...state.appSettings, ...patch } })),

@@ -1,7 +1,7 @@
 import type { Bot, Context } from 'grammy'
 import { prisma } from '../db'
 
-const APP_URL = process.env.APP_URL ?? 'https://trailx.app'
+const APP_URL = process.env.VITE_APP_URL ?? 'https://trailx-app.vercel.app'
 
 export function registerApp(bot: Bot<Context>): void {
   bot.command('app', async (ctx) => {

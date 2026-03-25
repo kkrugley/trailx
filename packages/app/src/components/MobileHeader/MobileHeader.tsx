@@ -1,4 +1,4 @@
-import { Bicycle, Lightning, PersonSimpleWalk, Mountains, Clock, Path, MapPin, DownloadSimple, ShareNetwork } from '@phosphor-icons/react'
+import { Bicycle, Lightning, PersonSimpleWalk, Mountains, Clock, Path, MapPin, DownloadSimple, ShareNetwork, Warning } from '@phosphor-icons/react'
 import type { RoutingProfile } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useProfile } from '../../hooks/useProfile'
@@ -33,7 +33,7 @@ export function MobileHeader() {
   const routeResult = useMapStore((s) => s.routeResult)
   const speeds = useMapStore((s) => s.appSettings.speeds)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
-  const { share, isSharing } = useShareSession()
+  const { share, isSharing, error, clearError } = useShareSession()
 
   const ProfileIcon = PROFILE_ICONS[profile]
 
@@ -62,13 +62,16 @@ export function MobileHeader() {
         </div>
         <div className={styles.actions}>
           <button
-            className={styles.actionBtn}
-            onClick={share}
+            className={`${styles.actionBtn} ${error ? styles.actionBtnError : ''}`}
+            onClick={error ? clearError : share}
             disabled={isSharing}
-            aria-label="Поделиться"
-            title="Поделиться"
+            aria-label={error ? error : 'Поделиться'}
+            title={error ?? 'Поделиться'}
           >
-            <ShareNetwork size={16} weight="regular" />
+            {error
+              ? <Warning size={16} weight="fill" />
+              : <ShareNetwork size={16} weight="regular" />
+            }
           </button>
           <button className={styles.actionBtn} onClick={exportRoute} aria-label="Скачать GPX" title="Скачать GPX">
             <DownloadSimple size={16} weight="regular" />

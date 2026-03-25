@@ -1,4 +1,4 @@
-import { Export, Check, ShareNetwork } from '@phosphor-icons/react'
+import { Export, Check, ShareNetwork, X } from '@phosphor-icons/react'
 // TODO: import GPX moved — restore in WaypointInputList or standalone ImportButton
 // import { useState } from 'react'
 // import { parseGPX } from '@trailx/shared'
@@ -11,7 +11,7 @@ export function ExportPanel() {
   const routeResult = useMapStore((s) => s.routeResult)
   // TODO: import GPX moved — restore in WaypointInputList or standalone ImportButton
   // const { loadRouteFromGPX } = useMapStore((s) => s.actions)
-  const { share, isCopied, isSharing } = useShareSession()
+  const { share, isCopied, isSharing, error, clearError } = useShareSession()
 
   const hasRoute = routeResult !== null
 
@@ -24,6 +24,14 @@ export function ExportPanel() {
 
   return (
     <div className={styles.panel}>
+      {error && (
+        <div className={styles.errorToast} role="alert">
+          <span>{error}</span>
+          <button className={styles.errorDismiss} onClick={clearError} aria-label="Закрыть">
+            <X size={14} weight="bold" />
+          </button>
+        </div>
+      )}
       <div className={styles.row}>
         {/* Share button */}
         <button

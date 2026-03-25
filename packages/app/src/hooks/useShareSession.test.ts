@@ -141,6 +141,43 @@ describe('useShareSession', () => {
       const { result } = renderHook(() => useShareSession())
       await expect(act(async () => { await result.current.share() })).resolves.toBeUndefined()
     })
+
+    it('sets error when createSession rejects', async () => {
+      mockCreateSession.mockRejectedValue(new Error('Server error'))
+      const { result } = renderHook(() => useShareSession())
+      await act(async () => { await result.current.share() })
+      expect(result.current.error).toBe('Server error')
+    })
+
+    it('clearError resets error to null', async () => {
+      mockCreateSession.mockRejectedValue(new Error('Server error'))
+      const { result } = renderHook(() => useShareSession())
+      await act(async () => { await result.current.share() })
+      expect(result.current.error).toBe('Server error')
+      act(() => { result.current.clearError() })
+      expect(result.current.error).toBeNull()
+    })
+
+    it('error starts as null', () => {
+      const { result } = renderHook(() => useShareSession())
+      expect(result.current.error).toBeNull()
+    })
+
+    it('does not set error for AbortError (user cancellation)', async () => {
+      const abortErr = new Error('User cancelled')
+      abortErr.name = 'AbortError'
+      mockCreateSession.mockRejectedValue(abortErr)
+      const { result } = renderHook(() => useShareSession())
+      await act(async () => { await result.current.share() })
+      expect(result.current.error).toBeNull()
+    })
+
+    it('sets generic error message when rejection is not an Error instance', async () => {
+      mockCreateSession.mockRejectedValue('string rejection')
+      const { result } = renderHook(() => useShareSession())
+      await act(async () => { await result.current.share() })
+      expect(result.current.error).toBe('Не удалось поделиться маршрутом')
+    })
   })
 
   describe('TMA path (navigator.share)', () => {

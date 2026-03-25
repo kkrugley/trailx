@@ -137,6 +137,16 @@
   transform: scale(0.94);
 }
 
+.actionBtnError {
+  background: rgba(200, 60, 60, 0.12);
+  color: #c83c3c;
+}
+
+.actionBtnError:hover {
+  background: rgba(200, 60, 60, 0.22);
+  color: #c83c3c;
+}
+
 .statChip {
   display: inline-flex;
   align-items: center;

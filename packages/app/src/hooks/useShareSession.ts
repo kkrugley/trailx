@@ -9,6 +9,8 @@ export interface UseShareSessionReturn {
   share: () => Promise<void>
   isCopied: boolean
   isSharing: boolean
+  error: string | null
+  clearError: () => void
 }
 
 const DEVICE_ID_KEY = 'trailx-device-id'
@@ -34,6 +36,7 @@ export function useShareSession(): UseShareSessionReturn {
   const { webApp } = useTelegramWebApp()
   const [isCopied, setIsCopied] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function share() {
     setIsSharing(true)
@@ -71,14 +74,13 @@ export function useShareSession(): UseShareSessionReturn {
         setTimeout(() => setIsCopied(false), 2000)
       }
     } catch (err) {
-      // User cancellation is not an error
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('[useShareSession] share failed:', err)
-      }
+      if (err instanceof Error && err.name === 'AbortError') return
+      console.error('[useShareSession] share failed:', err)
+      setError(err instanceof Error ? err.message : 'Не удалось поделиться маршрутом')
     } finally {
       setIsSharing(false)
     }
   }
 
-  return { share, isCopied, isSharing }
+  return { share, isCopied, isSharing, error, clearError: () => setError(null) }
 }

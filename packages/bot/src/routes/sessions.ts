@@ -43,7 +43,7 @@ export const sessionRoutes: FastifyPluginAsync = async (fastify) => {
 
     const body = req.body
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-    const APP_URL = process.env.VITE_APP_URL ?? 'https://trailx.app'
+    const APP_URL = process.env.VITE_APP_URL ?? 'https://trailx-app.vercel.app'
 
     const session = await prisma.sharedSession.create({
       data: {

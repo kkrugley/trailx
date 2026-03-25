@@ -33,7 +33,7 @@ const fastify = Fastify({ logger: true })
 await fastify.register(cors, {
   origin: (origin, cb) => {
     const allowed = [
-      'https://trailx.app',
+      'https://trailx-app.vercel.app',
       'http://localhost:5173',
     ]
     if (!origin || allowed.some(o => origin.startsWith(o))) {

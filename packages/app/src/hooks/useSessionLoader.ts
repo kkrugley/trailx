@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { RoutePoint, RouteResult } from '@trailx/shared'
-import type { AppSettings } from '../store/useMapStore'
+import type { RoutePoint, RouteResult, POI } from '@trailx/shared'
+import type { AppSettings, MeasureSession } from '../store/useMapStore'
 import { getSession, SessionNotFoundError } from '../services/api'
 import { useMapStore } from '../store/useMapStore'
 
@@ -41,8 +41,10 @@ export function useSessionLoader(): UseSessionLoaderReturn {
         const { payload } = await getSession(sessionId!)
         if (cancelled) return
 
-        const { clearRoute, addWaypoint, setRouteResult, updateSettings } =
-          useMapStore.getState().actions
+        const {
+          clearRoute, addWaypoint, setRouteResult, updateSettings,
+          setStandalonePois, setMeasureSessions,
+        } = useMapStore.getState().actions
 
         // Restore waypoints
         clearRoute()
@@ -52,6 +54,10 @@ export function useSessionLoader(): UseSessionLoaderReturn {
 
         // Restore route result
         setRouteResult(payload.routeResult as RouteResult | null)
+
+        // Restore standalone POIs and measure sessions
+        setStandalonePois(payload.standalonePois as POI[])
+        setMeasureSessions(payload.measureSessions as MeasureSession[])
 
         // Restore settings
         updateSettings(payload.appSettings as Partial<AppSettings>)

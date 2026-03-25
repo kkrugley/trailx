@@ -36,6 +36,7 @@ await fastify.register(cors, {
     const allowed = [
       'https://trailx-app.vercel.app',
       'http://localhost',
+      'http://127.0.0.1',
     ]
     if (!origin || allowed.some(o => origin.startsWith(o))) {
       cb(null, true)

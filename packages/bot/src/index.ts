@@ -4,6 +4,7 @@ import { Bot } from 'grammy'
 import { prisma } from './db'
 import { registerCommands } from './commands'
 import { registerClient, unregisterClient } from './ws/hub'
+import { sessionRoutes } from './routes/sessions'
 import type { StoredWaypoint } from './types'
 
 // ── Environment ────────────────────────────────────────────────────────────
@@ -58,6 +59,9 @@ fastify.get<{ Params: { id: string } }>('/routes/:id', async (req, reply) => {
   }
 })
 
+// Session sharing REST API
+fastify.register(sessionRoutes, { prefix: '/api/sessions' })
+
 // WebSocket endpoint — TMA clients subscribe by chatId
 fastify.get<{ Querystring: { chatId?: string } }>(
   '/ws',
@@ -75,6 +79,14 @@ fastify.get<{ Querystring: { chatId?: string } }>(
 // ── Start ──────────────────────────────────────────────────────────────────
 
 await fastify.listen({ port: PORT, host: '0.0.0.0' })
+
+// Hourly cleanup of expired sessions
+setInterval(async () => {
+  const { count } = await prisma.sharedSession.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  })
+  if (count > 0) console.log(`Cleaned up ${count} expired sessions`)
+}, 60 * 60 * 1000)
 
 if (WEBHOOK_DOMAIN) {
   const webhookUrl = `${WEBHOOK_DOMAIN}/webhook/bot`

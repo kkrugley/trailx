@@ -45,3 +45,30 @@ model PendingVote {
   lng       Float
   createdAt DateTime @default(now())
 }
+
+model SharedSession {
+  id             String   @id @default(cuid())
+
+  // Owner — one of the two must be set (enforced at route level)
+  telegramUserId BigInt?
+  deviceId       String?
+
+  // Session data (full Zustand partialize snapshot)
+  waypoints       Json
+  routeResult     Json?
+  standalonePois  Json
+  measureSessions Json
+  appSettings     Json
+
+  // Meta
+  name      String?
+  expiresAt DateTime
+  editToken String   @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([telegramUserId])
+  @@index([deviceId])
+  @@index([expiresAt])
+}

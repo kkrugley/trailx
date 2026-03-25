@@ -95,6 +95,8 @@ fastify.get<{ Querystring: { chatId?: string } }>(
 
 // ── Start ──────────────────────────────────────────────────────────────────
 
+await bot.init()
+
 await fastify.listen({ port: PORT, host: '0.0.0.0' })
 
 // Hourly cleanup of expired sessions

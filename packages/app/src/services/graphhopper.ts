@@ -104,10 +104,6 @@ export async function buildRoute(
     throw new RateLimitError()
   }
 
-  if (response.status === 500) {
-    throw new RoutingError('Routing service unavailable.')
-  }
-
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as { message?: string }
     throw new RoutingError(data.message ?? `GraphHopper error ${response.status}`)

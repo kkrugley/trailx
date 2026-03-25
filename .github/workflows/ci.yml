@@ -87,7 +87,6 @@ jobs:
       - name: Build app
         run: pnpm --filter @trailx/app build
         env:
-          VITE_GRAPHHOPPER_API_KEY: ""
           VITE_API_URL: "https://example.com"
           VITE_BOT_WS_URL: "wss://example.com"
           VITE_MAPILLARY_TOKEN: ""

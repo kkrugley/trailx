@@ -29,7 +29,6 @@ function formatDurationCompact(seconds: number): string {
 
 export function MobileHeader() {
   const { profile } = useProfile()
-  const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
   const speeds = useMapStore((s) => s.appSettings.speeds)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
@@ -81,32 +80,12 @@ export function MobileHeader() {
     )
   }
 
-  const hasWaypoints = waypoints.some((w) => !isNaN(w.lat) && !isNaN(w.lng))
-
-  if (!hasWaypoints) {
-    return (
-      <div className={styles.bar}>
-        <div className={styles.hintIcon}>
-          <MapPin size={18} weight="duotone" />
-        </div>
-        <p className={styles.hintText}>Добавьте точки маршрута в выдвижном меню</p>
-      </div>
-    )
-  }
-
-  const start = waypoints[0]?.label ?? 'Choose starting point'
-  const end = waypoints[waypoints.length - 1]?.label ?? 'Choose destination'
-
   return (
     <div className={styles.bar}>
-      <div className={styles.profileIcon}>
-        <ProfileIcon size={20} weight="fill" />
+      <div className={styles.hintIcon}>
+        <MapPin size={18} weight="duotone" />
       </div>
-      <div className={styles.inputs}>
-        <span className={styles.inputLine} title={start}>{start}</span>
-        <div className={styles.divider} />
-        <span className={styles.inputLine} title={end}>{end}</span>
-      </div>
+      <p className={styles.hintText}>Добавьте точки маршрута в выдвижном меню</p>
     </div>
   )
 }

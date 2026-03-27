@@ -49,6 +49,9 @@ await fastify.register(cors, {
 
 await fastify.register(websocket)
 
+// Health check — used by Railway to determine readiness
+fastify.get('/health', async () => ({ ok: true }))
+
 // Telegram webhook endpoint
 fastify.post('/webhook/bot', {
   config: { rawBody: true },

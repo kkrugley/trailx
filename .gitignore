@@ -64,6 +64,7 @@ coverage/
 *.sw?
 .agents/*
 .claude/*
+.opencode/*
 .mcp.json
 skills-lock.json
 

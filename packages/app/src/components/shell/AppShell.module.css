@@ -115,6 +115,7 @@
 .mobileBottomBar {
   grid-row: 2;
   grid-column: 1;
+  position: relative; /* required for z-index to beat position:absolute BottomSheet */
   z-index: 20;
   background: var(--surface-variant);
   box-shadow: 0 -2px 12px rgba(68, 86, 181, 0.08);

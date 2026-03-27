@@ -258,6 +258,16 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     return () => webApp.offEvent('viewportChanged', handler as () => void)
   }, [webApp])
 
+  // Fallback: catch expand via native resize when viewportChanged is unreliable
+  useEffect(() => {
+    if (!webApp) return
+    const onResize = () => {
+      setStableHeight((prev) => Math.max(prev, window.innerHeight))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [webApp])
+
   // Re-apply theme when user switches Telegram appearance
   useEffect(() => {
     if (!webApp) return

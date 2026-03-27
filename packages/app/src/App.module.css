@@ -4,9 +4,9 @@
   overflow: hidden;
 }
 
-/* Inside Telegram, use the stable viewport height to avoid toolbar overlap */
+/* Inside Telegram, track dynamic viewport so expand/collapse is reflected without JS */
 .tma {
-  height: var(--tma-vh, 100vh);
+  height: 100dvh;
 }
 
 /* Session deep-link loading overlay */

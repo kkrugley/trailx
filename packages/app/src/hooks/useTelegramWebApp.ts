@@ -198,6 +198,8 @@ export interface TelegramWebAppResult {
   isAvailable: boolean
   /** Reactive viewportStableHeight in px. Falls back to window.innerHeight outside TMA. */
   stableHeight: number
+  /** Increments each time the TMA transitions from collapsed to expanded. Use as a React key to force remount. */
+  expandCount: number
   haptic: HapticAPI
   backButton: BackButtonAPI
 }
@@ -212,6 +214,8 @@ export function useTelegramWebApp(): TelegramWebAppResult {
   const [stableHeight, setStableHeight] = useState<number>(
     () => typeof window !== 'undefined' ? window.innerHeight : 0,
   )
+  const [expandCount, setExpandCount] = useState(0)
+  const wasCollapsed = useRef(false)
 
   const deepLinkHandled = useRef(false)
 
@@ -226,6 +230,9 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     webApp.ready()
     // Always expand — isExpanded may be stale/incorrect when opened via bot menu button
     webApp.expand()
+    if (!webApp.isExpanded) {
+      wasCollapsed.current = true
+    }
     // Request true fullscreen to remove native Telegram header (Bot API 7.3+)
     webApp.requestFullscreen?.()
     applyThemeParams(webApp.themeParams)
@@ -258,11 +265,28 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     return () => webApp.offEvent('viewportChanged', handler as () => void)
   }, [webApp])
 
+  // Detect collapsed → expanded transition and trigger AppShell remount
+  useEffect(() => {
+    if (!webApp) return
+    const handler = (event?: { isStateStable?: boolean }) => {
+      if (event?.isStateStable && wasCollapsed.current && webApp.isExpanded) {
+        wasCollapsed.current = false
+        setExpandCount((c) => c + 1)
+      }
+    }
+    webApp.onEvent('viewportChanged', handler as () => void)
+    return () => webApp.offEvent('viewportChanged', handler as () => void)
+  }, [webApp])
+
   // Fallback: catch expand via native resize when viewportChanged is unreliable
   useEffect(() => {
     if (!webApp) return
     const onResize = () => {
       setStableHeight((prev) => Math.max(prev, window.innerHeight))
+      if (wasCollapsed.current && webApp.isExpanded) {
+        wasCollapsed.current = false
+        setExpandCount((c) => c + 1)
+      }
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -280,6 +304,7 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     webApp,
     isAvailable,
     stableHeight,
+    expandCount,
     haptic: webApp?.HapticFeedback ?? noopHaptic,
     backButton: webApp?.BackButton ?? noopBackButton,
   }

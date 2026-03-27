@@ -8,7 +8,7 @@ import styles from './App.module.css'
 
 export function App() {
   useRouteSync()
-  const { stableHeight, isAvailable } = useTelegramWebApp()
+  const { stableHeight, isAvailable, expandCount } = useTelegramWebApp()
   const { isLoading, error } = useSessionLoader()
   const setRouteError = useMapStore((s) => s.actions.setRouteError)
 
@@ -36,7 +36,7 @@ export function App() {
 
   return (
     <div className={`${styles.root} ${isAvailable ? styles.tma : ''}`}>
-      <AppShell />
+      <AppShell key={expandCount} />
     </div>
   )
 }

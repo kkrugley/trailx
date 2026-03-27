@@ -34,7 +34,9 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const isResolved = !isNaN(point.lat)
+  // isNaN(null) === false in JS (null coerces to 0), so an explicit typeof guard is
+  // required — persisted NaN waypoints deserialize to null via JSON round-trip.
+  const isResolved = typeof point.lat === 'number' && !isNaN(point.lat)
   const defaultLabel = isResolved ? (point.label ?? `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`) : ''
   const [inputValue, setInputValue] = useState(defaultLabel)
   const [showSuggestions, setShowSuggestions] = useState(false)

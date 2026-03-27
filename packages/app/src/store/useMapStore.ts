@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
@@ -462,6 +462,13 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
 }), {
   name: 'trailx-session',
   version: 2,
+  // JSON.stringify(NaN) === "null", so waypoints with lat/lng NaN are stored as null.
+  // The reviver restores null back to NaN on every load, preventing runtime crashes
+  // in components that call .toFixed() / .toFixed() on supposedly-numeric coordinates.
+  storage: createJSONStorage(() => localStorage, {
+    reviver: (key, value) =>
+      (key === 'lat' || key === 'lng') && value === null ? NaN : value,
+  }),
   migrate: (persisted: unknown, version: number) => {
     const state = persisted as Record<string, unknown>
     if (version < 2) {

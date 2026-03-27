@@ -26,7 +26,10 @@
 }
 
 .expanded {
-  height: 60vh;
+  /* dvh tracks the actual visible viewport (adjusts when browser toolbar shows/hides).
+     Using vh here could make the sheet taller than the mobileGrid (100dvh), causing
+     overflow:hidden to clip it and hide the map entirely on Chrome/Safari mobile. */
+  height: 60dvh;
 }
 
 .handle {

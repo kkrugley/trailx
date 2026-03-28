@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 export interface TmaDebugSnapshot {
   timestamp: string
@@ -65,6 +65,11 @@ export function useTmaDebug() {
   const [logs, setLogs] = useState<TmaDebugSnapshot[]>([])
   const attached = useRef(false)
 
+  const refresh = useCallback(() => {
+    const snap = takeSnapshot('manual-refresh')
+    setLogs((prev) => [...prev.slice(-19), snap])
+  }, [])
+
   useEffect(() => {
     if (attached.current) return
     attached.current = true
@@ -72,17 +77,14 @@ export function useTmaDebug() {
     const push = (event: string) => {
       const snap = takeSnapshot(event)
       console.log('[TMA-DEBUG]', event, snap)
-      setLogs((prev) => [...prev.slice(-29), snap]) // keep last 30
+      setLogs((prev) => [...prev.slice(-19), snap]) // keep last 20
     }
 
-    // Initial snapshot
     push('mount')
 
-    // Resize
     const onResize = () => push('resize')
     window.addEventListener('resize', onResize)
 
-    // TMA viewportChanged
     const webApp = window.Telegram?.WebApp
     if (webApp) {
       const onViewport = (evt?: { isStateStable?: boolean }) => {
@@ -91,19 +93,10 @@ export function useTmaDebug() {
       webApp.onEvent('viewportChanged', onViewport as () => void)
     }
 
-    // Periodic check every 2s for 30s after mount (catches delayed expand)
-    let ticks = 0
-    const interval = setInterval(() => {
-      ticks++
-      push(`tick-${ticks}`)
-      if (ticks >= 15) clearInterval(interval)
-    }, 2000)
-
     return () => {
       window.removeEventListener('resize', onResize)
-      clearInterval(interval)
     }
   }, [])
 
-  return logs
+  return { logs, refresh }
 }

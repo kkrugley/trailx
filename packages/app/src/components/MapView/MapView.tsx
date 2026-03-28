@@ -22,6 +22,7 @@ import { POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { usePOISearch } from '../../hooks/usePOISearch'
 import { useMeasureSync } from '../../hooks/useMeasureSync'
+import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
 import { generatePOIIcon } from '../../utils/poiIcon'
@@ -246,11 +247,15 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   usePOISearch()
   useMeasureSync(mapRef.current, mapVersion)
 
-  const { setSelectedPOI, updateWaypoint, addIntermediateAt } = useMapStore((s) => s.actions)
+  const { setSelectedPOI, updateWaypoint, addIntermediateAt, setNewPoiDraft } = useMapStore((s) => s.actions)
 
   // Stable refs for imperative handlers
   const setSelectedPOIRef = useRef(setSelectedPOI)
   useEffect(() => { setSelectedPOIRef.current = setSelectedPOI }, [setSelectedPOI])
+
+  const { haptic } = useTelegramWebApp()
+  const hapticRef = useRef(haptic)
+  useEffect(() => { hapticRef.current = haptic }, [haptic])
 
   useImperativeHandle(ref, () => ({
     getMap: () => mapRef.current,
@@ -274,11 +279,8 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     const contextMenuHandler = (e: maplibregl.MapMouseEvent) => {
       e.preventDefault()
       const rect = map.getCanvas().getBoundingClientRect()
-      const rawX = rect.left + e.point.x
-      const rawY = rect.top + e.point.y
-      // Prevent menu from going off-screen (menu is ~210px wide, ~180px tall)
-      const x = Math.min(rawX, window.innerWidth - 220)
-      const y = Math.min(rawY, window.innerHeight - 200)
+      const x = rect.left + e.point.x
+      const y = rect.top + e.point.y
       setContextMenu({ lat: e.lngLat.lat, lng: e.lngLat.lng, x, y })
     }
     map.on('contextmenu', contextMenuHandler)
@@ -305,11 +307,9 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
         const canvasX = startX - rect.left
         const canvasY = startY - rect.top
         const lngLat = map.unproject([canvasX, canvasY])
-        const rawX = startX
-        const rawY = startY
-        const x = Math.min(rawX, window.innerWidth - 220)
-        const y = Math.min(rawY, window.innerHeight - 200)
-        setContextMenu({ lat: lngLat.lat, lng: lngLat.lng, x, y })
+        setContextMenu({ lat: lngLat.lat, lng: lngLat.lng, x: startX, y: startY })
+        hapticRef.current.impactOccurred('medium')
+        navigator.vibrate?.(50)
       }, 500)
     }
 
@@ -499,9 +499,13 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     const source = map.getSource(POI_SOURCE) as GeoJSONSource | undefined
     if (!source) return
     const savedIds = new Set(standalonePois.map((p) => p.id))
+    // Include standalone POIs that are not already present in Overpass results
+    const poisInResults = new Set(pois.map((p) => p.id))
+    const extraStandalone = standalonePois.filter((p) => !poisInResults.has(p.id))
+    const allPois = [...pois, ...extraStandalone]
     source.setData({
       type: 'FeatureCollection',
-      features: pois.map((poi) => {
+      features: allPois.map((poi) => {
         const saved = savedIds.has(poi.id)
         const icon = ensurePOIIcon(map, poi.category, POI_COLORS[poi.category], saved)
         return {
@@ -555,6 +559,11 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     if (end) updateWaypoint(end.id, contextMenu.lat, contextMenu.lng, label)
   }
 
+  function handleContextAddPoi() {
+    if (!contextMenu) return
+    setNewPoiDraft({ lat: contextMenu.lat, lng: contextMenu.lng })
+  }
+
   return (
     <div ref={containerRef} className={styles.container}>
       <div className={`${styles.skeleton} ${mapReady ? styles.skeletonHidden : ''}`} />
@@ -580,6 +589,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
           onSetStart={handleContextSetStart}
           onAddIntermediate={handleContextAddIntermediate}
           onSetEnd={handleContextSetEnd}
+          onAddPoi={handleContextAddPoi}
         />
       )}
     </div>

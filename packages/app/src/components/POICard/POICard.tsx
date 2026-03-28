@@ -12,7 +12,7 @@ import {
   MapPin,
 } from '@phosphor-icons/react'
 import type { POI, POICategory } from '@trailx/shared'
-import { POI_LABELS, POI_COLORS } from '@trailx/shared'
+import { POI_LABELS, POI_COLORS, POI_CATEGORIES } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import styles from './POICard.module.css'
 
@@ -27,6 +27,7 @@ const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
   food: <ForkKnife size={18} weight="fill" />,
   historic: <CastleTurret size={18} weight="fill" />,
   viewpoint: <Binoculars size={18} weight="fill" />,
+  custom: <MapPin size={18} weight="fill" />,
 }
 
 // ── Wikidata image fetch ──────────────────────────────────────────────────────
@@ -59,18 +60,32 @@ async function fetchWikidataImage(qid: string): Promise<string | null> {
 export interface POICardProps {
   poi: POI | null
   onClose: () => void
+  draft?: { lat: number; lng: number }
 }
 
-export function POICard({ poi, onClose }: POICardProps) {
+export function POICard({ poi, onClose, draft }: POICardProps) {
   // Keep last non-null poi so the card content stays visible during the slide-out animation
   const [displayPoi, setDisplayPoi] = useState<POI | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  // Draft form state
+  const [displayDraft, setDisplayDraft] = useState<{ lat: number; lng: number } | null>(null)
+  const [draftName, setDraftName] = useState('')
+  const [draftCategory, setDraftCategory] = useState<POICategory>('custom')
+
   const standalonePois = useMapStore((s) => s.standalonePois)
   const { addStandalonePoi, removeStandalonePoi, insertWaypointNear } = useMapStore((s) => s.actions)
 
   useEffect(() => {
     if (poi) setDisplayPoi(poi)
   }, [poi])
+
+  useEffect(() => {
+    if (draft) {
+      setDisplayDraft(draft)
+      setDraftName('')
+      setDraftCategory('custom')
+    }
+  }, [draft])
 
   // Fetch Wikidata image when POI changes
   useEffect(() => {
@@ -97,7 +112,24 @@ export function POICard({ poi, onClose }: POICardProps) {
     removeStandalonePoi(displayPoi.id)
   }
 
-  const isVisible = poi !== null
+  function handleSaveDraft() {
+    if (!displayDraft) return
+    const name = draftName.trim() || `${displayDraft.lat.toFixed(5)}, ${displayDraft.lng.toFixed(5)}`
+    addStandalonePoi({
+      id: `manual-${Date.now()}`,
+      lat: displayDraft.lat,
+      lng: displayDraft.lng,
+      name,
+      category: draftCategory,
+      osmId: 0,
+      osmType: 'node',
+      tags: {},
+    })
+    onClose()
+  }
+
+  const isDraftMode = draft !== undefined
+  const isVisible = poi !== null || isDraftMode
 
   return (
     <div
@@ -105,7 +137,58 @@ export function POICard({ poi, onClose }: POICardProps) {
       onClick={isVisible ? onClose : undefined}
     >
       <div className={styles.card} onClick={(e) => e.stopPropagation()}>
-        {displayPoi && (
+        {/* ── Create mode (draft) ── */}
+        {isDraftMode && displayDraft && (
+          <>
+            <div className={styles.header}>
+              <div className={styles.titleRow}>
+                <span
+                  className={styles.categoryBadge}
+                  style={{ backgroundColor: POI_COLORS[draftCategory] }}
+                >
+                  {CATEGORY_ICONS[draftCategory]}
+                </span>
+                <div className={styles.titleGroup}>
+                  <span className={styles.title}>Новая метка</span>
+                  <span className={styles.categoryLabel}>
+                    {displayDraft.lat.toFixed(5)}, {displayDraft.lng.toFixed(5)}
+                  </span>
+                </div>
+              </div>
+              <button className={styles.closeButton} onClick={onClose} aria-label="Close">
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+
+            <div className={styles.draftForm}>
+              <input
+                className={styles.draftInput}
+                type="text"
+                placeholder="Название метки"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+              />
+              <select
+                className={styles.draftSelect}
+                value={draftCategory}
+                onChange={(e) => setDraftCategory(e.target.value as POICategory)}
+              >
+                {POI_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{POI_LABELS[cat]}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.draftActionsRow}>
+              <button className={styles.btnPrimary} onClick={handleSaveDraft}>
+                Сохранить метку
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── View mode (existing POI) ── */}
+        {!isDraftMode && displayPoi && (
           <>
             {/* ── Header ── */}
             <div className={styles.header}>

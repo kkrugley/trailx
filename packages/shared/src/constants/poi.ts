@@ -9,6 +9,7 @@ export const POI_CATEGORIES: POICategory[] = [
   'food',
   'historic',
   'viewpoint',
+  'custom',
 ]
 
 /** Overpass QL tag filter expression for each category */
@@ -21,6 +22,7 @@ export const POI_OVERPASS_FILTER: Record<POICategory, string> = {
   food: '[amenity~"^(cafe|restaurant|fast_food)$"]',
   historic: '[historic]',
   viewpoint: '[tourism=viewpoint]',
+  custom: '',
 }
 
 /** Display labels in Russian */
@@ -33,6 +35,7 @@ export const POI_LABELS: Record<POICategory, string> = {
   food: 'Еда',
   historic: 'История',
   viewpoint: 'Обзор',
+  custom: 'Метка',
 }
 
 /** Map marker fill colors */
@@ -45,4 +48,5 @@ export const POI_COLORS: Record<POICategory, string> = {
   food: '#F44336',
   historic: '#607D8B',
   viewpoint: '#00BCD4',
+  custom: '#4456b5',
 }

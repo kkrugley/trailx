@@ -105,6 +105,7 @@ interface MapStoreActions {
   setActiveCategories: (categories: POICategory[]) => void
   // POI card
   setSelectedPOI: (poi: POI | null) => void
+  setNewPoiDraft: (draft: { lat: number; lng: number } | null) => void
   addStandalonePoi: (poi: POI) => void
   removeStandalonePoi: (id: string) => void
   setStandalonePois: (pois: POI[]) => void
@@ -140,6 +141,7 @@ interface MapStore {
   activeCategories: POICategory[]
   // POI card
   selectedPOI: POI | null
+  newPoiDraft: { lat: number; lng: number } | null
   standalonePois: POI[]
   // App settings
   appSettings: AppSettings
@@ -186,6 +188,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   isSearchingPOI: false,
   activeCategories: [...POI_CATEGORIES],
   selectedPOI: null,
+  newPoiDraft: null,
   standalonePois: [],
   appSettings: DEFAULT_SETTINGS,
   measureActive: false,
@@ -345,6 +348,8 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
       })),
 
     setSelectedPOI: (poi) => set({ selectedPOI: poi }),
+
+    setNewPoiDraft: (draft) => set({ newPoiDraft: draft }),
 
     addStandalonePoi: (poi) =>
       set((state) => ({

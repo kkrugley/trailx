@@ -243,3 +243,43 @@
 .btnPrimary:hover {
   opacity: 0.9;
 }
+
+/* ── Draft create form ───────────────────────────────────────────────────── */
+
+.draftForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem 0.5rem;
+}
+
+.draftInput,
+.draftSelect {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--ghost-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  color: var(--primary);
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.draftInput:focus,
+.draftSelect:focus {
+  border-color: var(--secondary);
+}
+
+.draftInput::placeholder {
+  color: var(--primary);
+  opacity: 0.35;
+}
+
+.draftActionsRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 0.75rem 1rem 1rem;
+}

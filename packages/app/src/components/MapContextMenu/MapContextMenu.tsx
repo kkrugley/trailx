@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Compass, FlagBanner, FlagPennant, PlusCircle, Copy, PencilSimpleLine } from '@phosphor-icons/react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Compass, FlagBanner, FlagPennant, MapPin, PlusCircle, Copy, PencilSimpleLine } from '@phosphor-icons/react'
 import styles from './MapContextMenu.module.css'
 
 export interface MapContextMenuProps {
@@ -11,6 +11,7 @@ export interface MapContextMenuProps {
   onSetStart: () => void
   onAddIntermediate: () => void
   onSetEnd: () => void
+  onAddPoi: () => void
 }
 
 export function MapContextMenu({
@@ -19,6 +20,7 @@ export function MapContextMenu({
   onSetStart,
   onAddIntermediate,
   onSetEnd,
+  onAddPoi,
 }: MapContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -41,8 +43,21 @@ export function MapContextMenu({
     }
   }, [onClose])
 
-  // Adjust position so menu doesn't overflow viewport
-  const style: React.CSSProperties = { left: x, top: y }
+  // Adjust position so menu stays within viewport on all 4 edges
+  const MARGIN = 8
+  const [pos, setPos] = useState<{ left: number; top: number }>({ left: x, top: y })
+
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (!el) return
+    const { offsetWidth: w, offsetHeight: h } = el
+    setPos({
+      left: Math.min(Math.max(x, MARGIN), window.innerWidth - w - MARGIN),
+      top: Math.min(Math.max(y, MARGIN), window.innerHeight - h - MARGIN),
+    })
+  }, [x, y])
+
+  const style: React.CSSProperties = { left: pos.left, top: pos.top }
 
   function copyCoords() {
     navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
@@ -82,6 +97,14 @@ export function MapContextMenu({
       <button className={styles.item} onClick={() => { onSetEnd(); onClose() }}>
         <FlagPennant size={15} weight="fill" className={styles.iconEnd} />
         Установить конец
+      </button>
+
+      <div className={styles.divider} />
+
+      {/* Метка */}
+      <button className={styles.item} onClick={() => { onAddPoi(); onClose() }}>
+        <MapPin size={15} weight="fill" className={styles.iconPoi} />
+        Добавить метку
       </button>
 
       <div className={styles.divider} />

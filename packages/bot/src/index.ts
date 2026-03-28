@@ -119,11 +119,11 @@ if (WEBHOOK_DOMAIN) {
   const webhookUrl = `${WEBHOOK_DOMAIN}/webhook/bot`
   await bot.api.setWebhook(webhookUrl, {
     secret_token: WEBHOOK_SECRET || undefined,
-    allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer'],
+    allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'],
   })
   console.log(`Webhook set: ${webhookUrl}`)
 } else {
   // Local dev: use long polling
   console.log('Starting long polling...')
-  void bot.start({ allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer'] })
+  void bot.start({ allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'] })
 }

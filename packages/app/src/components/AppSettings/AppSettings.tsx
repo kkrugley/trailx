@@ -81,6 +81,15 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
         />
       </Section>
 
+      {/* Map — auto-fit */}
+      <Section title="Карта">
+        <Toggle
+          label="Авто-центрирование на маршруте"
+          value={settings.autoFitRoute}
+          onChange={(v) => updateSettings({ autoFitRoute: v })}
+        />
+      </Section>
+
       {/* Speeds — accordion */}
       <Accordion title="Скорость движения">
         <div className={styles.speedGrid}>
@@ -92,34 +101,16 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
               { key: 'racingbike', label: 'Шоссейный' },
             ] as const
           ).map(({ key, label }) => (
-            <div key={key} className={styles.speedItem}>
-              <span className={styles.speedLabel}>{label}</span>
-              <div className={styles.spinnerWrap}>
-                <input
-                  type="number"
-                  step={1}
-                  value={kphToDisplay(settings.speeds[key], settings.distanceUnit)}
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (!isNaN(v) && v > 0) patchNested('speeds', { [key]: displayToKph(v, settings.distanceUnit) })
-                  }}
-                  className={styles.spinnerInput}
-                />
-                <span className={styles.spinnerUnit}>{speedUnit(settings.distanceUnit)}</span>
-              </div>
-            </div>
+            <SpeedInput
+              key={key}
+              speedKey={key}
+              label={label}
+              settings={settings}
+              patchNested={patchNested}
+            />
           ))}
         </div>
       </Accordion>
-
-      {/* Map — auto-fit */}
-      <Section title="Карта">
-        <Toggle
-          label="Авто-центрирование на маршруте"
-          value={settings.autoFitRoute}
-          onChange={(v) => updateSettings({ autoFitRoute: v })}
-        />
-      </Section>
 
       {/* GPX Export — accordion */}
       <Accordion title="Настройки экспорта GPX">
@@ -198,6 +189,49 @@ function Segmented({
           {opt.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+function SpeedInput({
+  speedKey,
+  label,
+  settings,
+  patchNested,
+}: {
+  speedKey: 'foot' | 'bike' | 'mtb' | 'racingbike'
+  label: string
+  settings: AppSettings
+  patchNested: <K extends keyof AppSettings>(key: K, nested: Partial<AppSettings[K]>) => void
+}) {
+  const [raw, setRaw] = useState(
+    () => String(kphToDisplay(settings.speeds[speedKey], settings.distanceUnit)),
+  )
+
+  useEffect(() => {
+    setRaw(String(kphToDisplay(settings.speeds[speedKey], settings.distanceUnit)))
+  }, [settings.distanceUnit]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className={styles.speedItem}>
+      <span className={styles.speedLabel}>{label}</span>
+      <div className={styles.spinnerWrap}>
+        <input
+          type="number"
+          step={1}
+          value={raw}
+          onChange={(e) => {
+            const text = e.target.value
+            setRaw(text)
+            const v = parseFloat(text)
+            if (!isNaN(v) && v > 0) {
+              patchNested('speeds', { [speedKey]: displayToKph(v, settings.distanceUnit) })
+            }
+          }}
+          className={styles.spinnerInput}
+        />
+        <span className={styles.spinnerUnit}>{speedUnit(settings.distanceUnit)}</span>
+      </div>
     </div>
   )
 }

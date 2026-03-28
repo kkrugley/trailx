@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
-  Drop, Wrench, House, Bicycle, Tent, ForkKnife, CastleTurret, Binoculars,
+  Drop, Wrench, House, Bicycle, Tent, ForkKnife, CastleTurret, Binoculars, MapPin,
 } from '@phosphor-icons/react'
 import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
 import type { POICategory } from '@trailx/shared'
@@ -17,6 +17,7 @@ const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
   food:           <ForkKnife size={14} weight="fill" />,
   historic:       <CastleTurret size={14} weight="fill" />,
   viewpoint:      <Binoculars size={14} weight="fill" />,
+  custom:         <MapPin size={14} weight="fill" />,
 }
 
 interface POIFilterProps {

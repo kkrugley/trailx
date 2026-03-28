@@ -8,6 +8,7 @@ import {
   CastleTurret,
   Binoculars,
   GridFour,
+  MapPin,
 } from '@phosphor-icons/react'
 import type { POICategory } from '@trailx/shared'
 import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
@@ -23,6 +24,7 @@ const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
   food: <ForkKnife size={15} weight="fill" />,
   historic: <CastleTurret size={15} weight="fill" />,
   viewpoint: <Binoculars size={15} weight="fill" />,
+  custom: <MapPin size={15} weight="fill" />,
 }
 
 export function FilterBar() {

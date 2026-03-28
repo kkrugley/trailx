@@ -26,7 +26,8 @@ export function AppShell() {
 
   const isExportOpen = useMapStore((s) => s.isExportOpen)
   const selectedPOI = useMapStore((s) => s.selectedPOI)
-  const { setSelectedPOI } = useMapStore((s) => s.actions)
+  const newPoiDraft = useMapStore((s) => s.newPoiDraft)
+  const { setSelectedPOI, setNewPoiDraft } = useMapStore((s) => s.actions)
 
   if (isDesktop) {
     return (
@@ -54,7 +55,11 @@ export function AppShell() {
           <ElevationBar />
         </div>
 
-        <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
+        <POICard
+          poi={selectedPOI}
+          draft={newPoiDraft ?? undefined}
+          onClose={() => { setSelectedPOI(null); setNewPoiDraft(null) }}
+        />
 
         {/* POI filter — fixed bottom-right */}
         <button

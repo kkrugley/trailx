@@ -93,3 +93,8 @@
   opacity: 0.45;
   flex-shrink: 0;
 }
+
+.iconPoi {
+  color: #4456b5;
+  flex-shrink: 0;
+}

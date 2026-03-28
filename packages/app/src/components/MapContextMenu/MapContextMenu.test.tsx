@@ -11,6 +11,7 @@ const defaultProps = {
   onSetStart: vi.fn(),
   onAddIntermediate: vi.fn(),
   onSetEnd: vi.fn(),
+  onAddPoi: vi.fn(),
 }
 
 beforeEach(() => {
@@ -49,7 +50,7 @@ describe('MapContextMenu — rendering', () => {
 
   it('renders all action buttons', () => {
     renderMenu()
-    expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(4)
+    expect(screen.getAllByRole('button').length).toBe(6)
   })
 })
 
@@ -72,6 +73,20 @@ describe('MapContextMenu — route actions', () => {
     renderMenu()
     fireEvent.click(screen.getByText(/Установить конец/i))
     expect(defaultProps.onSetEnd).toHaveBeenCalledOnce()
+    expect(defaultProps.onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('MapContextMenu — POI action', () => {
+  it('renders Add POI button', () => {
+    renderMenu()
+    expect(screen.getByText(/Добавить метку/i)).toBeDefined()
+  })
+
+  it('calls onAddPoi and onClose when Add POI button is clicked', () => {
+    renderMenu()
+    fireEvent.click(screen.getByText(/Добавить метку/i))
+    expect(defaultProps.onAddPoi).toHaveBeenCalledOnce()
     expect(defaultProps.onClose).toHaveBeenCalledOnce()
   })
 })
@@ -138,5 +153,60 @@ describe('MapContextMenu — close behaviour', () => {
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     menu.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
+  })
+})
+
+describe('MapContextMenu — overflow prevention', () => {
+  beforeEach(() => {
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() { return 210 },
+    })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get() { return 200 },
+    })
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 600 })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get() { return 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get() { return 0 } })
+  })
+
+  it('clamps left when menu would overflow right edge', () => {
+    // x=700, menu=210, margin=8 → 800-210-8=582
+    const { container } = renderMenu({ ...defaultProps, x: 700, y: 100 })
+    const menu = container.firstChild as HTMLElement
+    expect(menu.style.left).toBe('582px')
+  })
+
+  it('clamps top when menu would overflow bottom edge', () => {
+    // y=500, menu=200, margin=8 → 600-200-8=392
+    const { container } = renderMenu({ ...defaultProps, x: 100, y: 500 })
+    const menu = container.firstChild as HTMLElement
+    expect(menu.style.top).toBe('392px')
+  })
+
+  it('clamps left when menu would overflow left edge', () => {
+    // x=2 < margin=8 → 8
+    const { container } = renderMenu({ ...defaultProps, x: 2, y: 100 })
+    const menu = container.firstChild as HTMLElement
+    expect(menu.style.left).toBe('8px')
+  })
+
+  it('clamps top when menu would overflow top edge', () => {
+    // y=3 < margin=8 → 8
+    const { container } = renderMenu({ ...defaultProps, x: 100, y: 3 })
+    const menu = container.firstChild as HTMLElement
+    expect(menu.style.top).toBe('8px')
+  })
+
+  it('does not move menu when it fits within viewport', () => {
+    const { container } = renderMenu({ ...defaultProps, x: 100, y: 100 })
+    const menu = container.firstChild as HTMLElement
+    expect(menu.style.left).toBe('100px')
+    expect(menu.style.top).toBe('100px')
   })
 })

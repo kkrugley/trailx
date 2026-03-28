@@ -7,6 +7,7 @@ export type POICategory =
   | 'food'
   | 'historic'
   | 'viewpoint'
+  | 'custom'
 
 export interface POI {
   id: string

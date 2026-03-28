@@ -3,7 +3,7 @@ import { InlineKeyboard } from 'grammy'
 
 export function registerStart(bot: Bot<Context>): void {
   bot.command('start', async (ctx) => {
-    const appUrl = process.env.APP_URL
+    const appUrl = process.env.VITE_APP_URL
 
     const keyboard = new InlineKeyboard()
     if (appUrl) {

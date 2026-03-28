@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Partial<AppSettings> = {
   gpxExport: { includeTrk: true, includeRte: false, includeWpt: true },
   poiBuffer: 500,
   mapStyle: 'liberty',
+  autoFitRoute: true,
   speeds: { ...DEFAULT_SPEEDS },
 }
 
@@ -110,6 +111,15 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
           ))}
         </div>
       </Accordion>
+
+      {/* Map — auto-fit */}
+      <Section title="Карта">
+        <Toggle
+          label="Авто-центрирование на маршруте"
+          value={settings.autoFitRoute}
+          onChange={(v) => updateSettings({ autoFitRoute: v })}
+        />
+      </Section>
 
       {/* GPX Export — accordion */}
       <Accordion title="Настройки экспорта GPX">

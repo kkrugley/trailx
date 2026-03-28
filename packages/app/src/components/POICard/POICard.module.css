@@ -24,7 +24,7 @@
   border-radius: var(--radius-xl) var(--radius-xl) var(--radius-lg) var(--radius-lg);
   box-shadow: var(--shadow-overlay);
   overflow: hidden;
-  transform: translateY(110%);
+  transform: translateY(calc(100% + 2rem + env(safe-area-inset-bottom, 0px)));
   transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 

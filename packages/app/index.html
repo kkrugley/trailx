@@ -14,6 +14,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        var isTelegram = !!(
+          window.TelegramWebviewProxy ||
+          window.Telegram ||
+          location.hash.indexOf('tgWebAppData') !== -1 ||
+          location.search.indexOf('tgWebAppData') !== -1
+        );
+        if (isTelegram) {
+          var s = document.createElement('script');
+          s.src = 'https://telegram.org/js/telegram-web-app.js';
+          s.async = false;
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

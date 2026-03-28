@@ -61,7 +61,12 @@ fastify.post('/webhook/bot', {
   if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
     return reply.code(403).send({ error: 'Forbidden' })
   }
-  await bot.handleUpdate(req.body as Parameters<typeof bot.handleUpdate>[0])
+  // Always return 200 — if we return 5xx, Telegram retries the same update indefinitely
+  try {
+    await bot.handleUpdate(req.body as Parameters<typeof bot.handleUpdate>[0])
+  } catch (err) {
+    console.error('[webhook] unhandled error in handleUpdate', err)
+  }
   return reply.code(200).send({ ok: true })
 })
 

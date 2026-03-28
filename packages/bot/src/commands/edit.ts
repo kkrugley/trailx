@@ -6,13 +6,25 @@ import { prisma } from '../db'
 const pendingRenames = new Map<number, string>()
 
 export function registerEdit(bot: Bot<Context>): void {
-  // Handle pending renames before any command
+  // Handle pending renames — runs before commands, passes through if no rename is pending
   bot.on('message:text', async (ctx, next) => {
     const chatId = ctx.chat.id
     const routeId = pendingRenames.get(chatId)
-    if (!routeId) return next()
+
+    if (!routeId) {
+      await next()
+      return
+    }
 
     pendingRenames.delete(chatId)
+
+    // If the user sent a bot command while a rename was pending, cancel the rename
+    // and let the command be processed normally.
+    if (ctx.message.entities?.some((e) => e.type === 'bot_command' && e.offset === 0)) {
+      await next()
+      return
+    }
+
     const newName = ctx.message.text.trim()
     if (!newName) {
       await ctx.reply('Название не может быть пустым.')

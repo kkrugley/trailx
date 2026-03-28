@@ -443,6 +443,34 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     }
   }, [mapVersion, routeResult])
 
+  // ── Auto-fit route bounds ─────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || mapVersion === 0 || !routeResult) return
+
+    const autoFit = useMapStore.getState().appSettings.autoFitRoute
+    if (!autoFit) return
+
+    const coords = routeResult.geometry.coordinates as number[][]
+    if (coords.length === 0) return
+
+    const bounds = coords.reduce(
+      (b, c) => {
+        b[0] = Math.min(b[0], c[0])
+        b[1] = Math.min(b[1], c[1])
+        b[2] = Math.max(b[2], c[0])
+        b[3] = Math.max(b[3], c[1])
+        return b
+      },
+      [Infinity, Infinity, -Infinity, -Infinity],
+    )
+
+    map.fitBounds(
+      [[bounds[0], bounds[1]], [bounds[2], bounds[3]]],
+      { padding: { top: 60, bottom: 200, left: 60, right: 60 }, maxZoom: 15, duration: 500 },
+    )
+  }, [mapVersion, routeResult])
+
   // ── Waypoint marker sync ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current

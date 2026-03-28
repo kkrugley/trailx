@@ -39,6 +39,7 @@ export interface AppSettings {
   poiBuffer: number
   mapStyle: 'liberty' | 'bright' | 'positron' | 'esri_imagery' | 'esri_topo'
   showPois: boolean
+  autoFitRoute: boolean
   speeds: { foot: number; bike: number; mtb: number; racingbike: number }
   foot: { preferFootpaths: boolean; avoidRoads: boolean }
   bike: { routeType: 'fastest' | 'safest' | 'short'; avoidHighways: boolean }
@@ -53,6 +54,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   poiBuffer: 500,
   mapStyle: 'liberty',
   showPois: true,
+  autoFitRoute: true,
   speeds: { foot: 5, bike: 20, mtb: 15, racingbike: 28 },
   foot: { preferFootpaths: true, avoidRoads: false },
   bike: { routeType: 'fastest', avoidHighways: false },
@@ -99,6 +101,7 @@ interface MapStoreActions {
   setAllPois: (pois: POI[]) => void
   setPois: (pois: POI[]) => void
   setIsSearchingPOI: (value: boolean) => void
+  setPOISearchError: (err: string | null) => void
   toggleCategory: (category: POICategory) => void
   setActiveCategories: (categories: POICategory[]) => void
   // POI card
@@ -135,6 +138,7 @@ interface MapStore {
   allPois: POI[]        // all fetched POIs (unfiltered)
   pois: POI[]           // filtered by activeCategories — derived, kept in sync
   isSearchingPOI: boolean
+  poiSearchError: string | null
   activeCategories: POICategory[]
   // POI card
   selectedPOI: POI | null
@@ -182,6 +186,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   allPois: [],
   pois: [],
   isSearchingPOI: false,
+  poiSearchError: null,
   activeCategories: [...POI_CATEGORIES],
   selectedPOI: null,
   standalonePois: [],
@@ -324,6 +329,8 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     setPois: (pois) => set({ pois }),
 
     setIsSearchingPOI: (value) => set({ isSearchingPOI: value }),
+
+    setPOISearchError: (err) => set({ poiSearchError: err }),
 
     toggleCategory: (category) =>
       set((state) => {
@@ -474,6 +481,11 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     if (version < 2) {
       state.measureSessions = []
       state.measureActiveSessionId = null
+    }
+    // Ensure new AppSettings fields added after v2 have their default values
+    const settings = state.appSettings as Partial<AppSettings> | undefined
+    if (settings && settings.autoFitRoute === undefined) {
+      settings.autoFitRoute = true
     }
     return state
   },

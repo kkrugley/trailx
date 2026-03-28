@@ -39,7 +39,7 @@ export function registerVote(bot: Bot<Context>): void {
         {
           is_anonymous: true,
           allows_multiple_answers: false,
-          open_period: 86400,
+          open_period: 1800,
         },
       )
 
@@ -55,7 +55,7 @@ export function registerVote(bot: Bot<Context>): void {
       })
 
       await ctx.reply(
-        `📊 Голосование создано! Закроется через 24 ч.\n` +
+        `📊 Голосование создано! Закроется через 30 мин.\n` +
           `Если большинство проголосует "Да" — "${coords.name}" будет добавлен.`,
       )
     } catch (err) {

@@ -30,6 +30,7 @@ function formatDurationCompact(seconds: number): string {
 export function MobileHeader() {
   const { profile } = useProfile()
   const routeResult = useMapStore((s) => s.routeResult)
+  console.log('[TMA-DEBUG] MobileHeader render:', { hasRoute: !!routeResult, profile })
   const speeds = useMapStore((s) => s.appSettings.speeds)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { share, isSharing, error, clearError } = useShareSession()

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useMapStore } from '../../store/useMapStore'
+import { useTmaDebug } from '../../hooks/useTmaDebug'
 import styles from './DebugPanel.module.css'
 
 interface DebugPanelProps {
@@ -21,6 +22,7 @@ export function DebugPanel({ onClose }: DebugPanelProps) {
   const allPois    = useMapStore((s) => s.allPois)
   const profile    = useMapStore((s) => s.profile)
   const { updateWaypoint, clearRoute } = useMapStore((s) => s.actions)
+  const tmaLogs = useTmaDebug()
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -90,6 +92,22 @@ export function DebugPanel({ onClose }: DebugPanelProps) {
           Тестовый маршрут
           <span className={styles.actionHint}>Брест → Кобрин</span>
         </button>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>TMA Viewport</div>
+        <div style={{ maxHeight: '200px', overflow: 'auto', fontSize: '0.625rem', fontFamily: 'monospace' }}>
+          {tmaLogs.length === 0 && <span style={{ opacity: 0.4 }}>Collecting...</span>}
+          {tmaLogs.map((log, i) => (
+            <div key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', padding: '2px 0' }}>
+              <div><b>{log.timestamp}</b> {log.event}</div>
+              <div>win: {log.innerWidth}×{log.innerHeight} expanded: {String(log.isExpanded)}</div>
+              <div>vh: {log.viewportHeight} svh: {log.viewportStableHeight}</div>
+              <div>--tma-vh: {log.tmaVh} root: {log.rootHeight} ({log.rootOffsetHeight}px)</div>
+              <div>initData: {log.initDataLength} chars</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

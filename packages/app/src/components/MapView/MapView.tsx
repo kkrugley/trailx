@@ -376,9 +376,10 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     if (!containerRef.current) return
 
+    const savedStyle = MAP_STYLES[useMapStore.getState().appSettings.mapStyle] ?? STYLE_URL
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: savedStyle as maplibregl.StyleSpecification | string,
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
       attributionControl: false,

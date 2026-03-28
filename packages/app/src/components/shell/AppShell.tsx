@@ -17,6 +17,7 @@ import styles from './AppShell.module.css'
 
 export function AppShell() {
   const { isMobile, isTMA } = usePlatform()
+  console.log('[TMA-DEBUG] AppShell:', { isMobile, isTMA, isDesktop: !isMobile && !isTMA })
   const isDesktop = !isMobile && !isTMA
   const mapRef = useRef<MapViewHandle>(null)
   const [filterOpen, setFilterOpen] = useState(false)

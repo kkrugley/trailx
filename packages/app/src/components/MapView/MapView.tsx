@@ -103,13 +103,136 @@ function ensureWaypointIcon(map: maplibregl.Map, type: string, number: number): 
   return id
 }
 
+// Adds all custom sources and layers to the map. Called both on initial load
+// and after every setStyle() — which wipes custom sources/layers entirely.
+// The existence guard makes it safe to call multiple times (e.g. rapid style
+// switches where two 'style.load' once-handlers fire for the same event).
+function addCustomLayersAndSources(map: maplibregl.Map): void {
+  if (map.getSource(ROUTE_SOURCE)) return
+
+  // ── Route polyline ──
+  map.addSource(ROUTE_SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+  map.addLayer({
+    id: ROUTE_LAYER,
+    type: 'line',
+    source: ROUTE_SOURCE,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': '#4456b5',
+      'line-width': 5,
+      'line-opacity': 0.9,
+    },
+  })
+
+  // ── Route hover dot ──
+  map.addSource(HOVER_DOT_SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+  map.addLayer({
+    id: HOVER_DOT_PULSE_LAYER,
+    type: 'circle',
+    source: HOVER_DOT_SOURCE,
+    paint: {
+      'circle-radius': 12,
+      'circle-color': '#4456b5',
+      'circle-opacity': 0.25,
+      'circle-stroke-width': 0,
+    },
+  })
+  map.addLayer({
+    id: HOVER_DOT_LAYER,
+    type: 'circle',
+    source: HOVER_DOT_SOURCE,
+    paint: {
+      'circle-radius': 6,
+      'circle-color': '#ffffff',
+      'circle-stroke-color': '#4456b5',
+      'circle-stroke-width': 3,
+      'circle-opacity': 1,
+    },
+  })
+
+  // ── POI source (clustered) ──
+  map.addSource(POI_SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+  })
+  map.addLayer({
+    id: POI_LAYER_CLUSTERS,
+    type: 'circle',
+    source: POI_SOURCE,
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#4456b5',
+      'circle-opacity': 0.85,
+      'circle-stroke-color': 'rgba(255,255,255,0.7)',
+      'circle-stroke-width': 1.5,
+      'circle-radius': [
+        'step',
+        ['get', 'point_count'],
+        14, 10, 18, 50, 22,
+      ] as maplibregl.ExpressionSpecification,
+    },
+  })
+  map.addLayer({
+    id: POI_LAYER_CLUSTER_COUNT,
+    type: 'symbol',
+    source: POI_SOURCE,
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-size': 11,
+    },
+    paint: { 'text-color': '#ffffff' },
+  })
+  map.addLayer({
+    id: POI_LAYER_UNCLUSTERED,
+    type: 'symbol',
+    source: POI_SOURCE,
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
+      'icon-size': 1,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+      'icon-anchor': 'center',
+    },
+  })
+
+  // ── Waypoint markers (symbol layer) ──
+  map.addSource(WP_SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+  map.addLayer({
+    id: WP_LAYER,
+    type: 'symbol',
+    source: WP_SOURCE,
+    layout: {
+      'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
+      'icon-size': 1,
+      'icon-allow-overlap': true,
+      'icon-anchor': 'bottom',
+      'icon-ignore-placement': true,
+    },
+  })
+}
+
 export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const [mapReady, setMapReady] = useState(false)
-  // mapVersion increments on every map 'load' event (initial load AND after setStyle).
-  // Effects that depend on map sources use mapVersion so they re-run after style reloads,
-  // which wipe all custom sources/layers. mapReady (bool) is kept for UI-only checks.
+  // mapVersion increments on every map load: 'load' on initial creation,
+  // 'style.load' after each setStyle() call. Both paths call addCustomLayersAndSources
+  // to re-add sources/layers that setStyle() wipes, then trigger data-sync effects.
+  // mapReady (bool) is kept for UI-only checks (skeleton, context menu).
   const [mapVersion, setMapVersion] = useState(0)
   const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
 
@@ -131,7 +254,15 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
   useImperativeHandle(ref, () => ({
     getMap: () => mapRef.current,
-    setStyle: (url: string) => mapRef.current?.setStyle(url),
+    setStyle: (url: string) => {
+      const map = mapRef.current
+      if (!map) return
+      map.once('style.load', () => {
+        addCustomLayersAndSources(map)
+        setMapVersion((v) => v + 1)
+      })
+      map.setStyle(url)
+    },
   }))
 
   // ── Context menu (right-click + long-press) ──────────────────────────────
@@ -226,7 +357,16 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     const handler = (e: Event) => {
       const { style: key } = (e as CustomEvent<{ style: string }>).detail
       const mapStyle = MAP_STYLES[key]
-      if (mapStyle) mapRef.current?.setStyle(mapStyle as string)
+      if (!mapStyle || !mapRef.current) return
+      const map = mapRef.current
+      // Re-add custom sources/layers once the new style is ready, then bump
+      // mapVersion so all data-sync effects re-populate the sources.
+      // Registered BEFORE setStyle() to guarantee the listener is in place.
+      map.once('style.load', () => {
+        addCustomLayersAndSources(map)
+        setMapVersion((v) => v + 1)
+      })
+      map.setStyle(mapStyle as string)
     }
     window.addEventListener('trailx:setstyle', handler)
     return () => window.removeEventListener('trailx:setstyle', handler)
@@ -236,9 +376,10 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     if (!containerRef.current) return
 
+    const savedStyle = MAP_STYLES[useMapStore.getState().appSettings.mapStyle] ?? STYLE_URL
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: savedStyle as maplibregl.StyleSpecification | string,
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
       attributionControl: false,
@@ -247,124 +388,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
     mapRef.current = map
 
     map.on('load', () => {
-      // ── Route polyline ──
-      map.addSource(ROUTE_SOURCE, {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      })
-      map.addLayer({
-        id: ROUTE_LAYER,
-        type: 'line',
-        source: ROUTE_SOURCE,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#4456b5',
-          'line-width': 5,
-          'line-opacity': 0.9,
-        },
-      })
-
-      // ── Route hover dot ──
-      map.addSource(HOVER_DOT_SOURCE, {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      })
-      map.addLayer({
-        id: HOVER_DOT_PULSE_LAYER,
-        type: 'circle',
-        source: HOVER_DOT_SOURCE,
-        paint: {
-          'circle-radius': 12,
-          'circle-color': '#4456b5',
-          'circle-opacity': 0.25,
-          'circle-stroke-width': 0,
-        },
-      })
-      map.addLayer({
-        id: HOVER_DOT_LAYER,
-        type: 'circle',
-        source: HOVER_DOT_SOURCE,
-        paint: {
-          'circle-radius': 6,
-          'circle-color': '#ffffff',
-          'circle-stroke-color': '#4456b5',
-          'circle-stroke-width': 3,
-          'circle-opacity': 1,
-        },
-      })
-
-      // ── POI source (clustered) ──
-      map.addSource(POI_SOURCE, {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
-      })
-
-      map.addLayer({
-        id: POI_LAYER_CLUSTERS,
-        type: 'circle',
-        source: POI_SOURCE,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': '#4456b5',
-          'circle-opacity': 0.85,
-          'circle-stroke-color': 'rgba(255,255,255,0.7)',
-          'circle-stroke-width': 1.5,
-          'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            14, 10, 18, 50, 22,
-          ] as maplibregl.ExpressionSpecification,
-        },
-      })
-
-      map.addLayer({
-        id: POI_LAYER_CLUSTER_COUNT,
-        type: 'symbol',
-        source: POI_SOURCE,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 11,
-        },
-        paint: { 'text-color': '#ffffff' },
-      })
-
-      map.addLayer({
-        id: POI_LAYER_UNCLUSTERED,
-        type: 'symbol',
-        source: POI_SOURCE,
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
-          'icon-size': 1,
-          'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-          'icon-anchor': 'center',
-        },
-      })
-
-      // ── Waypoint markers (symbol layer) ──
-      map.addSource(WP_SOURCE, {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      })
-
-      map.addLayer({
-        id: WP_LAYER,
-        type: 'symbol',
-        source: WP_SOURCE,
-        layout: {
-          'icon-image': ['get', 'icon'] as maplibregl.ExpressionSpecification,
-          'icon-size': 1,
-          'icon-allow-overlap': true,
-          'icon-anchor': 'bottom',
-          'icon-ignore-placement': true,
-        },
-      })
-
+      addCustomLayersAndSources(map)
       setMapReady(true)
       setMapVersion((v) => v + 1)
     })

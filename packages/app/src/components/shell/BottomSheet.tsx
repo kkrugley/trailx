@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CaretDown, CaretUp, WarningCircle } from '@phosphor-icons/react'
+import { CaretDown, CaretUp } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import { fmtDist, fmtElev } from '../../utils/units'
 import { ProfileTabs } from '../ProfileTabs/ProfileTabs'
@@ -146,29 +146,6 @@ function ElevationSection() {
           <p className={styles.noData}>Нет данных о типе дороги</p>
         )}
       </div>
-    </div>
-  )
-}
-
-// ── POI Search Error ──────────────────────────────────────────────────────────
-
-function POISearchError() {
-  const poiSearchError = useMapStore((s) => s.poiSearchError)
-  const { setPOISearchError } = useMapStore((s) => s.actions)
-
-  if (!poiSearchError) return null
-
-  return (
-    <div className={styles.poiError} role="alert">
-      <WarningCircle size={14} weight="fill" className={styles.poiErrorIcon} />
-      <span className={styles.poiErrorText}>{poiSearchError}</span>
-      <button
-        className={styles.poiErrorDismiss}
-        onClick={() => setPOISearchError(null)}
-        aria-label="Dismiss POI error"
-      >
-        ×
-      </button>
     </div>
   )
 }
@@ -336,7 +313,6 @@ export function BottomSheet() {
           >
             <FilterBar />
             <PoiBufferSlider />
-            <POISearchError />
           </Accordion>
 
           <div className={styles.footerAttrib}>

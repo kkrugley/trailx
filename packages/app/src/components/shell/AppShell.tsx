@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Funnel } from '@phosphor-icons/react'
 import { usePlatform } from '../../hooks/usePlatform'
 import { useMapStore } from '../../store/useMapStore'
+import { useIPGeolocation } from '../../hooks/useIPGeolocation'
 import { MapView } from '../MapView/MapView'
 import type { MapViewHandle } from '../MapView/MapView'
 import { Sidebar } from '../Sidebar/Sidebar'
@@ -20,6 +21,7 @@ export function AppShell() {
   console.log('[TMA-DEBUG] AppShell:', { isMobile, isTMA, isDesktop: !isMobile && !isTMA })
   const isDesktop = !isMobile && !isTMA
   const mapRef = useRef<MapViewHandle>(null)
+  useIPGeolocation(mapRef)
   const [filterOpen, setFilterOpen] = useState(false)
 
   const isExportOpen = useMapStore((s) => s.isExportOpen)

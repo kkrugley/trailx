@@ -31,70 +31,48 @@ export function usePOISearch(): void {
       const tier1Cats = POI_TIER1.filter((c): c is POICategory => activeCategories.includes(c))
       const tier2Cats = POI_TIER2.filter((c): c is POICategory => activeCategories.includes(c))
 
-      // --- Tier 1 ---
-      let tier1Results: POI[] = []
-
-      if (tier1Cats.length > 0) {
-        try {
-          tier1Results = await fetchPOIsAlongRoute(
-            routeResult.geometry,
-            poiBuffer,
-            tier1Cats,
-            abortController.signal,
-          )
-          if (requestIdRef.current !== currentId) return
-          setAllPois(tier1Results)
-        } catch (err) {
-          if (requestIdRef.current !== currentId) return
-          if (abortController.signal.aborted) return
-
-          console.error('[poi] Tier 1 fetchPOIsAlongRoute failed:', err)
-          setAllPois([])
-
-          const message =
-            err instanceof OverpassAllServersFailedError
-              ? 'POI search failed: all servers unavailable. Try again later.'
-              : err instanceof OverpassTimeoutError
-                ? 'POI search timed out. Try again later.'
-                : 'POI search failed. Check your connection.'
-
-          setPOISearchError(message)
-          setIsSearchingPOI(false)
-          return
-        }
+      if (tier1Cats.length === 0 && tier2Cats.length === 0) {
+        setAllPois([])
+        setIsSearchingPOI(false)
+        return
       }
 
+      // Run both tiers in parallel — each uses a different server via round-robin
+      const [tier1Result, tier2Result] = await Promise.allSettled([
+        tier1Cats.length > 0
+          ? fetchPOIsAlongRoute(routeResult.geometry, poiBuffer, tier1Cats, abortController.signal)
+          : Promise.resolve([] as POI[]),
+        tier2Cats.length > 0
+          ? fetchPOIsAlongRoute(routeResult.geometry, poiBuffer, tier2Cats, abortController.signal)
+          : Promise.resolve([] as POI[]),
+      ])
+
       if (requestIdRef.current !== currentId) return
+      if (abortController.signal.aborted) return
 
-      // --- Tier 2 ---
-      if (tier2Cats.length > 0) {
-        try {
-          const tier2Results = await fetchPOIsAlongRoute(
-            routeResult.geometry,
-            poiBuffer,
-            tier2Cats,
-            abortController.signal,
-          )
-          if (requestIdRef.current !== currentId) return
-          setAllPois([...tier1Results, ...tier2Results])
-        } catch (err) {
-          if (requestIdRef.current !== currentId) return
-          if (abortController.signal.aborted) return
+      const tier1Pois = tier1Result.status === 'fulfilled' ? tier1Result.value : []
+      const tier2Pois = tier2Result.status === 'fulfilled' ? tier2Result.value : []
 
-          console.warn('[poi] Tier 2 fetchPOIsAlongRoute failed (keeping Tier 1 results):', err)
-          // Keep tier1Results that were already set
-          const message =
-            err instanceof OverpassAllServersFailedError
-              ? 'Some POIs may be missing: informational layer failed to load.'
-              : err instanceof OverpassTimeoutError
-                ? 'Some POIs may be missing: secondary search timed out.'
-                : 'Some POIs may be missing: partial search failure.'
+      setAllPois([...tier1Pois, ...tier2Pois])
 
-          setPOISearchError(message)
-        }
-      } else if (tier1Cats.length === 0) {
-        // No categories in either tier — skip straight to done
-        setAllPois([])
+      // Surface errors
+      if (tier1Result.status === 'rejected' && tier2Result.status === 'rejected') {
+        console.error('[poi] Both tiers failed:', tier1Result.reason)
+        const message =
+          tier1Result.reason instanceof OverpassAllServersFailedError
+            ? 'POI search failed: all servers unavailable. Try again later.'
+            : tier1Result.reason instanceof OverpassTimeoutError
+              ? 'POI search timed out. Try again later.'
+              : 'POI search failed. Check your connection.'
+        setPOISearchError(message)
+      } else if (tier1Result.status === 'rejected') {
+        console.warn('[poi] Tier 1 failed (keeping Tier 2 results):', tier1Result.reason)
+        setPOISearchError('Some POIs may be missing: critical layer failed to load.')
+      } else if (tier2Result.status === 'rejected') {
+        console.warn('[poi] Tier 2 failed (keeping Tier 1 results):', tier2Result.reason)
+        setPOISearchError('Some POIs may be missing: informational layer failed to load.')
+      } else {
+        setPOISearchError(null)
       }
 
       if (requestIdRef.current === currentId) setIsSearchingPOI(false)

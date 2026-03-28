@@ -20,7 +20,7 @@ function nextServer(): string {
   return url
 }
 
-const MAX_ROUTE_POINTS = 120
+const MAX_ROUTE_POINTS = 50
 const TIMEOUT_MS = 20_000
 
 export class OverpassTimeoutError extends Error {

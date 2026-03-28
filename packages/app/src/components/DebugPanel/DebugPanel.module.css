@@ -45,6 +45,35 @@
   margin-bottom: 0.5rem;
 }
 
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+}
+
+.accordionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.accordionChevron {
+  font-size: 0.5rem;
+  color: var(--primary);
+  opacity: 0.3;
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+
+.accordionChevronOpen {
+  transform: rotate(180deg);
+}
+
+.accordionBody {
+  margin-top: 0.5rem;
+}
+
 .statGrid {
   display: grid;
   grid-template-columns: auto 1fr;

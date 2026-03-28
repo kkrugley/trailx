@@ -35,12 +35,6 @@ export const POI_LABELS: Record<POICategory, string> = {
   viewpoint: 'Обзор',
 }
 
-/** Tier 1: survival-critical POIs — fetched first, always shown */
-export const POI_TIER1: POICategory[] = ['drinking_water', 'bicycle_repair', 'food', 'shelter']
-
-/** Tier 2: informational POIs — fetched after Tier 1 succeeds */
-export const POI_TIER2: POICategory[] = ['bicycle_shop', 'camp_site', 'historic', 'viewpoint']
-
 /** Map marker fill colors */
 export const POI_COLORS: Record<POICategory, string> = {
   drinking_water: '#2196F3',

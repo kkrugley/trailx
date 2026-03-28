@@ -101,7 +101,6 @@ interface MapStoreActions {
   setAllPois: (pois: POI[]) => void
   setPois: (pois: POI[]) => void
   setIsSearchingPOI: (value: boolean) => void
-  setPOISearchError: (err: string | null) => void
   toggleCategory: (category: POICategory) => void
   setActiveCategories: (categories: POICategory[]) => void
   // POI card
@@ -138,7 +137,6 @@ interface MapStore {
   allPois: POI[]        // all fetched POIs (unfiltered)
   pois: POI[]           // filtered by activeCategories — derived, kept in sync
   isSearchingPOI: boolean
-  poiSearchError: string | null
   activeCategories: POICategory[]
   // POI card
   selectedPOI: POI | null
@@ -186,7 +184,6 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   allPois: [],
   pois: [],
   isSearchingPOI: false,
-  poiSearchError: null,
   activeCategories: [...POI_CATEGORIES],
   selectedPOI: null,
   standalonePois: [],
@@ -329,8 +326,6 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     setPois: (pois) => set({ pois }),
 
     setIsSearchingPOI: (value) => set({ isSearchingPOI: value }),
-
-    setPOISearchError: (err) => set({ poiSearchError: err }),
 
     toggleCategory: (category) =>
       set((state) => {

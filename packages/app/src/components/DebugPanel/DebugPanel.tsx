@@ -299,7 +299,7 @@ export function DebugPanel({ onClose, mapRef }: DebugPanelProps) {
           <Row label="TMA SDK" value={sdkVersion} />
           <Row label="initData" value={initDataLen} />
           <Row label="Expanded" value={webApp?.isExpanded !== undefined ? String(webApp.isExpanded) : 'N/A'} />
-          <Row label="Fullscreen" value={typeof webApp?.isFullscreen === 'boolean' ? String(webApp.isFullscreen) : 'N/A'} />
+          <Row label="Fullscreen" value={webApp && 'isFullscreen' in webApp && typeof (webApp as unknown as Record<string, unknown>).isFullscreen === 'boolean' ? String((webApp as unknown as Record<string, unknown>).isFullscreen) : 'N/A'} />
           <Row label="Platform" value={platformStr} />
           <Row label="Color scheme" value={colorScheme} />
         </div>

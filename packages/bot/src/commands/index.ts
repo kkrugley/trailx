@@ -9,6 +9,9 @@ import { registerGpx } from './gpx'
 import { registerWeather } from './weather'
 import { registerSocial } from './social'
 import { registerUpgrade } from './upgrade'
+import { registerHelp } from './help'
+import { registerInlineQuery } from './inlineQuery'
+import { registerChatMember } from './chatMember'
 
 export function registerCommands(bot: Bot<Context>): void {
   registerPlan(bot)
@@ -21,4 +24,7 @@ export function registerCommands(bot: Bot<Context>): void {
   registerWeather(bot)
   registerSocial(bot)
   registerUpgrade(bot)
+  registerHelp(bot)
+  registerInlineQuery(bot)
+  registerChatMember(bot)
 }

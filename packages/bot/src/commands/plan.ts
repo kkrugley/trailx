@@ -4,8 +4,15 @@ import { prisma } from '../db'
 export function registerPlan(bot: Bot<Context>): void {
   bot.command('plan', async (ctx) => {
     try {
+      const name = ctx.match.trim()
+      if (!name) {
+        await ctx.reply(
+          '📍 Введи название маршрута:\n/plan <название>\n\nПример: /plan Минск → Несвиж',
+        )
+        return
+      }
+
       const chatId = BigInt(ctx.chat.id)
-      const name = ctx.match.trim() || 'Новый маршрут'
 
       // Ensure Group record exists
       const group = await prisma.group.upsert({

@@ -1,7 +1,8 @@
 import type { Bot, Context } from 'grammy'
+import { registerStart } from './start'
 import { registerPlan } from './plan'
-import { registerRoute } from './route'
-import { registerDelete } from './delete'
+import { registerSelect } from './select'
+import { registerEdit } from './edit'
 import { registerApp } from './app'
 import { registerAdd } from './add'
 import { registerVote } from './vote'
@@ -14,9 +15,10 @@ import { registerInlineQuery } from './inlineQuery'
 import { registerChatMember } from './chatMember'
 
 export function registerCommands(bot: Bot<Context>): void {
+  registerStart(bot)
   registerPlan(bot)
-  registerRoute(bot)
-  registerDelete(bot)
+  registerSelect(bot)
+  registerEdit(bot)
   registerApp(bot)
   registerAdd(bot)
   registerVote(bot)

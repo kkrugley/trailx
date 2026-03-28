@@ -2,9 +2,9 @@ import type { Bot, Context } from 'grammy'
 import { InlineKeyboard } from 'grammy'
 import { prisma } from '../db'
 
-export function registerRoute(bot: Bot<Context>): void {
-  // /route — list routes for selection
-  bot.command('route', async (ctx) => {
+export function registerSelect(bot: Bot<Context>): void {
+  // /select — list routes for selection
+  bot.command('select', async (ctx) => {
     try {
       const chatId = BigInt(ctx.chat.id)
       const group = await prisma.group.findUnique({
@@ -27,7 +27,7 @@ export function registerRoute(bot: Bot<Context>): void {
 
       await ctx.reply('Выбери активный маршрут:', { reply_markup: keyboard })
     } catch (err) {
-      console.error('[/route]', err)
+      console.error('[/select]', err)
       await ctx.reply('Произошла ошибка. Попробуй позже.')
     }
   })

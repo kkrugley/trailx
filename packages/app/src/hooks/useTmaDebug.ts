@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-interface TmaDebugSnapshot {
+export interface TmaDebugSnapshot {
   timestamp: string
   event: string
   innerWidth: number
@@ -13,11 +13,33 @@ interface TmaDebugSnapshot {
   initDataLength: number
   rootHeight: string
   rootOffsetHeight: number
+  mobileBottomBar: string
+  mobileMapRow: string
+  mobileGrid: string
+  bottomSheet: string
+  appShellLayout: string
+}
+
+function describeFound(el: Element | undefined): string {
+  if (!el) return 'not-found'
+  const r = el.getBoundingClientRect()
+  return `${Math.round(r.width)}×${Math.round(r.height)} @y${Math.round(r.top)}`
 }
 
 function takeSnapshot(event: string): TmaDebugSnapshot {
   const webApp = window.Telegram?.WebApp
   const root = document.getElementById('root')
+
+  const allDivs = Array.from(document.querySelectorAll('div'))
+  const findByClass = (fragment: string) =>
+    allDivs.find((d) => Array.from(d.classList).some((c) => c.includes(fragment)))
+
+  const mobileGridEl = findByClass('mobileGrid')
+  const mobileMapRowEl = findByClass('mobileMapRow')
+  const mobileBottomBarEl = findByClass('mobileBottomBar')
+  const desktopGridEl = findByClass('desktopGrid')
+  const sheetEl = findByClass('sheet')
+
   return {
     timestamp: new Date().toISOString().slice(11, 23),
     event,
@@ -31,6 +53,11 @@ function takeSnapshot(event: string): TmaDebugSnapshot {
     initDataLength: webApp?.initData?.length ?? -1,
     rootHeight: root ? getComputedStyle(root).height : 'N/A',
     rootOffsetHeight: root?.offsetHeight ?? -1,
+    mobileBottomBar: describeFound(mobileBottomBarEl),
+    mobileMapRow: describeFound(mobileMapRowEl),
+    mobileGrid: describeFound(mobileGridEl),
+    bottomSheet: describeFound(sheetEl),
+    appShellLayout: desktopGridEl ? 'desktop' : mobileGridEl ? 'mobile' : 'unknown',
   }
 }
 

@@ -1,7 +1,6 @@
 import { useState, useRef, type RefObject } from 'react'
 import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Toolbox } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
-import { usePlatform } from '../../hooks/usePlatform'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
 import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
@@ -14,8 +13,7 @@ interface MapControlsProps {
 }
 
 export function MapControls({ mapRef }: MapControlsProps) {
-  const { isMobile, isTMA } = usePlatform()
-  const debugPopoverClass = (isMobile || isTMA) ? styles.popoverUp : styles.popover
+  const debugPopoverClass = styles.popoverUp
   const [infoOpen, setInfoOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
@@ -142,7 +140,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
         </button>
         {debugOpen && (
           <div className={debugPopoverClass}>
-            <DebugPanel onClose={() => setDebugOpen(false)} />
+            <DebugPanel onClose={() => setDebugOpen(false)} mapRef={mapRef} />
           </div>
         )}
       </div>

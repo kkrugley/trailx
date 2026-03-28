@@ -4,8 +4,10 @@
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-float), 0 8px 32px rgba(68, 86, 181, 0.1);
-  width: 220px;
-  overflow: hidden;
+  width: 320px;
+  max-height: min(70vh, calc(100svh - 80px));
+  overflow-y: auto;
+  overflow-x: hidden;
   animation: slideIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: all;
 }
@@ -13,6 +15,51 @@
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(6px) scale(0.97); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* Mobile: backdrop */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9998;
+}
+
+/* Mobile: slides down from top */
+.panelTop {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  max-height: 75vh;
+  width: 100%;
+  z-index: 9999;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: var(--surface-variant);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: all;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Drag handle — shown at bottom of mobile panel */
+.handle {
+  width: 36px;
+  height: 4px;
+  background: var(--primary);
+  opacity: 0.15;
+  border-radius: 2px;
+  margin: 4px auto 10px;
 }
 
 .header {
@@ -24,6 +71,25 @@
   color: var(--primary);
   opacity: 0.4;
   border-bottom: 1px solid var(--ghost-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--primary);
+  opacity: 0.5;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.closeBtn:hover {
+  opacity: 0.9;
 }
 
 .section {
@@ -82,17 +148,35 @@
 }
 
 .statKey {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
+  font-family: monospace;
   color: var(--primary);
   opacity: 0.5;
   white-space: nowrap;
 }
 
 .statVal {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
+  font-family: monospace;
   font-weight: 600;
   color: var(--primary);
   text-align: right;
+  word-break: break-all;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.75rem;
+  color: var(--primary);
+  opacity: 0.4;
+  line-height: 1;
+}
+
+.iconBtn:hover {
+  opacity: 0.8;
 }
 
 .actionBtn {
@@ -118,10 +202,35 @@
   border-color: var(--secondary);
 }
 
+.dangerBtn:hover {
+  background: rgba(220, 50, 50, 0.1);
+  border-color: rgba(220, 50, 50, 0.4);
+  color: rgba(200, 40, 40, 0.9);
+}
+
 .actionHint {
   font-size: 0.6875rem;
   font-weight: 400;
   color: var(--secondary);
   opacity: 0.8;
   white-space: nowrap;
+}
+
+.logContainer {
+  max-height: 150px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+}
+
+.logEntry {
+  font-family: monospace;
+  font-size: 0.5625rem;
+  color: var(--primary);
+  opacity: 0.7;
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

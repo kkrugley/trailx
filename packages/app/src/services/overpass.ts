@@ -29,6 +29,17 @@ function nextServer(): string {
   return url
 }
 
+/** Reduce coords array to at most `max` evenly-sampled points, always keeping first and last. */
+function thinCoords(coords: number[][], max: number): number[][] {
+  if (coords.length <= max) return coords
+  const result: number[][] = []
+  const step = (coords.length - 1) / (max - 1)
+  for (let i = 0; i < max; i++) {
+    result.push(coords[Math.round(i * step)])
+  }
+  return result
+}
+
 export class OverpassTimeoutError extends Error {
   constructor() {
     super('Overpass query timed out')
@@ -193,21 +204,15 @@ async function fetchPOIsForTiles(
     )
   }
 
-  // Fetch missing tiles with max-concurrency limit
-  const queue = [...tilesToFetch]
-  const inFlight = new Set<string>()
   // Accumulate features in memory for fallback (no-db) path
   const inMemoryFeatures: Feature<Point>[] = []
   let abortError: OverpassTimeoutError | null = null
 
-  async function processNext(): Promise<void> {
-    if (queue.length === 0 || inFlight.size >= MAX_CONCURRENT) return
-    const item = queue.shift()!
-    const key = `${item.x},${item.y}`
-    inFlight.add(key)
-
+  async function fetchAndStore(
+    item: { x: number; y: number; missingCategories: POICategory[] },
+  ): Promise<void> {
+    if (signal.aborted) return
     try {
-      if (signal.aborted) return
       const features = await fetchTile(item.x, item.y, item.missingCategories, signal)
 
       if (dbAvailable && db) {
@@ -228,7 +233,6 @@ async function fetchPOIsForTiles(
             await db.overpassdata.bulkPut(dataEntries)
           })
         } catch {
-          // IndexedDB write failed — keep features in memory
           inMemoryFeatures.push(...features)
         }
       } else {
@@ -240,23 +244,21 @@ async function fetchPOIsForTiles(
       } else {
         console.warn('[overpass] tile fetch error:', err)
       }
-    } finally {
-      inFlight.delete(key)
     }
   }
 
-  // Drain the queue respecting MAX_CONCURRENT
-  const runners: Promise<void>[] = []
-  for (let i = 0; i < Math.min(tilesToFetch.length, MAX_CONCURRENT); i++) {
-    runners.push(
-      (async () => {
-        while (queue.length > 0 || inFlight.size > 0) {
-          await processNext()
-        }
-      })(),
-    )
-  }
-  await Promise.allSettled(runners)
+  // Clean worker-pool pattern: each worker pops jobs until queue is empty.
+  // JS is single-threaded so queue.shift() is atomic — no spinning, no busy-wait.
+  const jobQueue = [...tilesToFetch]
+  await Promise.all(
+    Array.from({ length: Math.min(jobQueue.length, MAX_CONCURRENT) }, async () => {
+      let job = jobQueue.shift()
+      while (job) {
+        await fetchAndStore(job)
+        job = jobQueue.shift()
+      }
+    }),
+  )
 
   // Propagate abort/timeout errors after all tile fetches have settled
   if (abortError) throw abortError
@@ -294,41 +296,38 @@ export async function fetchPOIsAlongRoute(
   const coords = routeGeometry.coordinates
   if (coords.length === 0) return []
 
-  // Collect unique tiles covering each segment expanded by bufferMetres
-  const tileSet = new Set<string>()
+  // Thin route coords to max 300 points for tile computation and distance filtering.
+  // GraphHopper routes can have thousands of points; most are redundant for tile coverage.
+  const thinned = thinCoords(coords, 300)
+
+  // Collect unique tiles covering the entire thinned route bbox expanded by bufferMetres.
+  // Using whole-route bbox is simpler and avoids O(n) per-segment tile expansion.
+  const lngs = thinned.map((c) => c[0])
+  const lats = thinned.map((c) => c[1])
+  const west = Math.min(...lngs)
+  const east = Math.max(...lngs)
+  const south = Math.min(...lats)
+  const north = Math.max(...lats)
+  const [ew, es, ee, en] = expandBbox(west, south, east, north, bufferMetres)
+  const range = bboxToTiles(ew, es, ee, en, QUERY_ZOOM)
+
   const tileList: Array<{ x: number; y: number }> = []
-
-  for (let i = 0; i < coords.length - 1; i++) {
-    const [lng1, lat1] = coords[i]
-    const [lng2, lat2] = coords[i + 1]
-    const west = Math.min(lng1, lng2)
-    const east = Math.max(lng1, lng2)
-    const south = Math.min(lat1, lat2)
-    const north = Math.max(lat1, lat2)
-    const [ew, es, ee, en] = expandBbox(west, south, east, north, bufferMetres)
-    const range = bboxToTiles(ew, es, ee, en, QUERY_ZOOM)
-
-    for (let x = range.minX; x <= range.maxX; x++) {
-      for (let y = range.minY; y <= range.maxY; y++) {
-        const key = `${x},${y}`
-        if (!tileSet.has(key)) {
-          tileSet.add(key)
-          tileList.push({ x, y })
-        }
-      }
+  for (let x = range.minX; x <= range.maxX; x++) {
+    for (let y = range.minY; y <= range.maxY; y++) {
+      tileList.push({ x, y })
     }
   }
 
   const abortSignal = signal ?? new AbortController().signal
   const features = await fetchPOIsForTiles(tileList, categories, abortSignal)
 
-  // Filter: only keep POIs within bufferMetres from the actual polyline
+  // Filter: only keep POIs within bufferMetres from the actual (thinned) polyline
   const pois: POI[] = []
   for (const f of features) {
     const props = f.properties!
     const lng = f.geometry.coordinates[0]
     const lat = f.geometry.coordinates[1]
-    const dist = pointToPolylineDistanceM(lng, lat, coords)
+    const dist = pointToPolylineDistanceM(lng, lat, thinned)
     if (dist > bufferMetres) continue
 
     const category = props.category as POICategory

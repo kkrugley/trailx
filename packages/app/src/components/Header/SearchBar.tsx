@@ -2,9 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { MagnifyingGlass, X } from '@phosphor-icons/react'
 import { parseCoordinates } from '@trailx/shared'
 import { useRoute } from '../../hooks/useRoute'
-import { searchPlaces } from '../../services/photon'
-import type { SearchResult } from '../../services/photon'
+import { searchNominatim, nominatimLabel } from '../../services/nominatim'
 import styles from './SearchBar.module.css'
+
+interface SearchResult {
+  lat: number
+  lng: number
+  name: string
+  address: string
+}
 
 const DEBOUNCE_MS = 300
 
@@ -82,7 +88,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
     }
 
     const timerId = setTimeout(() => {
-      // Coordinate match → add immediately without Photon call
+      // Coordinate match → add immediately without geocoding call
       const coords = parseCoordinates(query)
       if (coords) {
         addWaypointRef.current(coords.lat, coords.lng)
@@ -100,10 +106,19 @@ export function SearchBar({ onClose }: SearchBarProps) {
         return
       }
 
-      // Regular text search
+      // Regular text search via Nominatim
       setLoading(true)
-      searchPlaces(query)
-        .then(setResults)
+      searchNominatim(query)
+        .then((results) =>
+          setResults(
+            results.map((r) => ({
+              lat: parseFloat(r.lat),
+              lng: parseFloat(r.lon),
+              name: nominatimLabel(r),
+              address: r.display_name.split(',').slice(1, 3).join(',').trim(),
+            })),
+          ),
+        )
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, DEBOUNCE_MS)

@@ -4,10 +4,16 @@ import { useTelegramWebApp } from './hooks/useTelegramWebApp'
 import { useRouteSync } from './hooks/useRouteSync'
 import { useSessionLoader } from './hooks/useSessionLoader'
 import { useMapStore } from './store/useMapStore'
+import { initDB } from './db'
 import styles from './App.module.css'
 
 export function App() {
   useRouteSync()
+
+  // Initialise IndexedDB for Overpass tile cache (once on mount)
+  useEffect(() => {
+    initDB()
+  }, [])
   const { stableHeight, isAvailable, expandCount } = useTelegramWebApp()
   const { isLoading, error } = useSessionLoader()
   const setRouteError = useMapStore((s) => s.actions.setRouteError)

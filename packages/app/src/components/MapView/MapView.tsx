@@ -26,6 +26,7 @@ import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
 import { generatePOIIcon } from '../../utils/poiIcon'
+import { reverseGeocode } from '../../services/nominatim'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -541,22 +542,42 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
 
   function handleContextSetStart() {
     if (!contextMenu) return
-    const label = `${contextMenu.lat.toFixed(5)}, ${contextMenu.lng.toFixed(5)}`
+    const { lat, lng } = contextMenu
+    const coordLabel = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
     const start = useMapStore.getState().waypoints.find((p) => p.type === 'start')
-    if (start) updateWaypoint(start.id, contextMenu.lat, contextMenu.lng, label)
+    if (!start) return
+    updateWaypoint(start.id, lat, lng, coordLabel)
+    reverseGeocode(lat, lng).then((name) => {
+      if (name) updateWaypoint(start.id, lat, lng, name)
+    })
   }
 
   function handleContextAddIntermediate() {
     if (!contextMenu) return
-    addIntermediateAt(contextMenu.lat, contextMenu.lng)
+    const { lat, lng } = contextMenu
+    addIntermediateAt(lat, lng)
+    // Reverse geocode runs after the waypoint is added; find the new waypoint by coords
+    reverseGeocode(lat, lng).then((name) => {
+      if (!name) return
+      const pts = useMapStore.getState().waypoints
+      const match = pts.find(
+        (p) => Math.abs(p.lat - lat) < 0.00001 && Math.abs(p.lng - lng) < 0.00001,
+      )
+      if (match) updateWaypoint(match.id, lat, lng, name)
+    })
   }
 
   function handleContextSetEnd() {
     if (!contextMenu) return
-    const label = `${contextMenu.lat.toFixed(5)}, ${contextMenu.lng.toFixed(5)}`
+    const { lat, lng } = contextMenu
+    const coordLabel = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
     const pts = useMapStore.getState().waypoints
     const end = pts.find((p) => p.type === 'end') ?? pts[pts.length - 1]
-    if (end) updateWaypoint(end.id, contextMenu.lat, contextMenu.lng, label)
+    if (!end) return
+    updateWaypoint(end.id, lat, lng, coordLabel)
+    reverseGeocode(lat, lng).then((name) => {
+      if (name) updateWaypoint(end.id, lat, lng, name)
+    })
   }
 
   function handleContextAddPoi() {

@@ -3,9 +3,9 @@ import { DotsSixVertical, X } from '@phosphor-icons/react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { RoutePoint } from '@trailx/shared'
-import type { PhotonFeature } from '../../services/photon'
-import { photonFeatureLabel } from '../../services/photon'
-import { usePhotonSearch } from '../../hooks/usePhotonSearch'
+import type { NominatimResult } from '../../services/nominatim'
+import { nominatimLabel } from '../../services/nominatim'
+import { useNominatimSearch } from '../../hooks/useNominatimSearch'
 import { SearchSuggestions } from '../SearchSuggestions/SearchSuggestions'
 import styles from './WaypointInput.module.css'
 
@@ -41,19 +41,21 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
   const [inputValue, setInputValue] = useState(defaultLabel)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Sync label when point is updated externally (e.g. map click, context menu).
-  // Use a ref to track the last point id+coords so we only sync on actual changes.
+  // Sync inputValue when the point is updated externally (map click, context menu,
+  // or async reverse-geocode label update). Track id+coords+label so any of the
+  // three changes triggers a sync.
   // NOTE: NaN !== NaN is always true in JS, so we need explicit NaN handling.
-  const prevPointRef = useRef<{ id: string; lat: number; lng: number } | null>(null)
+  const prevPointRef = useRef<{ id: string; lat: number; lng: number; label: string | undefined } | null>(null)
   const prev = prevPointRef.current
   const sameNum = (a: number, b: number) => (isNaN(a) && isNaN(b)) || a === b
-  const coordChanged =
+  const externallyChanged =
     !prev ||
     prev.id !== point.id ||
     !sameNum(prev.lat, point.lat) ||
-    !sameNum(prev.lng, point.lng)
-  if (coordChanged) {
-    prevPointRef.current = { id: point.id, lat: point.lat, lng: point.lng }
+    !sameNum(prev.lng, point.lng) ||
+    prev.label !== point.label
+  if (externallyChanged) {
+    prevPointRef.current = { id: point.id, lat: point.lat, lng: point.lng, label: point.label }
     if (isResolved) {
       const newLabel = point.label ?? `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}`
       if (inputValue !== newLabel) setInputValue(newLabel)
@@ -62,14 +64,16 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
     }
   }
 
-  const { suggestions } = usePhotonSearch(showSuggestions ? inputValue : '')
+  const { suggestions } = useNominatimSearch(showSuggestions ? inputValue : '')
 
-  const handleSelect = (feature: PhotonFeature) => {
-    const label = photonFeatureLabel(feature)
-    const [lng, lat] = feature.geometry.coordinates
+  const handleSelect = (result: NominatimResult) => {
+    const label = nominatimLabel(result)
+    const lat = parseFloat(result.lat)
+    const lng = parseFloat(result.lon)
     setInputValue(label)
     setShowSuggestions(false)
     onUpdate(point.id, lat, lng, label)
+    window.dispatchEvent(new CustomEvent('trailx:flyto', { detail: { lat, lng } }))
   }
 
   return (

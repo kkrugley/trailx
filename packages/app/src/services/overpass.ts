@@ -1,14 +1,33 @@
 import type { POI, POICategory } from '@trailx/shared'
+import { POI_OVERPASS_FILTER } from '@trailx/shared'
+import type { Feature, Point } from 'geojson'
+import { getDB, dbAvailable, TILE_EXPIRY_MS } from '../db'
+import {
+  bboxToTiles,
+  tileToBbox,
+  expandBbox,
+  pointToPolylineDistanceM,
+  QUERY_ZOOM,
+} from '../utils/tiles'
 
 type LineStringGeometry = {
   type: 'LineString'
   coordinates: number[][]
 }
-import { POI_OVERPASS_FILTER } from '@trailx/shared'
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
-const MAX_ROUTE_POINTS = 200
-const TIMEOUT_MS = 20_000
+// Multi-server failover (round-robin)
+const OVERPASS_SERVERS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+]
+let serverIndex = 0
+
+function nextServer(): string {
+  const url = OVERPASS_SERVERS[serverIndex % OVERPASS_SERVERS.length]
+  serverIndex++
+  return url
+}
 
 export class OverpassTimeoutError extends Error {
   constructor() {
@@ -17,18 +36,11 @@ export class OverpassTimeoutError extends Error {
   }
 }
 
-/** Uniform step sampling: reduce coords to at most maxPoints */
-function thinCoords(
-  coords: Array<[number, number]>,
-  maxPoints: number,
-): Array<[number, number]> {
-  if (coords.length <= maxPoints) return coords
-  const step = (coords.length - 1) / (maxPoints - 1)
-  return Array.from({ length: maxPoints }, (_, i) => coords[Math.round(i * step)])
-}
+const TILE_QUERY_TIMEOUT_MS = 10_000
+const MAX_CONCURRENT = 5
 
 /** Reverse-map an element's OSM tags to a POICategory */
-function detectCategory(tags: Record<string, string>): POICategory | null {
+export function detectCategory(tags: Record<string, string>): POICategory | null {
   if (tags.amenity === 'drinking_water') return 'drinking_water'
   if (tags.amenity === 'bicycle_repair_station') return 'bicycle_repair'
   if (tags.amenity === 'shelter') return 'shelter'
@@ -41,22 +53,26 @@ function detectCategory(tags: Record<string, string>): POICategory | null {
   return null
 }
 
-function buildOverpassQuery(
-  coordStr: string,
-  bufferMetres: number,
+/** Build Overpass QL for a bbox and set of categories */
+function buildTileQuery(
+  south: number,
+  west: number,
+  north: number,
+  east: number,
   categories: POICategory[],
 ): string {
-  const lines = categories.map(
-    (cat) => `  node(around:${bufferMetres},${coordStr})${POI_OVERPASS_FILTER[cat]};`,
-  )
-  return `[out:json][timeout:10];\n(\n${lines.join('\n')}\n);\nout body;`
+  const lines = categories
+    .filter((c) => POI_OVERPASS_FILTER[c])
+    .map((c) => `  nwr(${south},${west},${north},${east})${POI_OVERPASS_FILTER[c]};`)
+  return `[out:json][timeout:10];\n(\n${lines.join('\n')}\n);\nout center;`
 }
 
 interface OverpassElement {
   type: 'node' | 'way' | 'relation'
   id: number
-  lat: number
-  lon: number
+  lat?: number
+  lon?: number
+  center?: { lat: number; lon: number }
   tags?: Record<string, string>
 }
 
@@ -64,60 +80,277 @@ interface OverpassResponse {
   elements: OverpassElement[]
 }
 
-export async function fetchPOIsAlongRoute(
-  routeGeometry: LineStringGeometry,
-  bufferMetres: number,
+/** Fetch a single tile from Overpass and return raw GeoJSON features */
+async function fetchTile(
+  x: number,
+  y: number,
   categories: POICategory[],
-): Promise<POI[]> {
-  if (categories.length === 0) return []
-
-  // geometry.coordinates are [lng, lat]; Overpass expects lat,lng
-  const rawCoords = routeGeometry.coordinates as Array<[number, number]>
-  const thinned = thinCoords(rawCoords, MAX_ROUTE_POINTS)
-  const coordStr = thinned.map(([lng, lat]) => `${lat},${lng}`).join(',')
-
-  const query = buildOverpassQuery(coordStr, bufferMetres, categories)
+  signal: AbortSignal,
+): Promise<Feature<Point>[]> {
+  const [west, south, east, north] = tileToBbox(x, y, QUERY_ZOOM)
+  const query = buildTileQuery(south, west, north, east, categories)
+  const server = nextServer()
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const timeoutId = setTimeout(() => controller.abort(), TILE_QUERY_TIMEOUT_MS)
+  // Also abort when the outer signal fires
+  signal.addEventListener('abort', () => controller.abort(), { once: true })
 
   try {
-    const response = await fetch(OVERPASS_URL, {
+    const res = await fetch(server, {
       method: 'POST',
       body: query,
       signal: controller.signal,
     })
+    if (!res.ok) {
+      if (res.status === 429 || res.status === 503) {
+        // Try next server on rate-limit / service unavailable
+        serverIndex++
+      }
+      throw new Error(`Overpass HTTP ${res.status}`)
+    }
 
-    if (!response.ok) throw new Error(`Overpass error: ${response.status}`)
-
-    const data = (await response.json()) as OverpassResponse
-    const pois: POI[] = []
+    const data = (await res.json()) as OverpassResponse
+    const features: Feature<Point>[] = []
 
     for (const el of data.elements) {
-      if (el.type !== 'node') continue
       const tags = el.tags ?? {}
       const category = detectCategory(tags)
-      if (!category || !categories.includes(category)) continue
-      pois.push({
-        id: `osm-node-${el.id}`,
-        lat: el.lat,
-        lng: el.lon,
-        name: tags.name,
-        category,
-        tags,
-        osmId: el.id,
-        osmType: 'node',
+      if (!category) continue
+
+      const lat = el.lat ?? el.center?.lat
+      const lon = el.lon ?? el.center?.lon
+      if (lat === undefined || lon === undefined) continue
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: {
+          id: `osm-${el.type}-${el.id}`,
+          name: tags.name ?? null,
+          category,
+          tags,
+          osmId: el.id,
+          osmType: el.type,
+          lat,
+          lng: lon,
+        },
       })
     }
 
-    return pois
+    return features
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.warn('[overpass] Query timed out after', TIMEOUT_MS, 'ms')
       throw new OverpassTimeoutError()
     }
     throw err
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+/** Build the composite query key used in IndexedDB (one entry per category per tile) */
+function tileQueryKey(category: POICategory): string {
+  return `v1:${category}`
+}
+
+/**
+ * Fetch POIs for a set of tiles, using IndexedDB cache when available.
+ * Returns after all tiles have been fetched/loaded.
+ */
+async function fetchPOIsForTiles(
+  tiles: Array<{ x: number; y: number }>,
+  categories: POICategory[],
+  signal: AbortSignal,
+): Promise<Feature<Point>[]> {
+  const db = getDB()
+  const now = Date.now()
+  const queryKeys = categories.map(tileQueryKey)
+
+  // Determine which tiles need fetching
+  const tilesToFetch: Array<{ x: number; y: number; missingCategories: POICategory[] }> = []
+
+  if (dbAvailable && db) {
+    for (const { x, y } of tiles) {
+      try {
+        const cached = await db.overpasstiles.where('[x+y]').equals([x, y]).toArray()
+        const freshKeys = new Set(
+          cached
+            .filter((t) => now - t.time < TILE_EXPIRY_MS)
+            .map((t) => t.query),
+        )
+        const missing = categories.filter((c) => !freshKeys.has(tileQueryKey(c)))
+        if (missing.length > 0) {
+          tilesToFetch.push({ x, y, missingCategories: missing })
+        }
+      } catch {
+        tilesToFetch.push({ x, y, missingCategories: categories })
+      }
+    }
+  } else {
+    tiles.forEach(({ x, y }) =>
+      tilesToFetch.push({ x, y, missingCategories: categories }),
+    )
+  }
+
+  // Fetch missing tiles with max-concurrency limit
+  const queue = [...tilesToFetch]
+  const inFlight = new Set<string>()
+  // Accumulate features in memory for fallback (no-db) path
+  const inMemoryFeatures: Feature<Point>[] = []
+  let abortError: OverpassTimeoutError | null = null
+
+  async function processNext(): Promise<void> {
+    if (queue.length === 0 || inFlight.size >= MAX_CONCURRENT) return
+    const item = queue.shift()!
+    const key = `${item.x},${item.y}`
+    inFlight.add(key)
+
+    try {
+      if (signal.aborted) return
+      const features = await fetchTile(item.x, item.y, item.missingCategories, signal)
+
+      if (dbAvailable && db) {
+        const tileEntries = item.missingCategories.map((c) => ({
+          query: tileQueryKey(c),
+          x: item.x,
+          y: item.y,
+          time: Date.now(),
+        }))
+        const dataEntries = features.map((f) => ({
+          query: tileQueryKey(f.properties!.category as POICategory),
+          id: f.properties!.osmId as number,
+          poi: f,
+        }))
+        try {
+          await db.transaction('rw', db.overpasstiles, db.overpassdata, async () => {
+            await db.overpasstiles.bulkPut(tileEntries)
+            await db.overpassdata.bulkPut(dataEntries)
+          })
+        } catch {
+          // IndexedDB write failed — keep features in memory
+          inMemoryFeatures.push(...features)
+        }
+      } else {
+        inMemoryFeatures.push(...features)
+      }
+    } catch (err) {
+      if (err instanceof OverpassTimeoutError) {
+        abortError = err
+      } else {
+        console.warn('[overpass] tile fetch error:', err)
+      }
+    } finally {
+      inFlight.delete(key)
+    }
+  }
+
+  // Drain the queue respecting MAX_CONCURRENT
+  const runners: Promise<void>[] = []
+  for (let i = 0; i < Math.min(tilesToFetch.length, MAX_CONCURRENT); i++) {
+    runners.push(
+      (async () => {
+        while (queue.length > 0 || inFlight.size > 0) {
+          await processNext()
+        }
+      })(),
+    )
+  }
+  await Promise.allSettled(runners)
+
+  // Propagate abort/timeout errors after all tile fetches have settled
+  if (abortError) throw abortError
+
+  // Read results: from IndexedDB if available, otherwise use in-memory accumulation
+  if (dbAvailable && db) {
+    try {
+      const rows = await db.overpassdata
+        .where('query')
+        .anyOf(queryKeys)
+        .toArray()
+      return rows.map((r) => r.poi)
+    } catch {
+      return inMemoryFeatures
+    }
+  }
+  return inMemoryFeatures
+}
+
+/**
+ * Main public API — replaces the old fetchPOIsAlongRoute.
+ *
+ * Fetches POIs within `bufferMetres` of the route polyline using tile-based
+ * Overpass queries with IndexedDB caching. After loading tiles, filters results
+ * to only include POIs within the actual buffer distance from the route.
+ */
+export async function fetchPOIsAlongRoute(
+  routeGeometry: LineStringGeometry,
+  bufferMetres: number,
+  categories: POICategory[],
+  signal?: AbortSignal,
+): Promise<POI[]> {
+  if (categories.length === 0) return []
+
+  const coords = routeGeometry.coordinates
+  if (coords.length === 0) return []
+
+  // Collect unique tiles covering each segment expanded by bufferMetres
+  const tileSet = new Set<string>()
+  const tileList: Array<{ x: number; y: number }> = []
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [lng1, lat1] = coords[i]
+    const [lng2, lat2] = coords[i + 1]
+    const west = Math.min(lng1, lng2)
+    const east = Math.max(lng1, lng2)
+    const south = Math.min(lat1, lat2)
+    const north = Math.max(lat1, lat2)
+    const [ew, es, ee, en] = expandBbox(west, south, east, north, bufferMetres)
+    const range = bboxToTiles(ew, es, ee, en, QUERY_ZOOM)
+
+    for (let x = range.minX; x <= range.maxX; x++) {
+      for (let y = range.minY; y <= range.maxY; y++) {
+        const key = `${x},${y}`
+        if (!tileSet.has(key)) {
+          tileSet.add(key)
+          tileList.push({ x, y })
+        }
+      }
+    }
+  }
+
+  const abortSignal = signal ?? new AbortController().signal
+  const features = await fetchPOIsForTiles(tileList, categories, abortSignal)
+
+  // Filter: only keep POIs within bufferMetres from the actual polyline
+  const pois: POI[] = []
+  for (const f of features) {
+    const props = f.properties!
+    const lng = f.geometry.coordinates[0]
+    const lat = f.geometry.coordinates[1]
+    const dist = pointToPolylineDistanceM(lng, lat, coords)
+    if (dist > bufferMetres) continue
+
+    const category = props.category as POICategory
+    if (!categories.includes(category)) continue
+
+    pois.push({
+      id: props.id as string,
+      lat,
+      lng,
+      name: props.name ?? undefined,
+      category,
+      tags: props.tags as Record<string, string>,
+      osmId: props.osmId as number,
+      osmType: props.osmType as 'node' | 'way' | 'relation',
+    })
+  }
+
+  // Deduplicate by id (tile overlap can produce duplicates)
+  const seen = new Set<string>()
+  return pois.filter((p) => {
+    if (seen.has(p.id)) return false
+    seen.add(p.id)
+    return true
+  })
 }

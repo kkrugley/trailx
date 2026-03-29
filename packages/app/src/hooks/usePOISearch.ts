@@ -10,35 +10,45 @@ export function usePOISearch(): void {
   const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
   const { setAllPois, setIsSearchingPOI } = useMapStore((s) => s.actions)
 
-  const requestIdRef = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
+    // Cancel previous debounce and in-flight requests
+    if (timerRef.current !== null) clearTimeout(timerRef.current)
+    abortRef.current?.abort()
+
     if (!routeResult) {
       setAllPois([])
       return
     }
 
-    const currentId = ++requestIdRef.current
-    const timerId = setTimeout(async () => {
+    timerRef.current = setTimeout(async () => {
+      const controller = new AbortController()
+      abortRef.current = controller
+
       setIsSearchingPOI(true)
       try {
-        // Always fetch all categories — filtering is done client-side
         const found = await fetchPOIsAlongRoute(
           routeResult.geometry,
           poiBuffer,
           [...POI_CATEGORIES],
+          controller.signal,
         )
-        if (requestIdRef.current !== currentId) return
+        if (controller.signal.aborted) return
         setAllPois(found)
       } catch (err) {
-        if (requestIdRef.current !== currentId) return
+        if (controller.signal.aborted) return
         console.error('[poi] fetchPOIsAlongRoute failed:', err)
         setAllPois([])
       } finally {
-        if (requestIdRef.current === currentId) setIsSearchingPOI(false)
+        if (!controller.signal.aborted) setIsSearchingPOI(false)
       }
     }, DEBOUNCE_MS)
 
-    return () => clearTimeout(timerId)
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current)
+      abortRef.current?.abort()
+    }
   }, [routeResult, poiBuffer, setAllPois, setIsSearchingPOI])
 }

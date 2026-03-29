@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { PhotonFeature } from '../../services/photon'
-import { photonFeatureLabel } from '../../services/photon'
+import type { NominatimResult } from '../../services/nominatim'
+import { nominatimLabel } from '../../services/nominatim'
 import { MapPin } from '@phosphor-icons/react'
 import styles from './SearchSuggestions.module.css'
 
 interface SearchSuggestionsProps {
-  suggestions: PhotonFeature[]
-  onSelect: (feature: PhotonFeature) => void
+  suggestions: NominatimResult[]
+  onSelect: (result: NominatimResult) => void
   onClose: () => void
   anchorRef: React.RefObject<HTMLInputElement | null>
 }
@@ -50,15 +50,15 @@ export function SearchSuggestions({ suggestions, onSelect, onClose, anchorRef }:
 
   return createPortal(
     <ul ref={listRef} className={styles.list} role="listbox" style={style}>
-      {suggestions.map((feature, i) => {
-        const label = photonFeatureLabel(feature)
+      {suggestions.map((result) => {
+        const label = nominatimLabel(result)
         return (
-          <li key={i} role="option">
+          <li key={result.place_id} role="option">
             <button
               className={styles.item}
               onMouseDown={(e) => {
                 e.preventDefault()
-                onSelect(feature)
+                onSelect(result)
               }}
             >
               <MapPin size={14} weight="fill" className={styles.icon} />

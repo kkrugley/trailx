@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS: Partial<AppSettings> = {
   distanceUnit: 'km',
   gpxExport: { includeTrk: true, includeRte: false, includeWpt: true },
   poiBuffer: 500,
-  mapStyle: 'liberty',
+  mapStyle: 'bright',
   autoFitRoute: true,
   speeds: { ...DEFAULT_SPEEDS },
 }

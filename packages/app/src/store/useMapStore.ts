@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   distanceUnit: 'km',
   gpxExport: { includeTrk: true, includeRte: false, includeWpt: true },
   poiBuffer: 500,
-  mapStyle: 'liberty',
+  mapStyle: 'bright',
   showPois: true,
   autoFitRoute: true,
   speeds: { foot: 5, bike: 20, mtb: 15, racingbike: 28 },

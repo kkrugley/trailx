@@ -85,11 +85,12 @@ export function shortLabel(
   fallback?: string,
 ): string | null {
   if (address) {
+    // Filter out purely numeric suburb values (numbered microdistricts like "8")
     const city =
       address.city ??
       address.town ??
       address.village ??
-      address.suburb ??
+      (address.suburb && isNaN(Number(address.suburb)) ? address.suburb : undefined) ??
       address.municipality
 
     // Named place (café, shop, landmark, etc.)
@@ -101,7 +102,17 @@ export function shortLabel(
       address.natural
 
     if (poiName) {
-      return city && city !== poiName ? `${poiName}, ${city}` : poiName
+      const road =
+        address.road ??
+        address.pedestrian ??
+        address.footway ??
+        address.cycleway ??
+        address.path
+      const streetHint = road
+        ? address.house_number ? `${road} ${address.house_number}` : road
+        : null
+      const parts = [streetHint, city].filter(Boolean)
+      return parts.length > 0 ? `${poiName}, ${parts.join(', ')}` : poiName
     }
 
     // Street address (road + optional house number)

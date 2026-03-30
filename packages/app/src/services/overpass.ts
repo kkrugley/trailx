@@ -15,11 +15,12 @@ type LineStringGeometry = {
   coordinates: number[][]
 }
 
-// Multi-server failover (round-robin)
+// Multi-server failover (round-robin).
+// maps.mail.ru is excluded — it is blocked by Firefox Enhanced Tracking Protection
+// and enforces a strict CORS policy that rejects browser requests.
 const OVERPASS_SERVERS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 let serverIndex = 0
 
@@ -49,6 +50,27 @@ export class OverpassTimeoutError extends Error {
 
 const TILE_QUERY_TIMEOUT_MS = 10_000
 const MAX_CONCURRENT = 5
+
+/** Delays in ms for successive retry attempts on 429/503 responses. */
+const BACKOFF_DELAYS_MS: readonly number[] = [1000, 2000]
+
+/** Wait `ms` milliseconds, rejecting early (as AbortError) if `signal` fires. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return Promise.reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+  }
+  return new Promise<void>((resolve, reject) => {
+    const id = setTimeout(resolve, ms)
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(id)
+        reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+      },
+      { once: true },
+    )
+  })
+}
 
 /** Reverse-map an element's OSM tags to a POICategory */
 export function detectCategory(tags: Record<string, string>): POICategory | null {
@@ -91,7 +113,11 @@ interface OverpassResponse {
   elements: OverpassElement[]
 }
 
-/** Fetch a single tile from Overpass and return raw GeoJSON features */
+/**
+ * Fetch a single tile from Overpass and return raw GeoJSON features.
+ * Retries up to BACKOFF_DELAYS_MS.length times on 429/503 with exponential backoff.
+ * Hard-fails immediately on 403/504. Aborts cleanly when `signal` fires.
+ */
 async function fetchTile(
   x: number,
   y: number,
@@ -100,64 +126,75 @@ async function fetchTile(
 ): Promise<Feature<Point>[]> {
   const [west, south, east, north] = tileToBbox(x, y, QUERY_ZOOM)
   const query = buildTileQuery(south, west, north, east, categories)
-  const server = nextServer()
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TILE_QUERY_TIMEOUT_MS)
-  // Also abort when the outer signal fires
-  signal.addEventListener('abort', () => controller.abort(), { once: true })
+  for (let attempt = 0; attempt <= BACKOFF_DELAYS_MS.length; attempt++) {
+    if (signal.aborted) throw new OverpassTimeoutError()
 
-  try {
-    const res = await fetch(server, {
-      method: 'POST',
-      body: query,
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      if (res.status === 429 || res.status === 503) {
-        // Try next server on rate-limit / service unavailable
-        serverIndex++
-      }
-      throw new Error(`Overpass HTTP ${res.status}`)
-    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), TILE_QUERY_TIMEOUT_MS)
+    const onOuterAbort = () => controller.abort()
+    signal.addEventListener('abort', onOuterAbort, { once: true })
 
-    const data = (await res.json()) as OverpassResponse
-    const features: Feature<Point>[] = []
-
-    for (const el of data.elements) {
-      const tags = el.tags ?? {}
-      const category = detectCategory(tags)
-      if (!category) continue
-
-      const lat = el.lat ?? el.center?.lat
-      const lon = el.lon ?? el.center?.lon
-      if (lat === undefined || lon === undefined) continue
-
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [lon, lat] },
-        properties: {
-          id: `osm-${el.type}-${el.id}`,
-          name: tags.name ?? null,
-          category,
-          tags,
-          osmId: el.id,
-          osmType: el.type,
-          lat,
-          lng: lon,
-        },
+    try {
+      const res = await fetch(nextServer(), {
+        method: 'POST',
+        body: query,
+        signal: controller.signal,
       })
-    }
 
-    return features
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new OverpassTimeoutError()
+      if (!res.ok) {
+        if ((res.status === 429 || res.status === 503) && attempt < BACKOFF_DELAYS_MS.length) {
+          // Rate-limited — back off before retrying on a different server
+          clearTimeout(timeoutId)
+          signal.removeEventListener('abort', onOuterAbort)
+          await sleep(BACKOFF_DELAYS_MS[attempt], signal)
+          continue
+        }
+        throw new Error(`Overpass HTTP ${res.status}`)
+      }
+
+      const data = (await res.json()) as OverpassResponse
+      const features: Feature<Point>[] = []
+
+      for (const el of data.elements) {
+        const tags = el.tags ?? {}
+        const category = detectCategory(tags)
+        if (!category) continue
+
+        const lat = el.lat ?? el.center?.lat
+        const lon = el.lon ?? el.center?.lon
+        if (lat === undefined || lon === undefined) continue
+
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lon, lat] },
+          properties: {
+            id: `osm-${el.type}-${el.id}`,
+            name: tags.name ?? null,
+            category,
+            tags,
+            osmId: el.id,
+            osmType: el.type,
+            lat,
+            lng: lon,
+          },
+        })
+      }
+
+      return features
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new OverpassTimeoutError()
+      }
+      throw err
+    } finally {
+      clearTimeout(timeoutId)
+      signal.removeEventListener('abort', onOuterAbort)
     }
-    throw err
-  } finally {
-    clearTimeout(timeoutId)
   }
+
+  // Loop exhausted all retries (unreachable with the guard above, but required by TS)
+  throw new Error('Overpass: max retries exceeded')
 }
 
 /** Build the composite query key used in IndexedDB (one entry per category per tile) */
@@ -300,21 +337,32 @@ export async function fetchPOIsAlongRoute(
   // GraphHopper routes can have thousands of points; most are redundant for tile coverage.
   const thinned = thinCoords(coords, 300)
 
-  // Collect unique tiles covering the entire thinned route bbox expanded by bufferMetres.
-  // Using whole-route bbox is simpler and avoids O(n) per-segment tile expansion.
-  const lngs = thinned.map((c) => c[0])
-  const lats = thinned.map((c) => c[1])
-  const west = Math.min(...lngs)
-  const east = Math.max(...lngs)
-  const south = Math.min(...lats)
-  const north = Math.max(...lats)
-  const [ew, es, ee, en] = expandBbox(west, south, east, north, bufferMetres)
-  const range = bboxToTiles(ew, es, ee, en, QUERY_ZOOM)
-
+  // Per-segment corridor tile selection: expand each segment's bbox by bufferMetres and
+  // collect unique tiles. This fetches only tiles near the actual route, not the full
+  // rectangular bbox. For a 50km route this is typically ~20 tiles vs ~100+ for bbox.
+  const tileSet = new Set<string>()
   const tileList: Array<{ x: number; y: number }> = []
-  for (let x = range.minX; x <= range.maxX; x++) {
-    for (let y = range.minY; y <= range.maxY; y++) {
-      tileList.push({ x, y })
+
+  for (let i = 0; i < thinned.length - 1; i++) {
+    const [lng0, lat0] = thinned[i]
+    const [lng1, lat1] = thinned[i + 1]
+
+    const segWest = Math.min(lng0, lng1)
+    const segEast = Math.max(lng0, lng1)
+    const segSouth = Math.min(lat0, lat1)
+    const segNorth = Math.max(lat0, lat1)
+
+    const [ew, es, ee, en] = expandBbox(segWest, segSouth, segEast, segNorth, bufferMetres)
+    const range = bboxToTiles(ew, es, ee, en, QUERY_ZOOM)
+
+    for (let x = range.minX; x <= range.maxX; x++) {
+      for (let y = range.minY; y <= range.maxY; y++) {
+        const key = `${x}:${y}`
+        if (!tileSet.has(key)) {
+          tileSet.add(key)
+          tileList.push({ x, y })
+        }
+      }
     }
   }
 

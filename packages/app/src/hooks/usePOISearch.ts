@@ -8,7 +8,7 @@ const DEBOUNCE_MS = 800
 export function usePOISearch(): void {
   const routeResult = useMapStore((s) => s.routeResult)
   const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
-  const { setAllPois, setIsSearchingPOI } = useMapStore((s) => s.actions)
+  const { setAllPois, mergePois, setIsSearchingPOI } = useMapStore((s) => s.actions)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -36,11 +36,13 @@ export function usePOISearch(): void {
           controller.signal,
         )
         if (controller.signal.aborted) return
-        setAllPois(found)
+        // Merge with existing POIs so previously found points remain visible
+        // while the new search completes. Deduplication by osmId is done in the store.
+        mergePois(found)
       } catch (err) {
         if (controller.signal.aborted) return
+        // Preserve existing POIs on error — don't blank the map for a transient failure.
         console.error('[poi] fetchPOIsAlongRoute failed:', err)
-        setAllPois([])
       } finally {
         if (!controller.signal.aborted) setIsSearchingPOI(false)
       }
@@ -50,5 +52,5 @@ export function usePOISearch(): void {
       if (timerRef.current !== null) clearTimeout(timerRef.current)
       abortRef.current?.abort()
     }
-  }, [routeResult, poiBuffer, setAllPois, setIsSearchingPOI])
+  }, [routeResult, poiBuffer, setAllPois, mergePois, setIsSearchingPOI])
 }

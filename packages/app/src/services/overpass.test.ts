@@ -145,10 +145,44 @@ describe('fetchPOIsAlongRoute', () => {
     expect(result).toEqual([])
   })
 
-  it('returns empty array when response is not ok (graceful degradation)', async () => {
-    mockFetch(503, {})
-    const result = await fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water'])
-    expect(result).toEqual([])
+  it('returns empty array when response is not ok after retries (graceful degradation)', async () => {
+    vi.useFakeTimers()
+    try {
+      mockFetch(503, {})
+      const promise = fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water'])
+      // Advance all backoff timers (1000ms + 2000ms per tile, across all tiles)
+      await vi.runAllTimersAsync()
+      const result = await promise
+      expect(result).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries on 429 and succeeds on second attempt', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: vi.fn(),
+        } as unknown as Response)
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ elements: [DRINKING_WATER_ELEMENT] }),
+        } as unknown as Response)
+
+      const promise = fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water'])
+      await vi.runAllTimersAsync()
+      const result = await promise
+      // At least one tile succeeded after retry, so water POI should appear
+      const water = result.find((p) => p.osmId === 1001)
+      expect(water).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('handles elements with no tags gracefully', async () => {

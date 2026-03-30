@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { calcMeasureDistance, useMapStore, MEASURE_COLORS } from './useMapStore'
+import type { POICategory } from '@trailx/shared'
 
 // ── calcMeasureDistance (pure function) ───────────────────────────────────────
 
@@ -315,5 +316,61 @@ describe('measure tool actions', () => {
     getActions().deleteAllMeasureSessions()
     expect(getState().measureSessions).toHaveLength(0)
     expect(getState().measureActiveSessionId).toBeNull()
+  })
+})
+
+// ── mergePois ────────────────────────────────────────────────────────────────
+
+describe('mergePois', () => {
+  function makePoi(id: string, osmId: number, osmType: 'node' | 'way' | 'relation', category: POICategory = 'drinking_water') {
+    return { id, lat: 50, lng: 30, osmId, osmType, category, tags: {} }
+  }
+
+  beforeEach(() => {
+    getActions().setAllPois([])
+  })
+
+  it('adds new POIs when store is empty', () => {
+    const pois = [makePoi('osm-node-1', 1, 'node')]
+    getActions().mergePois(pois)
+    expect(getState().allPois).toHaveLength(1)
+    expect(getState().allPois[0].id).toBe('osm-node-1')
+  })
+
+  it('merges new POIs with existing ones without duplicates', () => {
+    getActions().setAllPois([makePoi('osm-node-1', 1, 'node')])
+    getActions().mergePois([
+      makePoi('osm-node-1', 1, 'node'), // duplicate — same id
+      makePoi('osm-node-2', 2, 'node'),  // new
+    ])
+    expect(getState().allPois).toHaveLength(2)
+  })
+
+  it('deduplicates by id, not osmId — node and way with same osmId are both kept', () => {
+    // In OSM, a node and a way can share the same integer osmId.
+    // Dedup must use the full "osm-${type}-${id}" string, not the bare number.
+    getActions().setAllPois([makePoi('osm-node-5', 5, 'node')])
+    getActions().mergePois([makePoi('osm-way-5', 5, 'way')])
+    expect(getState().allPois).toHaveLength(2)
+    const ids = getState().allPois.map((p) => p.id)
+    expect(ids).toContain('osm-node-5')
+    expect(ids).toContain('osm-way-5')
+  })
+
+  it('updates existing POI if same id appears in newPois', () => {
+    getActions().setAllPois([makePoi('osm-node-1', 1, 'node', 'drinking_water')])
+    getActions().mergePois([makePoi('osm-node-1', 1, 'node', 'food')])
+    expect(getState().allPois).toHaveLength(1)
+    expect(getState().allPois[0].category).toBe('food')
+  })
+
+  it('keeps pois in sync with activeCategories after merge', () => {
+    getActions().setActiveCategories(['drinking_water'])
+    getActions().setAllPois([makePoi('osm-node-1', 1, 'node', 'drinking_water')])
+    getActions().mergePois([makePoi('osm-node-2', 2, 'node', 'food')])
+    // food is not in activeCategories — should not appear in pois
+    expect(getState().allPois).toHaveLength(2)
+    expect(getState().pois).toHaveLength(1)
+    expect(getState().pois[0].category).toBe('drinking_water')
   })
 })

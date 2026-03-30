@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchPOIsAlongRoute, OverpassTimeoutError, detectCategory } from './overpass'
+import { fetchPOIsAlongRoute, detectCategory } from './overpass'
 import type { POICategory } from '@trailx/shared'
 
 const ROUTE_GEOMETRY = {
@@ -197,6 +197,31 @@ describe('fetchPOIsAlongRoute', () => {
       await vi.runAllTimersAsync()
       const result = await promise
       // At least one tile succeeded after retry, so water POI should appear
+      const water = result.find((p) => p.osmId === 1001)
+      expect(water).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retries tiles that timed out on first pass and returns their POIs', async () => {
+    vi.useFakeTimers()
+    try {
+      // First call aborts (simulating the 25s inner timeout firing).
+      // All subsequent calls succeed. The retry pass should re-fetch the timed-out
+      // tiles and include their POIs in the final result.
+      vi.mocked(fetch)
+        .mockRejectedValueOnce(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ elements: [DRINKING_WATER_ELEMENT] }),
+        } as unknown as Response)
+
+      const promise = fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water'])
+      await vi.runAllTimersAsync()
+      const result = await promise
+      // The retry pass should have fetched the timed-out tile and returned the POI
       const water = result.find((p) => p.osmId === 1001)
       expect(water).toBeDefined()
     } finally {

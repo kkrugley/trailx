@@ -48,7 +48,9 @@ export class OverpassTimeoutError extends Error {
   }
 }
 
-const TILE_QUERY_TIMEOUT_MS = 10_000
+// Public Overpass instances under load can take 15-25s to respond.
+// 10s was too tight and caused spurious timeouts for slow-but-valid responses.
+const TILE_QUERY_TIMEOUT_MS = 25_000
 const MAX_CONCURRENT = 5
 
 /** Delays in ms for successive retry attempts on 429/503 responses. */
@@ -277,7 +279,13 @@ async function fetchPOIsForTiles(
       }
     } catch (err) {
       if (err instanceof OverpassTimeoutError) {
-        abortError = err
+        if (signal.aborted) {
+          // Outer signal fired (user cancelled) — propagate to stop the whole search.
+          abortError = err
+        } else {
+          // Individual tile timed out — skip it, don't kill the rest of the search.
+          console.warn('[overpass] tile timeout, skipping:', item.x, item.y)
+        }
       } else {
         console.warn('[overpass] tile fetch error:', err)
       }

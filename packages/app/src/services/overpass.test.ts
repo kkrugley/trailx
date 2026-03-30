@@ -132,11 +132,30 @@ describe('fetchPOIsAlongRoute', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('throws OverpassTimeoutError on abort', async () => {
+  it('returns empty array when tiles abort (graceful degradation, outer signal not fired)', async () => {
+    // Simulates inner per-tile timeout: AbortError from our own 25s timer.
+    // The outer search signal is NOT aborted, so timed-out tiles are skipped and
+    // the search returns an empty array rather than throwing.
     vi.mocked(fetch).mockRejectedValue(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
-    await expect(
-      fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water']),
-    ).rejects.toBeInstanceOf(OverpassTimeoutError)
+    const result = await fetchPOIsAlongRoute(ROUTE_GEOMETRY, 500, ['drinking_water'])
+    expect(result).toEqual([])
+  })
+
+  it('stops processing tiles when outer AbortSignal fires', async () => {
+    // When the caller cancels (new route selected etc.) we should stop immediately.
+    const controller = new AbortController()
+    controller.abort()
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ elements: [] }),
+    } as unknown as Response)
+    const result = await fetchPOIsAlongRoute(
+      ROUTE_GEOMETRY, 500, ['drinking_water'], controller.signal,
+    )
+    // With signal already aborted, no tiles are fetched and result is empty
+    expect(result).toEqual([])
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('returns empty array on network error (graceful degradation)', async () => {

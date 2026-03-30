@@ -83,7 +83,7 @@ Found a great café along the route? You can add it as a waypoint: the route rec
 
 ## How to use it
 
-**In Telegram:** Add [@trailxapp_bot](https://t.me/@trailxapp_bot) to your group chat, then type `/app` to open the planner.
+**In Telegram:** Add [@trailxapp_bot](https://t.me/trailx_app) to your group chat, then type `/app` to open the planner.
 
 **On the web:** Open the app in any browser. Drag waypoints to build your route. Right-click (or long-press on mobile) anywhere on the map to place points directly.
 

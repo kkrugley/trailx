@@ -247,6 +247,11 @@ async function fetchPOIsForTiles(
   const inMemoryFeatures: Feature<Point>[] = []
   let abortError: OverpassTimeoutError | null = null
 
+  // Tiles that timed out on the first pass are collected here for a single retry.
+  const timedOutItems: Array<{ x: number; y: number; missingCategories: POICategory[] }> = []
+  // Set to true during the retry pass so timed-out tiles are not collected again.
+  let isRetryPass = false
+
   async function fetchAndStore(
     item: { x: number; y: number; missingCategories: POICategory[] },
   ): Promise<void> {
@@ -282,9 +287,13 @@ async function fetchPOIsForTiles(
         if (signal.aborted) {
           // Outer signal fired (user cancelled) — propagate to stop the whole search.
           abortError = err
+        } else if (!isRetryPass) {
+          // First-pass timeout — queue for a single retry attempt after other tiles finish.
+          console.warn('[overpass] tile timeout, will retry:', item.x, item.y)
+          timedOutItems.push(item)
         } else {
-          // Individual tile timed out — skip it, don't kill the rest of the search.
-          console.warn('[overpass] tile timeout, skipping:', item.x, item.y)
+          // Retry also timed out — skip permanently.
+          console.warn('[overpass] tile timeout on retry, skipping:', item.x, item.y)
         }
       } else {
         console.warn('[overpass] tile fetch error:', err)
@@ -292,7 +301,7 @@ async function fetchPOIsForTiles(
     }
   }
 
-  // Clean worker-pool pattern: each worker pops jobs until queue is empty.
+  // First pass: process all tiles through the worker pool.
   // JS is single-threaded so queue.shift() is atomic — no spinning, no busy-wait.
   const jobQueue = [...tilesToFetch]
   await Promise.all(
@@ -305,7 +314,25 @@ async function fetchPOIsForTiles(
     }),
   )
 
-  // Propagate abort/timeout errors after all tile fetches have settled
+  // Retry pass: attempt tiles that timed out during the first pass.
+  // By this point the other servers in the round-robin have already handled different
+  // tiles, so nextServer() will naturally pick a fresh host for each retry.
+  if (timedOutItems.length > 0 && !signal.aborted && !abortError) {
+    isRetryPass = true
+    console.info(`[overpass] retrying ${timedOutItems.length} timed-out tile(s)`)
+    const retryQueue = [...timedOutItems]
+    await Promise.all(
+      Array.from({ length: Math.min(retryQueue.length, MAX_CONCURRENT) }, async () => {
+        let job = retryQueue.shift()
+        while (job) {
+          await fetchAndStore(job)
+          job = retryQueue.shift()
+        }
+      }),
+    )
+  }
+
+  // Propagate outer-abort errors after all tile fetches have settled
   if (abortError) throw abortError
 
   // Read results: from IndexedDB if available, otherwise use in-memory accumulation

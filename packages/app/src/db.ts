@@ -17,6 +17,11 @@ class TrailxDB extends Dexie {
       overpasstiles: '[query+x+y],[x+y]',
       overpassdata: '[query+id]',
     })
+    // v2: add standalone indexes needed for .where('query') and .where('time')
+    this.version(2).stores({
+      overpasstiles: '[query+x+y],[x+y],time',
+      overpassdata: '[query+id],query',
+    })
   }
 }
 

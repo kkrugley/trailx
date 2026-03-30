@@ -329,13 +329,15 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
 
     mergePois: (newPois) =>
       set((state) => {
-        // Merge incoming POIs with existing ones, deduplicating by osmId.
-        // Preserves POIs from previous searches while the new search is running.
-        const byOsmId = new Map(state.allPois.map((p) => [p.osmId, p]))
+        // Merge incoming POIs with existing ones, deduplicating by `id` (not osmId).
+        // `id` is "osm-${osmType}-${osmId}" and is globally unique — a node and a way
+        // can share the same integer osmId, so using osmId alone as the key would
+        // silently overwrite one POI with another.
+        const byId = new Map(state.allPois.map((p) => [p.id, p]))
         for (const poi of newPois) {
-          byOsmId.set(poi.osmId, poi)
+          byId.set(poi.id, poi)
         }
-        const merged = Array.from(byOsmId.values())
+        const merged = Array.from(byId.values())
         return {
           allPois: merged,
           pois: merged.filter((p) => state.activeCategories.includes(p.category)),

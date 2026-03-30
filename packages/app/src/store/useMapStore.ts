@@ -99,6 +99,7 @@ interface MapStoreActions {
   setExportOpen: (open: boolean) => void
   // POI
   setAllPois: (pois: POI[]) => void
+  mergePois: (pois: POI[]) => void
   setPois: (pois: POI[]) => void
   setIsSearchingPOI: (value: boolean) => void
   toggleCategory: (category: POICategory) => void
@@ -325,6 +326,21 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
         allPois: pois,
         pois: pois.filter((p) => state.activeCategories.includes(p.category)),
       })),
+
+    mergePois: (newPois) =>
+      set((state) => {
+        // Merge incoming POIs with existing ones, deduplicating by osmId.
+        // Preserves POIs from previous searches while the new search is running.
+        const byOsmId = new Map(state.allPois.map((p) => [p.osmId, p]))
+        for (const poi of newPois) {
+          byOsmId.set(poi.osmId, poi)
+        }
+        const merged = Array.from(byOsmId.values())
+        return {
+          allPois: merged,
+          pois: merged.filter((p) => state.activeCategories.includes(p.category)),
+        }
+      }),
 
     setPois: (pois) => set({ pois }),
 

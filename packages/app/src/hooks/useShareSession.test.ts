@@ -63,7 +63,7 @@ describe('useShareSession', () => {
 
   describe('desktop (clipboard path)', () => {
     beforeEach(() => {
-      mockUsePlatform.mockReturnValue({ isTMA: false, isMobile: false, showBottomNav: false })
+      mockUsePlatform.mockReturnValue({ isTMA: false, isIAB: false, isMobile: false, showBottomNav: false })
       Object.assign(navigator, {
         clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
         share: undefined,
@@ -182,7 +182,7 @@ describe('useShareSession', () => {
 
   describe('TMA path (navigator.share)', () => {
     beforeEach(() => {
-      mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: false, showBottomNav: true })
+      mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: false, showBottomNav: true })
       mockUseTelegramWebApp.mockReturnValue({
         webApp: { initData: 'tma-init-data-string' },
         isAvailable: true,
@@ -217,7 +217,7 @@ describe('useShareSession', () => {
 
   describe('mobile fallback when navigator.share is unavailable', () => {
     beforeEach(() => {
-      mockUsePlatform.mockReturnValue({ isTMA: false, isMobile: true, showBottomNav: true })
+      mockUsePlatform.mockReturnValue({ isTMA: false, isIAB: false, isMobile: true, showBottomNav: true })
       Object.assign(navigator, {
         clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
         share: undefined,

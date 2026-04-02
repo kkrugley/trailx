@@ -95,6 +95,25 @@ describe('usePlatform — mobile detection', () => {
   })
 })
 
+describe('usePlatform — IAB detection', () => {
+  it('isIAB is false when window.Telegram is absent', () => {
+    const { result } = renderHook(() => usePlatform())
+    expect(result.current.isIAB).toBe(false)
+  })
+
+  it('isIAB is true when initData is empty string (Telegram in-app browser)', () => {
+    setTelegram('')
+    const { result } = renderHook(() => usePlatform())
+    expect(result.current.isIAB).toBe(true)
+  })
+
+  it('isIAB is false when initData is non-empty (actual TMA)', () => {
+    setTelegram('query_id=abc')
+    const { result } = renderHook(() => usePlatform())
+    expect(result.current.isIAB).toBe(false)
+  })
+})
+
 describe('usePlatform — showBottomNav', () => {
   it('showBottomNav is false for desktop non-TMA', () => {
     const { result } = renderHook(() => usePlatform())
@@ -109,6 +128,13 @@ describe('usePlatform — showBottomNav', () => {
 
   it('showBottomNav is true in TMA even on wide viewport', () => {
     setTelegram('query_id=abc')
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
+    const { result } = renderHook(() => usePlatform())
+    expect(result.current.showBottomNav).toBe(true)
+  })
+
+  it('showBottomNav is true in IAB even on wide viewport', () => {
+    setTelegram('')
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
     const { result } = renderHook(() => usePlatform())
     expect(result.current.showBottomNav).toBe(true)

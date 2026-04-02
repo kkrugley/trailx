@@ -36,19 +36,19 @@ describe('KeyboardDismissBar', () => {
   })
 
   it('renders nothing outside TMA', () => {
-    mockUsePlatform.mockReturnValue({ isTMA: false, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: false, isIAB: false, isMobile: true, showBottomNav: true })
     const { container } = render(<KeyboardDismissBar />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders nothing in TMA before any input is focused', () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
     expect(screen.queryByRole('button', { name: /done/i })).toBeNull()
   })
 
   it('shows Done button in TMA when an input is focused', async () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
 
     simulateFocusIn('INPUT')
@@ -57,7 +57,7 @@ describe('KeyboardDismissBar', () => {
   })
 
   it('shows Done button in TMA when a textarea is focused', () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
 
     simulateFocusIn('TEXTAREA')
@@ -66,7 +66,7 @@ describe('KeyboardDismissBar', () => {
   })
 
   it('does not show Done button when a non-input element is focused', () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
 
     simulateFocusIn('DIV')
@@ -75,7 +75,7 @@ describe('KeyboardDismissBar', () => {
   })
 
   it('hides Done button after blur when focus moves to non-input element', async () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
 
     simulateFocusIn('INPUT')
@@ -92,7 +92,7 @@ describe('KeyboardDismissBar', () => {
   })
 
   it('calls blur on active element when Done is clicked', async () => {
-    mockUsePlatform.mockReturnValue({ isTMA: true, isMobile: true, showBottomNav: true })
+    mockUsePlatform.mockReturnValue({ isTMA: true, isIAB: false, isMobile: true, showBottomNav: true })
     render(<KeyboardDismissBar />)
 
     // Create and focus a real input so document.activeElement is set

@@ -25,7 +25,8 @@ export function registerVote(bot: Bot<Context>): void {
         return
       }
 
-      const coords = await geocode(place)
+      const results = await geocode(place)
+      const coords = results[0] ?? null
       if (!coords) {
         await ctx.reply(`Не удалось найти "${place}". Уточни название.`)
         return

@@ -1,11 +1,13 @@
 .root {
   width: 100vw;
+  height: 100vh;   /* fallback for WebViews that don't support dvh */
   height: 100dvh;
   overflow: hidden;
 }
 
 /* Inside Telegram, track dynamic viewport so expand/collapse is reflected without JS */
 .tma {
+  height: 100vh;   /* fallback */
   height: 100dvh;
 }
 

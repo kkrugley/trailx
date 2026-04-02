@@ -206,7 +206,9 @@ export interface TelegramWebAppResult {
 
 export function useTelegramWebApp(): TelegramWebAppResult {
   const webApp = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
-  const isAvailable = webApp !== undefined
+  // isAvailable is true only for actual Telegram Mini Apps (non-empty initData).
+  // In Telegram's in-app browser, initData is '' so we treat it as a regular browser.
+  const isAvailable = !!(webApp?.initData)
 
   // Use window.innerHeight as the initial baseline — with viewport-fit=cover it
   // correctly reflects the full webview height including safe-area insets,
@@ -227,6 +229,14 @@ export function useTelegramWebApp(): TelegramWebAppResult {
   useEffect(() => {
     if (!webApp) return
 
+    // Apply Telegram theme in all contexts (TMA and in-app browser)
+    applyThemeParams(webApp.themeParams)
+
+    // The calls below are Mini App–specific. In Telegram's in-app browser,
+    // initData is an empty string — calling expand() / ready() there triggers
+    // undefined native behavior and corrupts the layout. Skip them.
+    if (!webApp.initData) return
+
     webApp.ready()
     // Always expand — isExpanded may be stale/incorrect when opened via bot menu button
     webApp.expand()
@@ -235,7 +245,6 @@ export function useTelegramWebApp(): TelegramWebAppResult {
     }
     // Request true fullscreen to remove native Telegram header (Bot API 7.3+)
     webApp.requestFullscreen?.()
-    applyThemeParams(webApp.themeParams)
     // Do NOT read window.innerHeight here — expansion is async and not yet complete.
     // The viewportChanged listener below will capture the correct height once stable.
     // Prevent accidental close by swipe-down on content (Bot API 7.7+)

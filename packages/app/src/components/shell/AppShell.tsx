@@ -17,9 +17,9 @@ import { KeyboardDismissBar } from '../KeyboardDismissBar/KeyboardDismissBar'
 import styles from './AppShell.module.css'
 
 export function AppShell() {
-  const { isMobile, isTMA } = usePlatform()
-  console.log('[TMA-DEBUG] AppShell:', { isMobile, isTMA, isDesktop: !isMobile && !isTMA })
-  const isDesktop = !isMobile && !isTMA
+  const { isMobile, isTMA, isIAB } = usePlatform()
+  console.log('[TMA-DEBUG] AppShell:', { isMobile, isTMA, isIAB, isDesktop: !isMobile && !isTMA && !isIAB })
+  const isDesktop = !isMobile && !isTMA && !isIAB
   const mapRef = useRef<MapViewHandle>(null)
   useIPGeolocation(mapRef)
   const [filterOpen, setFilterOpen] = useState(false)

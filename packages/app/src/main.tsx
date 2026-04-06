@@ -13,8 +13,12 @@ import { App } from './App'
 const _twa = window.Telegram?.WebApp
 if (_twa) {
   document.documentElement.style.setProperty('--tma-vh', `${window.innerHeight}px`)
-  _twa.expand()
-  _twa.requestFullscreen?.()
+  // In Telegram's in-app browser initData is '' — calling expand() / requestFullscreen()
+  // there triggers undefined native behavior and corrupts the layout. Only call in real TMA.
+  if (_twa.initData) {
+    _twa.expand()
+    _twa.requestFullscreen?.()
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

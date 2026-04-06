@@ -5,7 +5,7 @@
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter=@trailx/bot exec prisma generate && pnpm turbo build --filter=@trailx/bot..."
   },
   "deploy": {
-    "startCommand": "node packages/bot/dist/index.js",
+    "startCommand": "node --import ./packages/bot/dist/instrument.js packages/bot/dist/index.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

@@ -43,6 +43,7 @@ export function App() {
   return (
     <div className={`${styles.root} ${isAvailable ? styles.tma : ''}`}>
       <AppShell key={expandCount} />
+
     </div>
   )
 }

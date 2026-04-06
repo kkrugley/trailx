@@ -1,3 +1,5 @@
+import './instrument.js'
+import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import websocket from '@fastify/websocket'
@@ -24,6 +26,7 @@ const bot = new Bot(BOT_TOKEN)
 registerCommands(bot)
 
 bot.catch((err) => {
+  Sentry.captureException(err.error, { extra: { update_id: err.ctx.update.update_id } })
   console.error('Bot error while handling update', err.ctx.update.update_id, err.error)
 })
 
@@ -48,6 +51,9 @@ await fastify.register(cors, {
 })
 
 await fastify.register(websocket)
+
+// Sentry error handler — must be registered before routes
+Sentry.setupFastifyErrorHandler(fastify)
 
 // Health check — used by Railway to determine readiness
 fastify.get('/health', async () => ({ ok: true }))
@@ -119,6 +125,12 @@ setInterval(async () => {
   })
   if (count > 0) console.log(`Cleaned up ${count} expired sessions`)
 }, 60 * 60 * 1000)
+
+// Graceful shutdown — flush Sentry events before exit
+process.on('SIGTERM', async () => {
+  await Sentry.close(2000)
+  process.exit(0)
+})
 
 if (WEBHOOK_DOMAIN) {
   const webhookUrl = `${WEBHOOK_DOMAIN}/webhook/bot`

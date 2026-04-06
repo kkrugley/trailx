@@ -1,5 +1,8 @@
+import './instrument'
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { reactErrorHandler } from '@sentry/react'
 import './styles/globals.css'
 import { App } from './App'
 
@@ -21,7 +24,12 @@ if (_twa) {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!, {
+  // React 19: capture render errors and report to Sentry
+  onUncaughtError: reactErrorHandler(),
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+}).render(
   <StrictMode>
     <App />
   </StrictMode>,

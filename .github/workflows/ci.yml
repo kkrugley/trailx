@@ -90,6 +90,7 @@ jobs:
           VITE_API_URL: "https://example.com"
           VITE_BOT_WS_URL: "wss://example.com"
           VITE_MAPILLARY_TOKEN: ""
+          VITE_SENTRY_DSN: ""
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

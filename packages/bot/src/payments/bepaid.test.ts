@@ -5,6 +5,7 @@ import { BePaidProvider } from './providers/bepaid'
 import { TelegramStarsProvider } from './providers/telegramStars'
 import { TonCenterProvider } from './providers/ton'
 import { CryptoPayProvider } from './providers/cryptopay'
+import { WebPayProvider } from './providers/webpay'
 
 describe('PLANS', () => {
   it('monthly has correct BYN amount (500 kopecks = 5 BYN)', () => {
@@ -187,6 +188,91 @@ describe('CryptoPayProvider', () => {
     const secret = crypto.createHash('sha256').update(token).digest()
     const sig = crypto.createHmac('sha256', secret).update(body).digest('hex')
     expect(CryptoPayProvider.validateSignature(token, '{"tampered":true}', sig)).toBe(false)
+  })
+
+  it('rejects wrong-length signature', () => {
+    expect(CryptoPayProvider.validateSignature('token', 'body', 'short')).toBe(false)
+  })
+
+  it('rejects empty signature', () => {
+    expect(CryptoPayProvider.validateSignature('token', 'body', '')).toBe(false)
+  })
+})
+
+describe('WebPayProvider signature validation', () => {
+  it('validates correct MD5 signature', () => {
+    const secretKey = 'mysecret'
+    const fields: Record<string, string> = {
+      batch_timestamp: '1700000000',
+      currency_id: 'BYN',
+      amount: '5.00',
+      payment_method: '1',
+      order_id: '12345',
+      site_order_id: 'TRAILX-42-1700000000',
+      transaction_id: 'tx001',
+      payment_type: '1',
+      rrn: '123456',
+    }
+    // Build expected signature
+    const raw = [
+      fields.batch_timestamp, fields.currency_id, fields.amount,
+      fields.payment_method, fields.order_id, fields.site_order_id,
+      fields.transaction_id, fields.payment_type, fields.rrn, secretKey,
+    ].join('')
+    fields.wsb_signature = crypto.createHash('md5').update(raw).digest('hex')
+
+    expect(WebPayProvider.validateWebhookSignature(fields, secretKey)).toBe(true)
+  })
+
+  it('rejects tampered amount', () => {
+    const secretKey = 'mysecret'
+    const fields: Record<string, string> = {
+      batch_timestamp: '1700000000',
+      currency_id: 'BYN',
+      amount: '5.00',
+      payment_method: '1',
+      order_id: '12345',
+      site_order_id: 'TRAILX-42-1700000000',
+      transaction_id: 'tx001',
+      payment_type: '1',
+      rrn: '123456',
+      wsb_signature: 'deadbeef00000000deadbeef00000000',
+    }
+    expect(WebPayProvider.validateWebhookSignature(fields, secretKey)).toBe(false)
+  })
+
+  it('rejects missing signature', () => {
+    const fields: Record<string, string> = {
+      batch_timestamp: '1700000000',
+      currency_id: 'BYN',
+      amount: '5.00',
+      payment_method: '1',
+      order_id: '12345',
+      site_order_id: 'TRAILX-42-1700000000',
+      transaction_id: 'tx001',
+      payment_type: '1',
+      rrn: '123456',
+    }
+    expect(WebPayProvider.validateWebhookSignature(fields, 'mysecret')).toBe(false)
+  })
+})
+
+describe('CryptoPayProvider amount conversion', () => {
+  it('formats 0.1 TON correctly for createPaymentLink', () => {
+    // Verify the nanoTON → TON conversion logic
+    const tonNano = PLANS.monthly.tonNano  // '100000000' = 0.1 TON
+    const tonAmount = (Number(BigInt(tonNano)) / 1e9).toString()
+    expect(tonAmount).toBe('0.1')
+  })
+
+  it('formats 1 TON correctly', () => {
+    const tonAmount = (Number(BigInt('1000000000')) / 1e9).toString()
+    expect(tonAmount).toBe('1')
+  })
+
+  it('formats 2.5 TON correctly', () => {
+    const tonAmount = (Number(BigInt('2500000000')) / 1e9).toString()
+    expect(tonAmount).toBe('2.5')
   })
 })
 

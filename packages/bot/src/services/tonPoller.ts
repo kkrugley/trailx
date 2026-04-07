@@ -92,6 +92,15 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
       continue
     }
 
+    // Check DB for already-processed tx (survives restarts unlike processedHashes)
+    const existing = await prisma.paymentRecord.findUnique({
+      where: { telegramPaymentChargeId: `ton_${hash}` },
+    })
+    if (existing) {
+      processedHashes.add(hash)
+      continue
+    }
+
     const chatId = BigInt(match[1])
     const valueStr = tx.in_msg?.value ?? '0'
     const valueBigInt = BigInt(valueStr)

@@ -50,7 +50,8 @@ export class CryptoPayProvider implements ExternalLinkProvider {
 
   async createPaymentLink(planId: PlanId, chatId: bigint): Promise<string> {
     const plan = PLANS[planId]
-    const tonAmount = plan.tonNano === '2000000000' ? '2' : '18'  // TON (not nanotons for CryptoPay)
+    // CryptoPay expects TON (not nanotons) — convert from nanoTON string
+    const tonAmount = (Number(BigInt(plan.tonNano)) / 1e9).toString()
 
     const res = await fetch(`${this.baseUrl}/createInvoice`, {
       method: 'POST',
@@ -65,6 +66,7 @@ export class CryptoPayProvider implements ExternalLinkProvider {
         description: plan.description,
         hidden_message: '🎉 Подписка TrailX Pro активирована! Возвращайся в бот.',
         paid_btn_name: 'openBot',
+        paid_btn_url: `https://t.me/${process.env.BOT_USERNAME ?? 'TrailXBot'}`,
         expires_in: 3600,  // 1 hour
       }),
     })
@@ -99,6 +101,7 @@ export class CryptoPayProvider implements ExternalLinkProvider {
   static validateSignature(token: string, body: string, signature: string): boolean {
     const secret = crypto.createHash('sha256').update(token).digest()
     const expected = crypto.createHmac('sha256', secret).update(body).digest('hex')
-    return expected === signature
+    if (expected.length !== signature.length) return false
+    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))
   }
 }

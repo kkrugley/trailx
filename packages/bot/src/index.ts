@@ -152,5 +152,5 @@ if (WEBHOOK_DOMAIN) {
 } else {
   // Local dev: use long polling
   console.log('Starting long polling...')
-  void bot.start({ allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'] })
+  void bot.start({ allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'] })
 }

@@ -42,7 +42,9 @@ export function cryptopayRoutes(bot: Bot<Context>) {
       }
 
       const signature = (req.headers['crypto-pay-api-signature'] as string | undefined) ?? ''
-      const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
+      // Use rawBody if available (@fastify/raw-body), fall back to JSON.stringify
+      const rawBody = (req as unknown as { rawBody?: string }).rawBody
+        ?? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
 
       if (!CryptoPayProvider.validateSignature(token, rawBody, signature)) {
         fastify.log.warn({ signature }, '[cryptopay] Invalid webhook signature')
@@ -78,6 +80,8 @@ export function cryptopayRoutes(bot: Bot<Context>) {
       const plan = PLANS[planId]
       const expiresAt = calcExpiresAt(plan)
       const chargeId = `cryptopay_${invoice.invoice_id}`
+      // Store the actual paid amount in nanoTON (integer) for consistency with plan.amount (kopecks for BYN)
+      const paidAmountInt = Math.round(parseFloat(invoice.amount) * 1e9)
 
       try {
         await prisma.$transaction([
@@ -89,7 +93,7 @@ export function cryptopayRoutes(bot: Bot<Context>) {
               plan: planId,
               status: 'active',
               provider: 'cryptopay',
-              amount: plan.amount,
+              amount: paidAmountInt,
               currency: invoice.asset,
               telegramPaymentChargeId: chargeId,
               providerPaymentChargeId: String(invoice.invoice_id),
@@ -99,7 +103,7 @@ export function cryptopayRoutes(bot: Bot<Context>) {
               plan: planId,
               status: 'active',
               provider: 'cryptopay',
-              amount: plan.amount,
+              amount: paidAmountInt,
               currency: invoice.asset,
               telegramPaymentChargeId: chargeId,
               providerPaymentChargeId: String(invoice.invoice_id),
@@ -111,7 +115,7 @@ export function cryptopayRoutes(bot: Bot<Context>) {
               chatId,
               userId: 0n,
               plan: planId,
-              amount: plan.amount,
+              amount: paidAmountInt,
               currency: invoice.asset,
               telegramPaymentChargeId: chargeId,
               providerPaymentChargeId: String(invoice.invoice_id),

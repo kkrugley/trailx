@@ -123,7 +123,9 @@ export class WebPayProvider implements ExternalLinkProvider {
 
     const raw = fields.join('')
     const expected = crypto.createHash('md5').update(raw).digest('hex')
-    return expected === params['wsb_signature']
+    const actual = params['wsb_signature'] ?? ''
+    if (expected.length !== actual.length) return false
+    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(actual, 'hex'))
   }
 
   private buildSignature(method: string, path: string, body: string, nonce: string): string {

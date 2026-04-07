@@ -212,6 +212,10 @@ export function registerUpgrade(bot: Bot<Context>): void {
           instructions,
           { parse_mode: 'HTML', reply_markup: kb },
         )
+      } else {
+        // Exhaustive check — if a new flow type is added, TS will catch it here
+        const _exhaustive: never = provider
+        console.error('[upgrade] Unknown provider flow:', _exhaustive)
       }
     } catch (err) {
       console.error(`[upgrade] method:${providerId} error:`, err)

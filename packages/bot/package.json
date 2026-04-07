@@ -17,7 +17,7 @@
     "@sentry/node": "^10.47.0",
     "@trailx/shared": "workspace:*",
     "fastify": "^4.28.0",
-    "fastify-raw-body": "^5.0.0",
+    "fastify-raw-body": "^4.3.0",
     "grammy": "^1.27.0",
     "stripe": "^16.0.0"
   },

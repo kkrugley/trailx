@@ -15,7 +15,7 @@ import { prisma } from '../db'
 import { PLANS, calcExpiresAt, isPlanId } from '../payments/plans'
 import type { PlanId } from '../payments/plans'
 
-const POLL_INTERVAL_MS = 10_000
+const POLL_INTERVAL_MS = 30_000
 const TX_LIMIT = 20
 
 interface TonTransaction {
@@ -37,6 +37,7 @@ interface TonCenterResponse {
 
 /** Set of already-processed tx hashes to avoid double-activation (cleared on restart) */
 const processedHashes = new Set<string>()
+const MAX_PROCESSED_HASHES = 500
 
 /** Extract memo text from a TON transaction (handles multiple API response formats) */
 function extractMemo(tx: TonTransaction): string {
@@ -50,6 +51,12 @@ function extractMemo(tx: TonTransaction): string {
 async function pollOnce(bot: Bot<Context>): Promise<void> {
   const address = process.env.TON_WALLET_ADDRESS
   if (!address) return
+
+  // Skip API call if no pending TON payments exist
+  const pendingCount = await prisma.subscription.count({
+    where: { provider: 'ton', status: 'pending_ton' },
+  })
+  if (pendingCount === 0) return
 
   const apiKey = process.env.TONCENTER_API_KEY ?? ''
   const isTestnet = process.env.TONCENTER_TESTNET === 'true'
@@ -77,7 +84,10 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     return
   }
 
-  console.log(`[tonPoller] Checking ${data.result.length} transactions`)
+  // Prevent unbounded growth of in-memory dedup set
+  if (processedHashes.size > MAX_PROCESSED_HASHES) {
+    processedHashes.clear()
+  }
 
   for (const tx of data.result) {
     const hash = tx.transaction_id?.hash
@@ -87,8 +97,6 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     const match = memo.match(/^TRAILX-(-?\d+)$/)
 
     if (!match) {
-      // Log non-empty memos for debugging
-      if (memo) console.log(`[tonPoller] tx ${hash.slice(0, 8)}: memo="${memo}" (no match)`)
       continue
     }
 
@@ -218,7 +226,7 @@ export function startTonPoller(bot: Bot<Context>): void {
   }
 
   const isTestnet = process.env.TONCENTER_TESTNET === 'true'
-  console.log(`[tonPoller] Started (${isTestnet ? 'TESTNET' : 'mainnet'}, interval: 10s)`)
+  console.log(`[tonPoller] Started (${isTestnet ? 'TESTNET' : 'mainnet'}, interval: 30s, polls only when pending_ton exists)`)
 
   void pollOnce(bot)
   setInterval(() => { void pollOnce(bot) }, POLL_INTERVAL_MS)

@@ -2,6 +2,7 @@ import './instrument.js'
 import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import rawBody from 'fastify-raw-body'
 import websocket from '@fastify/websocket'
 import { Bot } from 'grammy'
 import { prisma } from './db'
@@ -53,6 +54,7 @@ await fastify.register(cors, {
   credentials: true,
 })
 
+await fastify.register(rawBody)
 await fastify.register(websocket)
 
 // Sentry error handler — must be registered before routes

@@ -53,9 +53,15 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
   if (!address) return
 
   // Skip API call if no pending TON payments exist
-  const pendingCount = await prisma.subscription.count({
-    where: { provider: 'ton', status: 'pending_ton' },
-  })
+  let pendingCount: number
+  try {
+    pendingCount = await prisma.subscription.count({
+      where: { provider: 'ton', status: 'pending_ton' },
+    })
+  } catch {
+    // DB unreachable — silently skip this poll cycle
+    return
+  }
   if (pendingCount === 0) return
 
   const apiKey = process.env.TONCENTER_API_KEY ?? ''

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useMapStore } from '../store/useMapStore'
 import { buildRoute, RateLimitError } from '../services/graphhopper'
 
@@ -12,8 +12,13 @@ const DEBOUNCE_MS = 500
 export function useRouteSync(): void {
   const waypoints = useMapStore((s) => s.waypoints)
   const profile = useMapStore((s) => s.profile)
+  const appSettings = useMapStore((s) => s.appSettings)
   const { setRouteResult, setIsRouting, setRouteError } =
     useMapStore((s) => s.actions)
+
+  // Stable reference: only re-run effect when the active profile's settings actually change
+  const profileSettings = appSettings[profile]
+  const settingsKey = useMemo(() => JSON.stringify(profileSettings), [profileSettings])
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -38,7 +43,7 @@ export function useRouteSync(): void {
 
       setIsRouting(true)
       try {
-        const result = await buildRoute(resolvedWaypoints, profile, controller.signal)
+        const result = await buildRoute(resolvedWaypoints, profile, profileSettings, controller.signal)
         setRouteResult(result)
         setRouteError(null)
       } catch (err) {
@@ -59,5 +64,6 @@ export function useRouteSync(): void {
     return () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current)
     }
-  }, [waypoints, profile, setRouteResult, setIsRouting, setRouteError])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- settingsKey is a stable serialization of profileSettings
+  }, [waypoints, profile, settingsKey, setRouteResult, setIsRouting, setRouteError])
 }

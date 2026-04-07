@@ -9,6 +9,9 @@ import { registerCommands } from './commands'
 import { registerClient, unregisterClient } from './ws/hub'
 import { sessionRoutes } from './routes/sessions'
 import { graphhopperRoutes } from './routes/graphhopper.js'
+import { webpayRoutes } from './routes/webpay'
+import { cryptopayRoutes } from './routes/cryptopay'
+import { startTonPoller } from './services/tonPoller'
 import type { StoredWaypoint } from './types'
 
 // ── Environment ────────────────────────────────────────────────────────────
@@ -95,6 +98,10 @@ fastify.get<{ Params: { id: string } }>('/routes/:id', async (req, reply) => {
 // Session sharing REST API
 fastify.register(sessionRoutes, { prefix: '/api/sessions' })
 
+// Payment webhooks
+fastify.register(webpayRoutes)
+fastify.register(cryptopayRoutes(bot))
+
 // GraphHopper proxy — keeps API key server-side
 fastify.register(graphhopperRoutes)
 
@@ -116,6 +123,9 @@ fastify.get<{ Querystring: { chatId?: string } }>(
 
 await bot.init()
 
+// Start TON direct payment poller (no-op if TON_WALLET_ADDRESS not set)
+startTonPoller(bot)
+
 await fastify.listen({ port: PORT, host: '0.0.0.0' })
 
 // Hourly cleanup of expired sessions
@@ -136,7 +146,7 @@ if (WEBHOOK_DOMAIN) {
   const webhookUrl = `${WEBHOOK_DOMAIN}/webhook/bot`
   await bot.api.setWebhook(webhookUrl, {
     secret_token: WEBHOOK_SECRET || undefined,
-    allowed_updates: ['message', 'callback_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'],
+    allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'],
   })
   console.log(`Webhook set: ${webhookUrl}`)
 } else {

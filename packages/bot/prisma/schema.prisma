@@ -27,12 +27,34 @@ model Route {
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
-  chatId    BigInt   @unique
-  userId    BigInt
-  status    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id                      String   @id @default(cuid())
+  chatId                  BigInt   @unique
+  userId                  BigInt
+  plan                    String   // "monthly" | "annual"
+  status                  String   @default("active") // "active" | "expired" | "cancelled"
+  amount                  Int      // in kopecks: 500 = 5 BYN, 4500 = 45 BYN
+  currency                String   @default("BYN")
+  provider                String?  // "stars" | "ton" | "webpay"
+  telegramPaymentChargeId String?  @unique
+  providerPaymentChargeId String?
+  expiresAt               DateTime
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model PaymentRecord {
+  id                      String   @id @default(cuid())
+  chatId                  BigInt
+  userId                  BigInt
+  plan                    String
+  amount                  Int
+  currency                String   @default("BYN")
+  telegramPaymentChargeId String   @unique
+  providerPaymentChargeId String?
+  status                  String   @default("paid")
+  createdAt               DateTime @default(now())
+
+  @@index([chatId])
 }
 
 model PendingVote {

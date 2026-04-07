@@ -1,4 +1,5 @@
 import type { Bot, Context } from 'grammy'
+import { registerPaymentHandlers } from '../payments'
 import { registerStart } from './start'
 import { registerPlan } from './plan'
 import { registerSelect } from './select'
@@ -26,6 +27,7 @@ export function registerCommands(bot: Bot<Context>): void {
   registerWeather(bot)
   registerSocial(bot)
   registerUpgrade(bot)
+  registerPaymentHandlers(bot)
   registerHelp(bot)
   registerInlineQuery(bot)
   registerChatMember(bot)

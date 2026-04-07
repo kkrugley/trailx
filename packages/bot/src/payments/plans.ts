@@ -33,9 +33,9 @@ export const PLANS: Record<PlanId, Plan> = {
     amount: 500,
     currency: 'BYN',
     days: 30,
-    starsAmount: 99,
-    tonNano: '2000000000',   // 2 TON
-    tonDisplay: '2 TON',
+    starsAmount: 5,
+    tonNano: '100000000',    // 0.1 TON
+    tonDisplay: '0.1 TON',
   },
   annual: {
     id: 'annual',
@@ -44,9 +44,9 @@ export const PLANS: Record<PlanId, Plan> = {
     amount: 4500,
     currency: 'BYN',
     days: 365,
-    starsAmount: 899,
-    tonNano: '18000000000',  // 18 TON
-    tonDisplay: '18 TON',
+    starsAmount: 5,
+    tonNano: '100000000',    // 0.1 TON
+    tonDisplay: '0.1 TON',
   },
 }
 

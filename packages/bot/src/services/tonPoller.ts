@@ -2,8 +2,13 @@
  * TON Center transaction poller — background job for TonCenterProvider confirmation.
  *
  * Runs every 30 seconds, checks for incoming transactions to the TON wallet,
- * matches them against pending subscriptions by memo (TRAILX-{chatId}),
+ * matches them against subscriptions by memo (TRAILX-{chatId}),
  * and activates subscriptions on match.
+ *
+ * Works in two modes:
+ *  - pending_ton: user clicked "Я оплатил" before paying (or after)
+ *  - proactive:   user paid without clicking the button — poller still finds it
+ *    by matching memo TRAILX-{chatId} against any chat that has no active subscription
  */
 import type { Bot, Context } from 'grammy'
 import { prisma } from '../db'
@@ -16,8 +21,12 @@ const TX_LIMIT = 20
 interface TonTransaction {
   transaction_id: { hash: string; lt: string }
   in_msg: {
-    message: string  // the comment/memo
-    value: string    // nanoTON as string
+    message?: string       // decoded text comment (toncenter v2)
+    msg_data?: {
+      text?: string        // alternative field in some API versions
+    }
+    value: string          // nanoTON as string
+    source?: string        // sender address
   }
 }
 
@@ -29,9 +38,18 @@ interface TonCenterResponse {
 /** Set of already-processed tx hashes to avoid double-activation (cleared on restart) */
 const processedHashes = new Set<string>()
 
+/** Extract memo text from a TON transaction (handles multiple API response formats) */
+function extractMemo(tx: TonTransaction): string {
+  return (
+    tx.in_msg?.message ??
+    tx.in_msg?.msg_data?.text ??
+    ''
+  ).trim()
+}
+
 async function pollOnce(bot: Bot<Context>): Promise<void> {
   const address = process.env.TON_WALLET_ADDRESS
-  if (!address) return  // Provider not configured
+  if (!address) return
 
   const apiKey = process.env.TONCENTER_API_KEY ?? ''
   const isTestnet = process.env.TONCENTER_TESTNET === 'true'
@@ -45,7 +63,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
   try {
     const res = await fetch(url.toString())
     if (!res.ok) {
-      console.error(`[tonPoller] API error: ${res.status}`)
+      console.error(`[tonPoller] API error: ${res.status} ${await res.text()}`)
       return
     }
     data = await res.json() as TonCenterResponse
@@ -54,35 +72,67 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     return
   }
 
-  if (!data.ok || !Array.isArray(data.result)) return
+  if (!data.ok || !Array.isArray(data.result)) {
+    console.warn('[tonPoller] Unexpected response:', JSON.stringify(data).slice(0, 200))
+    return
+  }
+
+  console.log(`[tonPoller] Checking ${data.result.length} transactions`)
 
   for (const tx of data.result) {
     const hash = tx.transaction_id?.hash
     if (!hash || processedHashes.has(hash)) continue
 
-    const memo = tx.in_msg?.message ?? ''
+    const memo = extractMemo(tx)
     const match = memo.match(/^TRAILX-(-?\d+)$/)
-    if (!match) continue
+
+    if (!match) {
+      // Log non-empty memos for debugging
+      if (memo) console.log(`[tonPoller] tx ${hash.slice(0, 8)}: memo="${memo}" (no match)`)
+      continue
+    }
 
     const chatId = BigInt(match[1])
-    const valueBigInt = BigInt(tx.in_msg?.value ?? '0')
+    const valueStr = tx.in_msg?.value ?? '0'
+    const valueBigInt = BigInt(valueStr)
 
-    // Find pending subscription for this chatId
+    console.log(`[tonPoller] Match! chatId=${chatId}, value=${valueStr} nanoTON, tx=${hash.slice(0, 12)}`)
+
+    // Look up existing subscription
     const sub = await prisma.subscription.findUnique({ where: { chatId } })
-    if (!sub || sub.status !== 'pending_ton' || sub.provider !== 'ton') continue
 
-    const planId = sub.plan as PlanId
-    if (!isPlanId(planId)) continue
+    // Skip if already active from this or another provider
+    if (sub?.status === 'active') {
+      console.log(`[tonPoller] chatId=${chatId} already has active subscription — skipping`)
+      processedHashes.add(hash)
+      continue
+    }
+
+    // Determine plan: use pending sub's plan if available, else check amount
+    let planId: PlanId | null = null
+    if (sub?.provider === 'ton' && isPlanId(sub.plan)) {
+      planId = sub.plan
+    } else {
+      // Infer plan from amount paid
+      const monthly = BigInt(PLANS.monthly.tonNano)
+      const annual = BigInt(PLANS.annual.tonNano)
+      if (valueBigInt >= annual) planId = 'annual'
+      else if (valueBigInt >= monthly) planId = 'monthly'
+    }
+
+    if (!planId) {
+      console.warn(`[tonPoller] chatId=${chatId}: can't determine plan from amount ${valueStr}`)
+      continue
+    }
 
     const plan = PLANS[planId]
     const expectedNano = BigInt(plan.tonNano)
 
     if (valueBigInt < expectedNano) {
-      console.warn(`[tonPoller] Underpayment for chatId=${chatId}: got ${valueBigInt}, expected ${expectedNano}`)
+      console.warn(`[tonPoller] Underpayment chatId=${chatId}: got ${valueStr}, need ${plan.tonNano}`)
       continue
     }
 
-    // Activate subscription
     const expiresAt = calcExpiresAt(plan)
     const expiryStr = expiresAt.toLocaleDateString('ru-RU', {
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -90,10 +140,23 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
 
     try {
       await prisma.$transaction([
-        prisma.subscription.update({
+        prisma.subscription.upsert({
           where: { chatId },
-          data: {
+          create: {
+            chatId,
+            userId: sub?.userId ?? 0n,
+            plan: planId,
             status: 'active',
+            provider: 'ton',
+            amount: plan.amount,
+            currency: 'TON',
+            telegramPaymentChargeId: `ton_${hash}`,
+            providerPaymentChargeId: hash,
+            expiresAt,
+          },
+          update: {
+            status: 'active',
+            plan: planId,
             amount: plan.amount,
             currency: 'TON',
             telegramPaymentChargeId: `ton_${hash}`,
@@ -104,7 +167,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
         prisma.paymentRecord.create({
           data: {
             chatId,
-            userId: sub.userId,
+            userId: sub?.userId ?? 0n,
             plan: planId,
             amount: plan.amount,
             currency: 'TON',
@@ -121,8 +184,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
       ])
 
       processedHashes.add(hash)
-
-      console.log(`[tonPoller] Subscription activated for chatId=${chatId}, plan=${planId}, tx=${hash}`)
+      console.log(`[tonPoller] ✅ Activated chatId=${chatId}, plan=${planId}`)
 
       await bot.api.sendMessage(
         Number(chatId),
@@ -134,21 +196,20 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
         { parse_mode: 'HTML' },
       )
     } catch (err) {
-      console.error(`[tonPoller] Failed to activate subscription for chatId=${chatId}:`, err)
+      console.error(`[tonPoller] Failed to activate chatId=${chatId}:`, err)
     }
   }
 }
 
 export function startTonPoller(bot: Bot<Context>): void {
   if (!process.env.TON_WALLET_ADDRESS) {
-    console.log('[tonPoller] TON_WALLET_ADDRESS not set — TON direct polling disabled')
+    console.log('[tonPoller] TON_WALLET_ADDRESS not set — disabled')
     return
   }
 
-  console.log('[tonPoller] Started (interval: 30s)')
+  const isTestnet = process.env.TONCENTER_TESTNET === 'true'
+  console.log(`[tonPoller] Started (${isTestnet ? 'TESTNET' : 'mainnet'}, interval: 30s)`)
 
-  // Initial poll
   void pollOnce(bot)
-
   setInterval(() => { void pollOnce(bot) }, POLL_INTERVAL_MS)
 }

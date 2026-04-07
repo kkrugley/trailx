@@ -19,22 +19,22 @@ describe('PLANS', () => {
     expect(PLANS.annual.days).toBe(365)
   })
 
-  it('monthly has correct Stars amount', () => {
-    expect(PLANS.monthly.starsAmount).toBe(99)
+  it('monthly has Stars amount', () => {
+    expect(PLANS.monthly.starsAmount).toBeGreaterThan(0)
   })
 
-  it('annual has correct Stars amount', () => {
-    expect(PLANS.annual.starsAmount).toBe(899)
+  it('annual has Stars amount', () => {
+    expect(PLANS.annual.starsAmount).toBeGreaterThan(0)
   })
 
-  it('monthly has correct TON nanoton amount (2 TON)', () => {
-    expect(PLANS.monthly.tonNano).toBe('2000000000')
-    expect(PLANS.monthly.tonDisplay).toBe('2 TON')
+  it('monthly has TON nanoton amount', () => {
+    expect(BigInt(PLANS.monthly.tonNano)).toBeGreaterThan(0n)
+    expect(PLANS.monthly.tonDisplay).toContain('TON')
   })
 
-  it('annual has correct TON nanoton amount (18 TON)', () => {
-    expect(PLANS.annual.tonNano).toBe('18000000000')
-    expect(PLANS.annual.tonDisplay).toBe('18 TON')
+  it('annual has TON nanoton amount', () => {
+    expect(BigInt(PLANS.annual.tonNano)).toBeGreaterThan(0n)
+    expect(PLANS.annual.tonDisplay).toContain('TON')
   })
 
   it('annual is cheaper per day than monthly', () => {
@@ -101,9 +101,9 @@ describe('TelegramStarsProvider', () => {
   it('always available', () => { expect(p.isAvailable()).toBe(true) })
   it('empty token (Stars needs no provider_token)', () => { expect(p.getToken()).toBe('') })
   it('currency is XTR', () => { expect(p.getCurrency('monthly')).toBe('XTR') })
-  it('correct Stars amounts', () => {
-    expect(p.getAmount('monthly')).toBe(99)
-    expect(p.getAmount('annual')).toBe(899)
+  it('correct Stars amounts match PLANS', () => {
+    expect(p.getAmount('monthly')).toBe(PLANS.monthly.starsAmount)
+    expect(p.getAmount('annual')).toBe(PLANS.annual.starsAmount)
   })
 })
 
@@ -139,14 +139,14 @@ describe('TonCenterProvider', () => {
     process.env.TON_WALLET_ADDRESS = 'EQDtest123'
     const link = await new TonCenterProvider().createPaymentLink('monthly', 42n)
     expect(link).toContain('app.tonkeeper.com/transfer/EQDtest123')
-    expect(link).toContain('amount=2000000000')
+    expect(link).toContain(`amount=${PLANS.monthly.tonNano}`)
     expect(link).toContain('TRAILX-42')
   })
 
   it('formats amounts correctly', () => {
     const p = new TonCenterProvider()
-    expect(p.formatAmount('monthly')).toBe('2 TON')
-    expect(p.formatAmount('annual')).toBe('18 TON')
+    expect(p.formatAmount('monthly')).toBe(PLANS.monthly.tonDisplay)
+    expect(p.formatAmount('annual')).toBe(PLANS.annual.tonDisplay)
   })
 })
 

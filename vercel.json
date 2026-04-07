@@ -2,8 +2,5 @@
   "buildCommand": "pnpm --filter app build",
   "outputDirectory": "packages/app/dist",
   "installCommand": "pnpm install",
-  "rewrites": [
-    { "source": "/api/route", "destination": "$BOT_API_URL/api/route" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

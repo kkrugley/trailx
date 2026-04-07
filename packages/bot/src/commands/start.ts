@@ -6,7 +6,8 @@ export function registerStart(bot: Bot<Context>): void {
     const appUrl = process.env.VITE_APP_URL
 
     const keyboard = new InlineKeyboard()
-    if (appUrl) {
+    const hasValidUrl = appUrl?.startsWith('https://')
+    if (hasValidUrl && appUrl) {
       keyboard.webApp('Открыть TrailX 🗺', appUrl)
     }
 
@@ -17,7 +18,7 @@ export function registerStart(bot: Bot<Context>): void {
         'Пример: `/plan Минск → Несвиж`',
       {
         parse_mode: 'MarkdownV2',
-        reply_markup: appUrl ? keyboard : undefined,
+        reply_markup: hasValidUrl ? keyboard : undefined,
       },
     )
   })

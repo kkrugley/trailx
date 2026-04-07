@@ -23,12 +23,13 @@ export function registerApp(bot: Bot<Context>): void {
         ? `https://t.me/${BOT_USERNAME}?startapp=r_${routeId}`
         : `https://t.me/${BOT_USERNAME}`
 
-      const button = isGroup
-        ? { text: '🚴 Открыть TrailX', url: deepLink }
-        : {
+      const canUseWebApp = !isGroup && APP_URL.startsWith('https://')
+      const button = canUseWebApp
+        ? {
             text: '🚴 Открыть TrailX',
             web_app: { url: routeId ? `${APP_URL}?startapp=r_${routeId}` : APP_URL },
           }
+        : { text: '🚴 Открыть TrailX', url: deepLink }
 
       await ctx.reply(caption, {
         reply_markup: { inline_keyboard: [[button]] },

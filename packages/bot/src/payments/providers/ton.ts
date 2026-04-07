@@ -11,8 +11,8 @@
  *   TONCENTER_API_KEY — optional, raises rate limit from 1 to 10 req/sec.
  *     Get at: https://toncenter.com/
  *
- * Confirmation: background poller in src/services/tonPoller.ts (every 30 sec).
- * Delay: up to ~30 seconds after payment.
+ * Confirmation: background poller in src/services/tonPoller.ts (every 10 sec).
+ * Delay: up to ~10 seconds after payment.
  */
 import type { ExternalLinkProvider } from '../IPaymentProvider'
 import type { PlanId } from '../plans'

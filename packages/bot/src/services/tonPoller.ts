@@ -1,7 +1,7 @@
 /**
  * TON Center transaction poller — background job for TonCenterProvider confirmation.
  *
- * Runs every 30 seconds, checks for incoming transactions to the TON wallet,
+ * Runs every 10 seconds, checks for incoming transactions to the TON wallet,
  * matches them against subscriptions by memo (TRAILX-{chatId}),
  * and activates subscriptions on match.
  *
@@ -15,7 +15,7 @@ import { prisma } from '../db'
 import { PLANS, calcExpiresAt, isPlanId } from '../payments/plans'
 import type { PlanId } from '../payments/plans'
 
-const POLL_INTERVAL_MS = 30_000
+const POLL_INTERVAL_MS = 10_000
 const TX_LIMIT = 20
 
 interface TonTransaction {
@@ -143,6 +143,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     }
 
     const expiresAt = calcExpiresAt(plan)
+    const tonAmount = Number(BigInt(plan.tonNano))  // nanoTON for DB storage
     const expiryStr = expiresAt.toLocaleDateString('ru-RU', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     })
@@ -157,7 +158,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
             plan: planId,
             status: 'active',
             provider: 'ton',
-            amount: plan.amount,
+            amount: tonAmount,
             currency: 'TON',
             telegramPaymentChargeId: `ton_${hash}`,
             providerPaymentChargeId: hash,
@@ -166,7 +167,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
           update: {
             status: 'active',
             plan: planId,
-            amount: plan.amount,
+            amount: tonAmount,
             currency: 'TON',
             telegramPaymentChargeId: `ton_${hash}`,
             providerPaymentChargeId: hash,
@@ -178,7 +179,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
             chatId,
             userId: sub?.userId ?? 0n,
             plan: planId,
-            amount: plan.amount,
+            amount: tonAmount,
             currency: 'TON',
             telegramPaymentChargeId: `ton_${hash}`,
             providerPaymentChargeId: hash,
@@ -217,7 +218,7 @@ export function startTonPoller(bot: Bot<Context>): void {
   }
 
   const isTestnet = process.env.TONCENTER_TESTNET === 'true'
-  console.log(`[tonPoller] Started (${isTestnet ? 'TESTNET' : 'mainnet'}, interval: 30s)`)
+  console.log(`[tonPoller] Started (${isTestnet ? 'TESTNET' : 'mainnet'}, interval: 10s)`)
 
   void pollOnce(bot)
   setInterval(() => { void pollOnce(bot) }, POLL_INTERVAL_MS)

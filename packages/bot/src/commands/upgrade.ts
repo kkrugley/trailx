@@ -26,6 +26,7 @@ function fmt(date: Date): string {
 
 function fmtAmount(amount: number, currency: string): string {
   if (currency === 'XTR') return `${amount} ⭐`
+  if (currency === 'TON' || currency === 'USDT') return `${amount / 1e9} ${currency}`
   return `${amount / 100} ${currency}`
 }
 
@@ -223,8 +224,41 @@ export function registerUpgrade(bot: Bot<Context>): void {
     }
   })
 
-  // ── "Я оплатил" — external link providers (TON, WebPay redirect) ──────────
+  // ── "Я оплатил" — status check (no admin notification) ─────────────────────
   bot.callbackQuery(/^paid:(\w+):(monthly|annual)$/, async (ctx) => {
+    await ctx.answerCallbackQuery()
+    const providerId = ctx.match[1]
+    const planId = ctx.match[2] as PlanId
+    const chatId = BigInt(ctx.chat?.id ?? 0)
+
+    try {
+      const existingSub = await getActiveSub(chatId)
+      if (existingSub?.status === 'active') {
+        await ctx.reply(
+          '✅ Подписка уже активна! Используй /upgrade для управления.',
+        )
+        return
+      }
+
+      const kb = new InlineKeyboard()
+        .text('🔄 Проверить ещё раз', `paid:${providerId}:${planId}`)
+        .row()
+        .text('⚠️ У меня проблема с платежом', `payment_issue:${providerId}:${planId}`)
+
+      await ctx.reply(
+        '⏳ <b>Платёж пока не подтверждён</b>\n\n' +
+        'Система проверяет оплату автоматически — обычно это занимает до минуты.\n' +
+        'Нажми «Проверить ещё раз» через пару минут.',
+        { parse_mode: 'HTML', reply_markup: kb },
+      )
+    } catch (err) {
+      console.error('[upgrade] paid callback error:', err)
+      await ctx.reply('⚠️ Произошла ошибка. Попробуй позже.')
+    }
+  })
+
+  // ── "У меня проблема с платежом" — escalate to admin ──────────────────────
+  bot.callbackQuery(/^payment_issue:(\w+):(monthly|annual)$/, async (ctx) => {
     await ctx.answerCallbackQuery()
     const providerId = ctx.match[1]
     const planId = ctx.match[2] as PlanId
@@ -233,55 +267,59 @@ export function registerUpgrade(bot: Bot<Context>): void {
     const plan = PLANS[planId]
 
     try {
-      // Mark as pending in DB
-      await prisma.subscription.upsert({
-        where: { chatId },
-        create: {
-          chatId,
-          userId,
-          plan: planId,
-          status: 'pending_ton',
-          provider: providerId,
-          amount: plan.amount,
-          currency: plan.currency,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7d grace period
-        },
-        update: {
-          status: 'pending_ton',
-          provider: providerId,
-          plan: planId,
-        },
-      })
+      // Double-check: maybe it activated while user was deciding
+      const existingSub = await getActiveSub(chatId)
+      if (existingSub?.status === 'active') {
+        await ctx.reply(
+          '✅ Подписка уже активна! Используй /upgrade для управления.',
+        )
+        return
+      }
 
-      // Notify admin if ADMIN_CHAT_ID is configured
       const adminChatId = process.env.ADMIN_CHAT_ID
       if (adminChatId) {
         const username = ctx.from?.username ? `@${ctx.from.username}` : `id:${userId}`
+        const provider = findProvider(providerId)
+        const providerName = provider?.name ?? providerId
+
+        // Build context for admin to verify the payment
+        const contextLines = [
+          `⚠️ <b>Проблема с платежом</b>\n`,
+          `Пользователь: ${username}`,
+          `Chat: <code>${chatId}</code>`,
+          `Провайдер: ${providerName}`,
+          `План: ${plan.label}`,
+          `Сумма: ${plan.tonDisplay}`,
+        ]
+        if (providerId === 'ton') {
+          contextLines.push(`Memo: <code>TRAILX-${chatId}</code>`)
+          contextLines.push(`Кошелёк: <code>${process.env.TON_WALLET_ADDRESS ?? '?'}</code>`)
+        }
+        if (providerId === 'cryptopay') {
+          contextLines.push(`Payload: <code>${chatId}:${planId}</code>`)
+        }
+        contextLines.push(`\nВремя жалобы: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Minsk' })}`)
+
         const confirmKb = new InlineKeyboard()
           .text('✅ Подтвердить', `admin:confirm:${chatId}:${planId}`)
           .text('❌ Отклонить', `admin:reject:${chatId}`)
+
         await ctx.api.sendMessage(
           adminChatId,
-          `💰 <b>Новый TON-платёж</b>\n\n` +
-          `Пользователь: ${username}\n` +
-          `Chat: <code>${chatId}</code>\n` +
-          `План: ${plan.label}\n` +
-          `Сумма: ${plan.tonDisplay}`,
+          contextLines.join('\n'),
           { parse_mode: 'HTML', reply_markup: confirmKb },
         )
-      } else {
-        console.log(`[ton] Payment notification: chatId=${chatId}, plan=${planId}, provider=${providerId}`)
       }
 
       await ctx.reply(
-        '⏳ <b>Спасибо!</b>\n\n' +
-        'Мы проверим платёж и активируем подписку в течение 24 часов.\n' +
-        'Ты получишь уведомление здесь.',
+        '📨 <b>Заявка отправлена</b>\n\n' +
+        'Мы проверим платёж вручную и активируем подписку.\n' +
+        'Обычно это занимает до 24 часов.',
         { parse_mode: 'HTML' },
       )
     } catch (err) {
-      console.error('[upgrade] paid callback error:', err)
-      await ctx.reply('⚠️ Не удалось зафиксировать платёж. Попробуй позже или напиши нам напрямую.')
+      console.error('[upgrade] payment_issue callback error:', err)
+      await ctx.reply('⚠️ Не удалось отправить заявку. Попробуй позже.')
     }
   })
 
@@ -291,10 +329,18 @@ export function registerUpgrade(bot: Bot<Context>): void {
     const chatId = BigInt(ctx.match[1])
     const planId = ctx.match[2] as PlanId
     const plan = PLANS[planId]
-    const now = new Date()
-    const expiresAt = new Date(now.getTime() + plan.days * 24 * 60 * 60 * 1000)
 
     try {
+      // If already activated by webhook/poller, skip
+      const existingSub = await getActiveSub(chatId)
+      if (existingSub?.status === 'active') {
+        await ctx.editMessageText(`ℹ️ Подписка для chat ${chatId} уже активна — ручное подтверждение не требуется.`)
+        return
+      }
+
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + plan.days * 24 * 60 * 60 * 1000)
+
       await prisma.$transaction([
         prisma.subscription.update({
           where: { chatId },
@@ -335,18 +381,21 @@ export function registerUpgrade(bot: Bot<Context>): void {
     const chatId = BigInt(ctx.match[1])
 
     try {
-      await prisma.subscription.updateMany({
+      const result = await prisma.subscription.updateMany({
         where: { chatId, status: 'pending_ton' },
         data: { status: 'cancelled' },
       })
 
-      await ctx.api.sendMessage(
-        Number(chatId),
-        '❌ К сожалению, ваш платёж не прошёл проверку.\n' +
-        'Если вы считаете это ошибкой — напишите нам напрямую.',
-      )
-
-      await ctx.editMessageText(`❌ Платёж для chat ${chatId} отклонён.`)
+      if (result.count > 0) {
+        await ctx.api.sendMessage(
+          Number(chatId),
+          '❌ К сожалению, ваш платёж не прошёл проверку.\n' +
+          'Если вы считаете это ошибкой — напишите нам напрямую.',
+        )
+        await ctx.editMessageText(`❌ Платёж для chat ${chatId} отклонён.`)
+      } else {
+        await ctx.editMessageText(`ℹ️ Подписка для chat ${chatId} уже активна или отсутствует — отклонение не применено.`)
+      }
     } catch (err) {
       console.error('[admin:reject] error:', err)
     }

@@ -3,13 +3,14 @@ import { Clock, Path, ArrowUp, ArrowDown, Gauge } from '@phosphor-icons/react'
 import type { RouteResult } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { fmtDist, fmtElev, fmtSpeed } from '../../utils/units'
+import { useT, type Translations } from '../../i18n/useT'
 import styles from './RouteResults.module.css'
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds: number, t: Translations): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h} ч ${m} мин`
-  return `${m} мин`
+  if (h > 0) return t.units.durationHM(h, m)
+  return t.units.durationM(m)
 }
 
 function computeGain(elevation: number[]): number {
@@ -60,6 +61,7 @@ export function RouteResults({ result }: RouteResultsProps) {
   const profile = useMapStore((s) => s.profile)
   const speeds = useMapStore((s) => s.appSettings.speeds)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
+  const t = useT()
 
   const gain = computeGain(result.elevation)
   const loss = computeLoss(result.elevation)
@@ -69,37 +71,37 @@ export function RouteResults({ result }: RouteResultsProps) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
-        <p className={styles.label}>Маршрут</p>
+        <p className={styles.label}>{t.routeResults.label}</p>
         <span className={styles.speedBadge}>
           <Gauge size={10} weight="fill" />
-          {fmtSpeed(speedKmh, unit)}
+          {fmtSpeed(speedKmh, unit, t.units.speedKmh)}
         </span>
       </div>
       <div className={styles.card}>
         <div className={styles.chips}>
           <StatChip
             icon={<Clock size={12} weight="fill" />}
-            label={formatDuration(customDurationSec)}
-            tooltip={`Расчётное время при скорости ${fmtSpeed(speedKmh, unit)}`}
+            label={formatDuration(customDurationSec, t)}
+            tooltip={t.routeResults.tooltipDuration(fmtSpeed(speedKmh, unit, t.units.speedKmh))}
             accent
           />
           <StatChip
             icon={<Path size={12} weight="fill" />}
             label={fmtDist(result.distance, unit)}
-            tooltip="Общая длина маршрута"
+            tooltip={t.routeResults.tooltipDistance}
           />
           {gain > 0 && (
             <StatChip
               icon={<ArrowUp size={12} weight="bold" />}
               label={`+${fmtElev(gain, unit)}`}
-              tooltip="Суммарный набор высоты"
+              tooltip={t.routeResults.tooltipGain}
             />
           )}
           {loss > 0 && (
             <StatChip
               icon={<ArrowDown size={12} weight="bold" />}
               label={`−${fmtElev(loss, unit)}`}
-              tooltip="Суммарный сброс высоты"
+              tooltip={t.routeResults.tooltipLoss}
             />
           )}
         </div>

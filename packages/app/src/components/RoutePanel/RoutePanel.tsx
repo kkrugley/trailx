@@ -24,6 +24,7 @@ import {
 } from '@phosphor-icons/react'
 import type { RoutePoint } from '@trailx/shared'
 import { useRoute } from '../../hooks/useRoute'
+import { useT } from '../../i18n/useT'
 import styles from './RoutePanel.module.css'
 
 // ── Sortable waypoint item ───────────────────────────────────────────────────
@@ -96,6 +97,7 @@ function WaypointItem({ point, onRemove }: WaypointItemProps) {
 export function RoutePanel() {
   const { waypoints, removeWaypoint, reorderWaypoints, clearRoute } =
     useRoute()
+  const t = useT()
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -122,7 +124,7 @@ export function RoutePanel() {
     return (
       <div className={styles.empty}>
         <MapPin size={32} weight="light" />
-        <p className={styles.emptyText}>Добавь точки на карте</p>
+        <p className={styles.emptyText}>{t.routePanel.emptyText}</p>
       </div>
     )
   }
@@ -150,7 +152,7 @@ export function RoutePanel() {
       </DndContext>
 
       <button className={styles.clearButton} onClick={clearRoute}>
-        Очистить маршрут
+        {t.routePanel.clearRoute}
       </button>
     </div>
   )

@@ -3,6 +3,7 @@ import { MagnifyingGlass, X } from '@phosphor-icons/react'
 import { parseCoordinates } from '@trailx/shared'
 import { useRoute } from '../../hooks/useRoute'
 import { searchNominatim, nominatimLabel } from '../../services/nominatim'
+import { useT } from '../../i18n/useT'
 import styles from './SearchBar.module.css'
 
 interface SearchResult {
@@ -36,6 +37,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
   const [loading, setLoading] = useState(false)
   const [coordError, setCoordError] = useState<string | null>(null)
 
+  const t = useT()
   const { addWaypoint } = useRoute()
   // Stable refs so closures inside useEffect always see latest values
   const addWaypointRef = useRef(addWaypoint)
@@ -70,7 +72,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
         clearSearch()
         onCloseRef.current?.()
       } else if (mightBeCoordinates(query)) {
-        setCoordError('Coordinates out of range. Lat: −90..90, Lng: −180..180')
+        setCoordError(t.searchBar.coordError)
       } else if (results.length > 0) {
         handleSelect(results[0])
       }
@@ -101,7 +103,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
 
       // Looks like coordinates but out of range
       if (mightBeCoordinates(query)) {
-        setCoordError('Coordinates out of range. Lat: −90..90, Lng: −180..180')
+        setCoordError(t.searchBar.coordError)
         setResults([])
         return
       }
@@ -142,7 +144,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setCoordError(null) }}
           onKeyDown={handleKeyDown}
-          placeholder="Search place or coordinates…"
+          placeholder={t.searchBar.placeholder}
           aria-label="Search places"
           aria-autocomplete="list"
           aria-expanded={showDropdown}

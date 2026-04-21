@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CaretDown, CaretUp } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import { fmtDist, fmtElev } from '../../utils/units'
+import { useT } from '../../i18n/useT'
 import { ProfileTabs } from '../ProfileTabs/ProfileTabs'
 import { WaypointInputList } from '../WaypointInputList/WaypointInputList'
 import { ErrorMessage } from '../ErrorMessage/ErrorMessage'
@@ -40,11 +41,12 @@ function PoiBufferSlider() {
   const poiBuffer = useMapStore((s) => s.appSettings.poiBuffer)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { updateSettings } = useMapStore((s) => s.actions)
+  const t = useT()
 
   return (
     <div className={styles.sliderRow}>
       <div className={styles.sliderHeader}>
-        <span className={styles.sliderLabel}>Радиус поиска</span>
+        <span className={styles.sliderLabel}>{t.bottomSheet.sliderSearchRadius}</span>
         <span className={styles.sliderValue}>{fmtDist(poiBuffer, unit)}</span>
       </div>
       <input
@@ -68,12 +70,6 @@ function PoiBufferSlider() {
 
 type ViewMode = 'elevation' | 'surface' | 'roadclass'
 
-const VIEW_LABELS: Record<ViewMode, string> = {
-  elevation: 'Набор высоты',
-  surface: 'Покрытие',
-  roadclass: 'Тип дороги',
-}
-
 function computeGain(elevation: number[]): number {
   return elevation.reduce(
     (acc, v, i) => (i > 0 && v > elevation[i - 1] ? acc + (v - elevation[i - 1]) : acc),
@@ -85,7 +81,14 @@ function ElevationSection() {
   const routeResult = useMapStore((s) => s.routeResult)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { setHoveredRoutePosition } = useMapStore((s) => s.actions)
+  const t = useT()
   const [view, setView] = useState<ViewMode>('elevation')
+
+  const VIEW_LABELS: Record<ViewMode, string> = {
+    elevation: t.elevationBar.viewElevation,
+    surface: t.elevationBar.viewSurface,
+    roadclass: t.elevationBar.viewRoadclass,
+  }
 
   const handleHoverFraction = useCallback((fraction: number | null) => {
     if (fraction === null || !routeResult) { setHoveredRoutePosition(null); return }
@@ -96,7 +99,7 @@ function ElevationSection() {
   }, [routeResult, setHoveredRoutePosition])
 
   if (!routeResult || routeResult.elevation.length === 0) {
-    return <p className={styles.noData}>Постройте маршрут для отображения данных</p>
+    return <p className={styles.noData}>{t.bottomSheet.noRouteData}</p>
   }
 
   const { elevation, surface, roadClass } = routeResult
@@ -122,9 +125,9 @@ function ElevationSection() {
       {/* Chips for elevation view */}
       {view === 'elevation' && (
         <div className={styles.elevChips}>
-          <Chip label={`+${fmtElev(gain, unit)}`} title="Набор высоты" />
-          <Chip label={fmtElev(minElev, unit)} title="Мин. высота" />
-          <Chip label={fmtElev(maxElev, unit)} title="Макс. высота" />
+          <Chip label={`+${fmtElev(gain, unit)}`} title={t.bottomSheet.chipGain} />
+          <Chip label={fmtElev(minElev, unit)} title={t.bottomSheet.chipMinAlt} />
+          <Chip label={fmtElev(maxElev, unit)} title={t.bottomSheet.chipMaxAlt} />
         </div>
       )}
 
@@ -137,13 +140,13 @@ function ElevationSection() {
           <SurfaceChart surface={surface} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
         )}
         {view === 'surface' && (!surface || surface.length === 0) && (
-          <p className={styles.noData}>Нет данных о покрытии</p>
+          <p className={styles.noData}>{t.bottomSheet.noSurfaceData}</p>
         )}
         {view === 'roadclass' && roadClass && roadClass.length > 0 && (
           <RoadClassChart roadClass={roadClass} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
         )}
         {view === 'roadclass' && (!roadClass || roadClass.length === 0) && (
-          <p className={styles.noData}>Нет данных о типе дороги</p>
+          <p className={styles.noData}>{t.bottomSheet.noRoadclassData}</p>
         )}
       </div>
     </div>
@@ -164,6 +167,7 @@ export function BottomSheet() {
   const [expanded, setExpanded] = useState(false)
   const [elevOpen, setElevOpen] = useState(false)
   const [poiOpen, setPoiOpen] = useState(false)
+  const t = useT()
 
   const sheetRef   = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -282,7 +286,7 @@ export function BottomSheet() {
 
       {!expanded && (
         <div className={styles.peek} onClick={() => setExpanded(true)}>
-          <p className={styles.hint}>Потяните вверх для управления маршрутом</p>
+          <p className={styles.hint}>{t.bottomSheet.pullHint}</p>
         </div>
       )}
 
@@ -299,7 +303,7 @@ export function BottomSheet() {
           </div>
 
           <Accordion
-            title="Высоты и покрытие"
+            title={t.bottomSheet.accordionElevation}
             open={elevOpen}
             onToggle={() => setElevOpen((v) => !v)}
           >
@@ -307,7 +311,7 @@ export function BottomSheet() {
           </Accordion>
 
           <Accordion
-            title="Фильтр точек POI"
+            title={t.bottomSheet.accordionPoi}
             open={poiOpen}
             onToggle={() => setPoiOpen((v) => !v)}
           >

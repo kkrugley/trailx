@@ -12,8 +12,9 @@ import {
   MapPin,
 } from '@phosphor-icons/react'
 import type { POI, POICategory } from '@trailx/shared'
-import { POI_LABELS, POI_COLORS, POI_CATEGORIES } from '@trailx/shared'
+import { POI_COLORS, POI_CATEGORIES } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
+import { useT } from '../../i18n/useT'
 import styles from './POICard.module.css'
 
 // ── Category icon map ─────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
 
   const standalonePois = useMapStore((s) => s.standalonePois)
   const { addStandalonePoi, removeStandalonePoi, insertWaypointNear } = useMapStore((s) => s.actions)
+  const t = useT()
 
   useEffect(() => {
     if (poi) setDisplayPoi(poi)
@@ -149,7 +151,7 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
                   {CATEGORY_ICONS[draftCategory]}
                 </span>
                 <div className={styles.titleGroup}>
-                  <span className={styles.title}>Новая метка</span>
+                  <span className={styles.title}>{t.poiCard.newMarker}</span>
                   <span className={styles.categoryLabel}>
                     {displayDraft.lat.toFixed(5)}, {displayDraft.lng.toFixed(5)}
                   </span>
@@ -164,7 +166,7 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
               <input
                 className={styles.draftInput}
                 type="text"
-                placeholder="Название метки"
+                placeholder={t.poiCard.markerNamePlaceholder}
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
               />
@@ -174,14 +176,14 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
                 onChange={(e) => setDraftCategory(e.target.value as POICategory)}
               >
                 {POI_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{POI_LABELS[cat]}</option>
+                  <option key={cat} value={cat}>{t.poi[cat]}</option>
                 ))}
               </select>
             </div>
 
             <div className={styles.draftActionsRow}>
               <button className={styles.btnPrimary} onClick={handleSaveDraft}>
-                Сохранить метку
+                {t.poiCard.saveMarker}
               </button>
             </div>
           </>
@@ -201,10 +203,10 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
                 </span>
                 <div className={styles.titleGroup}>
                   <span className={styles.title}>
-                    {displayPoi.name || 'Без названия'}
+                    {displayPoi.name || t.poiCard.noName}
                   </span>
                   <span className={styles.categoryLabel}>
-                    {POI_LABELS[displayPoi.category]}
+                    {t.poi[displayPoi.category]}
                   </span>
                 </div>
               </div>
@@ -239,19 +241,19 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
               </div>
               {displayPoi.tags.opening_hours && (
                 <div className={styles.tag}>
-                  <span className={styles.tagKey}>Часы работы:</span>
+                  <span className={styles.tagKey}>{t.poiCard.hoursLabel}</span>
                   <span className={styles.tagVal}>{displayPoi.tags.opening_hours}</span>
                 </div>
               )}
               {displayPoi.tags.phone && (
                 <div className={styles.tag}>
-                  <span className={styles.tagKey}>Тел.</span>
+                  <span className={styles.tagKey}>{t.poiCard.phoneLabel}</span>
                   <span className={styles.tagVal}>{displayPoi.tags.phone}</span>
                 </div>
               )}
               {displayPoi.tags.website && (
                 <div className={styles.tag}>
-                  <span className={styles.tagKey}>Сайт</span>
+                  <span className={styles.tagKey}>{t.poiCard.websiteLabel}</span>
                   <a
                     className={styles.tagLink}
                     href={displayPoi.tags.website}
@@ -268,15 +270,15 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
             <div className={styles.actions}>
               {isSaved ? (
                 <button className={styles.btnDanger} onClick={handleRemovePOI}>
-                  Удалить POI
+                  {t.poiCard.removePoi}
                 </button>
               ) : (
                 <button className={styles.btnSecondary} onClick={handleSaveAsPOI}>
-                  Сохранить как POI
+                  {t.poiCard.saveAsPoi}
                 </button>
               )}
               <button className={styles.btnPrimary} onClick={handleAddToRoute}>
-                Добавить в маршрут
+                {t.poiCard.addToRoute}
               </button>
             </div>
           </>

@@ -36,7 +36,7 @@
   --dark-sky-blue: #97B4DE;
 
   /* ── Typography ── */
-  --font-family: 'Space Grotesk', system-ui, sans-serif;
+  --font-family: 'Inter', system-ui, sans-serif;
 
   /* ── Layout tokens ── */
   --action-bar-height: 64px;

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { CaretUp, CaretDown, X, ArrowsOutSimple, ArrowsInSimple } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
 import { fmtElev } from '../../utils/units'
+import { useT } from '../../i18n/useT'
 import { Chip } from '../ui/Chip'
 import { ElevationChart } from './ElevationChart'
 import { SurfaceChart } from './SurfaceChart'
@@ -10,12 +11,6 @@ import styles from './ElevationBar.module.css'
 
 type ElevMode = 'compact' | 'expanded' | 'closed'
 type ViewMode = 'elevation' | 'surface' | 'roadclass'
-
-const VIEW_LABELS: Record<ViewMode, string> = {
-  elevation: 'Набор высоты',
-  surface:   'Покрытие',
-  roadclass: 'Тип дороги',
-}
 
 function computeGain(elevation: number[]): number {
   return elevation.reduce(
@@ -28,10 +23,17 @@ export function ElevationBar() {
   const routeResult = useMapStore((s) => s.routeResult)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { setHoveredRoutePosition } = useMapStore((s) => s.actions)
+  const t = useT()
   const [mode, setMode] = useState<ElevMode>('expanded')
   const [view, setView] = useState<ViewMode>('elevation')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [wide, setWide] = useState(false)
+
+  const VIEW_LABELS: Record<ViewMode, string> = {
+    elevation: t.elevationBar.viewElevation,
+    surface: t.elevationBar.viewSurface,
+    roadclass: t.elevationBar.viewRoadclass,
+  }
 
   const handleHoverFraction = useCallback((fraction: number | null) => {
     if (fraction === null || !routeResult) {
@@ -91,9 +93,9 @@ export function ElevationBar() {
         {/* Chips (elevation only) */}
         {view === 'elevation' && (
           <div className={styles.chips}>
-            <Chip label={`+${fmtElev(gain, unit)}`} title="Набор высоты" />
-            <Chip label={`${fmtElev(minElev, unit)}`} title="Мин. высота" />
-            <Chip label={`${fmtElev(maxElev, unit)}`} title="Макс. высота" />
+            <Chip label={`+${fmtElev(gain, unit)}`} title={t.elevationBar.chipGain} />
+            <Chip label={`${fmtElev(minElev, unit)}`} title={t.elevationBar.chipMinAlt} />
+            <Chip label={`${fmtElev(maxElev, unit)}`} title={t.elevationBar.chipMaxAlt} />
           </div>
         )}
 
@@ -133,13 +135,13 @@ export function ElevationBar() {
             <SurfaceChart surface={surface} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'surface' && (!surface || surface.length === 0) && (
-            <div className={styles.noData}>Нет данных о покрытии</div>
+            <div className={styles.noData}>{t.elevationBar.noSurfaceData}</div>
           )}
           {view === 'roadclass' && roadClass && roadClass.length > 0 && (
             <RoadClassChart roadClass={roadClass} distance={routeResult.distance} unit={unit} onHoverFraction={handleHoverFraction} />
           )}
           {view === 'roadclass' && (!roadClass || roadClass.length === 0) && (
-            <div className={styles.noData}>Нет данных о типе дороги</div>
+            <div className={styles.noData}>{t.elevationBar.noRoadclassData}</div>
           )}
         </div>
       )}

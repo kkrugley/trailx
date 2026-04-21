@@ -19,20 +19,22 @@ import { RouteSettings } from '../RouteSettings/RouteSettings'
 import { useMapStore } from '../../store/useMapStore'
 import { useRoute } from '../../hooks/useRoute'
 import { useProfile } from '../../hooks/useProfile'
+import { useT } from '../../i18n/useT'
 import styles from './WaypointInputList.module.css'
-
-const PLACEHOLDERS: Record<string, string> = {
-  start: 'Начальная точка',
-  intermediate: 'Промежуточная точка',
-  end: 'Конечная точка',
-}
 
 export function WaypointInputList() {
   const { waypoints, removeWaypoint, reorderWaypoints, clearRoute } = useRoute()
   const { updateWaypoint, addEmptyIntermediate } = useMapStore((s) => s.actions)
   const { profile } = useProfile()
+  const t = useT()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsBtnRef = useRef<HTMLButtonElement>(null)
+
+  const placeholders: Record<string, string> = {
+    start: t.waypointInputList.placeholderStart,
+    intermediate: t.waypointInputList.placeholderIntermediate,
+    end: t.waypointInputList.placeholderEnd,
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -65,7 +67,7 @@ export function WaypointInputList() {
               <WaypointInput
                 key={point.id}
                 point={point}
-                placeholder={PLACEHOLDERS[point.type] ?? 'Промежуточная точка'}
+                placeholder={placeholders[point.type] ?? t.waypointInputList.placeholderIntermediate}
                 onRemove={removeWaypoint}
                 onUpdate={updateWaypoint}
               />
@@ -78,22 +80,22 @@ export function WaypointInputList() {
       <div className={styles.actionsRow}>
         <button className={styles.addBtn} onClick={addEmptyIntermediate}>
           <Plus size={13} weight="bold" />
-          Добавить остановку
+          {t.waypointInputList.addStop}
         </button>
         <button
           ref={settingsBtnRef}
           className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
           onClick={() => setSettingsOpen((v) => !v)}
-          aria-label="Настройки маршрута"
-          title="Настройки"
+          aria-label={t.waypointInputList.settingsAriaLabel}
+          title={t.waypointInputList.settingsTitle}
         >
           <GearSix size={16} weight={settingsOpen ? 'fill' : 'regular'} />
         </button>
         <button
           className={styles.iconBtn}
           onClick={clearRoute}
-          aria-label="Очистить маршрут"
-          title="Очистить маршрут"
+          aria-label={t.waypointInputList.clearAriaLabel}
+          title={t.waypointInputList.clearTitle}
         >
           <Trash size={16} weight="regular" />
         </button>

@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import type { RoutingProfile } from '@trailx/shared'
+import { useT } from '../../i18n/useT'
 import styles from './RouteSettings.module.css'
 
 interface RouteSettingsProps {
@@ -12,6 +13,7 @@ interface RouteSettingsProps {
 export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProps) {
   const settings = useMapStore((s) => s.appSettings)
   const { updateSettings } = useMapStore((s) => s.actions)
+  const t = useT()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,14 +46,14 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
       {/* Profile-specific */}
       {profile === 'foot' && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Пеший маршрут</div>
+          <div className={styles.sectionTitle}>{t.routeSettings.sectionFoot}</div>
           <Toggle
-            label="Предпочитать пешеходные дорожки"
+            label={t.routeSettings.preferFootpaths}
             value={settings.foot.preferFootpaths}
             onChange={(v) => patchProfile('foot', { preferFootpaths: v })}
           />
           <Toggle
-            label="Избегать проезжих дорог"
+            label={t.routeSettings.avoidRoads}
             value={settings.foot.avoidRoads}
             onChange={(v) => patchProfile('foot', { avoidRoads: v })}
           />
@@ -60,12 +62,12 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
 
       {profile === 'bike' && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Велосипед</div>
+          <div className={styles.sectionTitle}>{t.routeSettings.sectionBike}</div>
           <div className={styles.radioGroup}>
             {([
-              ['fastest', 'Быстрейший'],
-              ['safest', 'Безопасный'],
-              ['short', 'Кратчайший'],
+              ['fastest', t.routeSettings.routeFastest],
+              ['safest', t.routeSettings.routeSafest],
+              ['short', t.routeSettings.routeShort],
             ] as const).map(([val, lbl]) => (
               <label key={val} className={styles.radioRow}>
                 <input
@@ -79,7 +81,7 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
             ))}
           </div>
           <Toggle
-            label="Избегать автомагистралей"
+            label={t.routeSettings.avoidHighways}
             value={settings.bike.avoidHighways}
             onChange={(v) => patchProfile('bike', { avoidHighways: v })}
           />
@@ -88,12 +90,12 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
 
       {profile === 'mtb' && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Горный велосипед</div>
+          <div className={styles.sectionTitle}>{t.routeSettings.sectionMtb}</div>
           <div className={styles.radioGroup}>
             {([
-              ['low', 'Лёгкий рельеф'],
-              ['medium', 'Средний рельеф'],
-              ['high', 'Сложный рельеф'],
+              ['low', t.routeSettings.terrainEasy],
+              ['medium', t.routeSettings.terrainMedium],
+              ['high', t.routeSettings.terrainHard],
             ] as const).map(([val, lbl]) => (
               <label key={val} className={styles.radioRow}>
                 <input
@@ -107,7 +109,7 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
             ))}
           </div>
           <Toggle
-            label="Избегать асфальтированных дорог"
+            label={t.routeSettings.avoidPaved}
             value={settings.mtb.avoidPaved}
             onChange={(v) => patchProfile('mtb', { avoidPaved: v })}
           />
@@ -116,11 +118,11 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
 
       {profile === 'racingbike' && (
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Шоссейный велосипед</div>
+          <div className={styles.sectionTitle}>{t.routeSettings.sectionRacing}</div>
           <div className={styles.radioGroup}>
             {([
-              ['fastest', 'Быстрейший'],
-              ['short', 'Кратчайший'],
+              ['fastest', t.routeSettings.routeFastest],
+              ['short', t.routeSettings.routeShort],
             ] as const).map(([val, lbl]) => (
               <label key={val} className={styles.radioRow}>
                 <input
@@ -134,7 +136,7 @@ export function RouteSettings({ profile, onClose, anchorRef }: RouteSettingsProp
             ))}
           </div>
           <Toggle
-            label="Избегать брусчатки"
+            label={t.routeSettings.avoidCobblestones}
             value={settings.racingbike.avoidCobblestones}
             onChange={(v) => patchProfile('racingbike', { avoidCobblestones: v })}
           />

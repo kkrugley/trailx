@@ -5,6 +5,7 @@ import { Export, Check, ShareNetwork, X } from '@phosphor-icons/react'
 import { exportRoute } from '../../services/gpx'
 import { useMapStore } from '../../store/useMapStore'
 import { useShareSession } from '../../hooks/useShareSession'
+import { useT } from '../../i18n/useT'
 import styles from './ExportPanel.module.css'
 
 export function ExportPanel() {
@@ -12,6 +13,7 @@ export function ExportPanel() {
   // TODO: import GPX moved — restore in WaypointInputList or standalone ImportButton
   // const { loadRouteFromGPX } = useMapStore((s) => s.actions)
   const { share, isCopied, isSharing, error, clearError } = useShareSession()
+  const t = useT()
 
   const hasRoute = routeResult !== null
 
@@ -27,7 +29,7 @@ export function ExportPanel() {
       {error && (
         <div className={styles.errorToast} role="alert">
           <span>{error}</span>
-          <button className={styles.errorDismiss} onClick={clearError} aria-label="Закрыть">
+          <button className={styles.errorDismiss} onClick={clearError} aria-label={t.exportPanel.closeErrorAriaLabel}>
             <X size={14} weight="bold" />
           </button>
         </div>
@@ -41,8 +43,8 @@ export function ExportPanel() {
           aria-label="Share route"
         >
           {isCopied
-            ? <><Check size={18} weight="bold" /><span>Скопировано!</span></>
-            : <><ShareNetwork size={18} weight="regular" /><span>Поделиться</span></>
+            ? <><Check size={18} weight="bold" /><span>{t.exportPanel.copied}</span></>
+            : <><ShareNetwork size={18} weight="regular" /><span>{t.exportPanel.share}</span></>
           }
         </button>
 
@@ -55,7 +57,7 @@ export function ExportPanel() {
           aria-disabled={!hasRoute}
         >
           <Export size={18} weight="regular" />
-          <span>Экспорт GPX</span>
+          <span>{t.exportPanel.exportGpx}</span>
         </button>
       </div>
     </div>

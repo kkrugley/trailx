@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Ruler, Plus, Trash, ArrowsLeftRight, FrameCorners, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useMapStore } from '../../store/useMapStore'
 import { fmtDist } from '../../utils/units'
+import { useT } from '../../i18n/useT'
 import type { MapViewHandle } from '../MapView/MapView'
 import styles from './ToolsPanel.module.css'
 
@@ -23,6 +24,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
     deleteMeasureSession, deleteAllMeasureSessions,
     reverseWaypoints, clearRoute,
   } = useMapStore((s) => s.actions)
+  const t = useT()
   const [confirmClear, setConfirmClear] = useState(false)
 
   useEffect(() => {
@@ -61,20 +63,20 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
 
   return (
     <div ref={panelRef} className={styles.panel}>
-      <div className={styles.panelHeader}>Инструменты</div>
+      <div className={styles.panelHeader}>{t.toolsPanel.title}</div>
 
       {/* ── Fit route ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <FrameCorners size={14} weight="bold" className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>По маршруту</span>
+          <span className={styles.sectionTitle}>{t.toolsPanel.fitRouteTitle}</span>
           <button
             className={styles.actionBtn}
             onClick={fitRoute}
             disabled={!routeResult}
-            title={!routeResult ? 'Сначала постройте маршрут' : undefined}
+            title={!routeResult ? t.toolsPanel.fitRouteDisabledHint : undefined}
           >
-            Центрировать
+            {t.toolsPanel.fitRouteAction}
           </button>
         </div>
       </div>
@@ -83,33 +85,33 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <ArrowsLeftRight size={14} weight="bold" className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>Развернуть маршрут</span>
+          <span className={styles.sectionTitle}>{t.toolsPanel.reverseTitle}</span>
           <button
             className={styles.actionBtn}
             onClick={handleReverse}
             disabled={!hasValidWaypoints}
-            title={!hasValidWaypoints ? 'Добавьте точки маршрута' : undefined}
+            title={!hasValidWaypoints ? t.toolsPanel.reverseDisabledHint : undefined}
           >
-            Развернуть
+            {t.toolsPanel.reverseAction}
           </button>
         </div>
       </div>
 
-      {/* ── New route ── */}
+      {/* ── Clear route ── */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <ArrowCounterClockwise size={14} weight="bold" className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>Очистить маршрут</span>
+          <span className={styles.sectionTitle}>{t.toolsPanel.clearTitle}</span>
           {confirmClear ? (
             <div className={styles.confirmRow}>
               <button
                 className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                 onClick={() => { clearRoute(); setConfirmClear(false); onClose() }}
               >
-                Да!
+                {t.toolsPanel.confirmYes}
               </button>
               <button className={styles.actionBtn} onClick={() => setConfirmClear(false)}>
-                Отмена
+                {t.toolsPanel.confirmCancel}
               </button>
             </div>
           ) : (
@@ -117,9 +119,9 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
               onClick={() => setConfirmClear(true)}
               disabled={!hasValidWaypoints}
-              title={!hasValidWaypoints ? 'Маршрут уже пустой' : undefined}
+              title={!hasValidWaypoints ? t.toolsPanel.clearDisabledHint : undefined}
             >
-              Очистить
+              {t.toolsPanel.clearAction}
             </button>
           )}
         </div>
@@ -129,7 +131,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <Ruler size={14} weight="bold" className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>Измерение расстояний</span>
+          <span className={styles.sectionTitle}>{t.toolsPanel.measureTitle}</span>
           <button
             role="switch"
             aria-checked={measureActive}
@@ -143,7 +145,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
         {measureActive && (
           <div className={styles.measureBody}>
             {measureSessions.length === 0 ? (
-              <p className={styles.hint}>Начните новое измерение, а затем кликните по карте, чтобы добавить точку</p>
+              <p className={styles.hint}>{t.toolsPanel.measureHint}</p>
             ) : (
               <ul className={styles.sessionList}>
                 {measureSessions.map((s, i) => (
@@ -152,14 +154,14 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
                     className={`${styles.sessionRow} ${s.id === measureActiveSessionId ? styles.sessionActive : ''}`}
                   >
                     <span className={styles.sessionColor} style={{ background: s.color }} />
-                    <span className={styles.sessionName}>Замер {i + 1}</span>
+                    <span className={styles.sessionName}>{t.toolsPanel.sessionName(i + 1)}</span>
                     <span className={styles.sessionDist}>
                       {s.nodes.length < 2 ? '—' : fmtDist(s.distance * 1000, unit)}
                     </span>
                     <button
                       className={styles.deleteBtn}
                       onClick={() => deleteMeasureSession(s.id)}
-                      aria-label="Удалить замер"
+                      aria-label={t.toolsPanel.measureDeleteAriaLabel}
                     >
                       <Trash size={13} weight="bold" />
                     </button>
@@ -171,7 +173,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
             <div className={styles.measureActions}>
               <button className={styles.actionBtn} onClick={startMeasureSession}>
                 <Plus size={13} weight="bold" />
-                Начать новое
+                {t.toolsPanel.measureNewSession}
               </button>
               {measureSessions.length > 0 && (
                 <button
@@ -179,7 +181,7 @@ export function ToolsPanel({ onClose, mapRef }: ToolsPanelProps) {
                   onClick={deleteAllMeasureSessions}
                 >
                   <Trash size={13} weight="bold" />
-                  Стереть все
+                  {t.toolsPanel.measureDeleteAll}
                 </button>
               )}
             </div>

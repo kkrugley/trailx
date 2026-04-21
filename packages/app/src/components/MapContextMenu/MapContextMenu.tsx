@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Compass, FlagBanner, FlagPennant, MapPin, PlusCircle, Copy, PencilSimpleLine } from '@phosphor-icons/react'
+import { useT } from '../../i18n/useT'
 import styles from './MapContextMenu.module.css'
 
 export interface MapContextMenuProps {
@@ -23,6 +24,7 @@ export function MapContextMenu({
   onAddPoi,
 }: MapContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const t = useT()
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent | TouchEvent) => {
@@ -88,35 +90,33 @@ export function MapContextMenu({
       {/* Маршрутные действия */}
       <button className={styles.item} onClick={() => { onSetStart(); onClose() }}>
         <FlagBanner size={15} weight="fill" className={styles.iconStart} />
-        Установить начало
+        {t.mapContextMenu.setStart}
       </button>
       <button className={styles.item} onClick={() => { onAddIntermediate(); onClose() }}>
         <PlusCircle size={15} weight="fill" className={styles.iconMid} />
-        Добавить промежуточную
+        {t.mapContextMenu.addIntermediate}
       </button>
       <button className={styles.item} onClick={() => { onSetEnd(); onClose() }}>
         <FlagPennant size={15} weight="fill" className={styles.iconEnd} />
-        Установить конец
+        {t.mapContextMenu.setEnd}
       </button>
 
       <div className={styles.divider} />
 
-      {/* Метка */}
       <button className={styles.item} onClick={() => { onAddPoi(); onClose() }}>
         <MapPin size={15} weight="fill" className={styles.iconPoi} />
-        Добавить метку
+        {t.mapContextMenu.addMarker}
       </button>
 
       <div className={styles.divider} />
 
-      {/* Вспомогательные */}
       <button className={styles.item} onClick={copyCoords}>
         <Copy size={15} className={styles.iconUtil} />
-        Копировать координаты
+        {t.mapContextMenu.copyCoords}
       </button>
       <button className={styles.item} onClick={openOSM}>
         <PencilSimpleLine size={15} className={styles.iconUtil} />
-        Открыть в OSM
+        {t.mapContextMenu.openOsm}
       </button>
     </div>
   )

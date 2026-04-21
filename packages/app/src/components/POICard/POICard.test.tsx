@@ -7,6 +7,7 @@ import type { POI } from '@trailx/shared'
 vi.mock('../../store/useMapStore', () => ({
   useMapStore: vi.fn((selector: (s: unknown) => unknown) => {
     const state = {
+      appSettings: { language: 'ru' },
       standalonePois: [],
       actions: {
         addStandalonePoi: vi.fn(),
@@ -93,6 +94,7 @@ describe('POICard — create mode (draft)', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(storeModule.useMapStore).mockImplementation((selector: (s: any) => any) => {
       return selector({
+        appSettings: { language: 'ru' },
         standalonePois: [],
         actions: { addStandalonePoi: mockAddStandalonePoi, removeStandalonePoi: vi.fn(), insertWaypointNear: vi.fn() },
       })
@@ -122,6 +124,7 @@ describe('POICard — create mode (draft)', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(storeModule.useMapStore).mockImplementation((selector: (s: any) => any) => {
       return selector({
+        appSettings: { language: 'ru' },
         standalonePois: [],
         actions: { addStandalonePoi: mockAddStandalonePoi, removeStandalonePoi: vi.fn(), insertWaypointNear: vi.fn() },
       })

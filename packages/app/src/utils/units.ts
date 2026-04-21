@@ -22,9 +22,9 @@ export function fmtElev(meters: number, unit: DistanceUnit): string {
 }
 
 /** Format a speed stored in km/h, respecting the active unit setting. */
-export function fmtSpeed(kph: number, unit: DistanceUnit): string {
+export function fmtSpeed(kph: number, unit: DistanceUnit, speedUnitLabel = 'км/ч'): string {
   if (unit === 'mi') return `${Math.round(kph * KPH_TO_MPH)} mph`
-  return `${kph} км/ч`
+  return `${kph} ${speedUnitLabel}`
 }
 
 /** Convert a speed value from the display unit back to km/h for storage. */
@@ -40,6 +40,6 @@ export function kphToDisplay(kph: number, unit: DistanceUnit): number {
 }
 
 /** Speed unit label string. */
-export function speedUnit(unit: DistanceUnit): string {
-  return unit === 'mi' ? 'mph' : 'км/ч'
+export function speedUnit(unit: DistanceUnit, speedUnitLabel = 'км/ч'): string {
+  return unit === 'mi' ? 'mph' : speedUnitLabel
 }

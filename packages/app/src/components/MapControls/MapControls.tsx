@@ -6,6 +6,7 @@ import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
 import { DebugPanel } from '../DebugPanel/DebugPanel'
 import { ToolsPanel } from '../ToolsPanel/ToolsPanel'
+import { useT } from '../../i18n/useT'
 import styles from './MapControls.module.css'
 
 interface MapControlsProps {
@@ -21,6 +22,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
   const [debugOpen, setDebugOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const t = useT()
   const zoomIn  = () => mapRef.current?.getMap()?.zoomIn()
   const zoomOut = () => mapRef.current?.getMap()?.zoomOut()
 
@@ -44,7 +46,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
           className={`${styles.iconBtn} ${infoOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setInfoOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setDebugOpen(false) }}
-          aria-label="Справка"
+          aria-label={t.mapControls.infoAriaLabel}
         >
           <Question size={17} weight={infoOpen ? 'fill' : 'regular'} />
         </button>
@@ -61,7 +63,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
           className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setSettingsOpen((v) => !v); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
-          aria-label="Настройки"
+          aria-label={t.mapControls.settingsAriaLabel}
         >
           <GearSix size={17} weight={settingsOpen ? 'fill' : 'regular'} />
         </button>
@@ -78,7 +80,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
           className={`${styles.iconBtn} ${layersOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false); setToolsOpen(false); setDebugOpen(false) }}
-          aria-label="Слои карты"
+          aria-label={t.mapControls.layersAriaLabel}
         >
           <Stack size={17} weight={layersOpen ? 'fill' : 'regular'} />
         </button>
@@ -95,7 +97,7 @@ export function MapControls({ mapRef }: MapControlsProps) {
           className={`${styles.iconBtn} ${toolsOpen ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setToolsOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
-          aria-label="Инструменты"
+          aria-label={t.mapControls.toolsAriaLabel}
         >
           <Toolbox size={17} weight={toolsOpen ? 'fill' : 'regular'} />
         </button>

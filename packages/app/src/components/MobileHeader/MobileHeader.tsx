@@ -5,6 +5,7 @@ import { useProfile } from '../../hooks/useProfile'
 import { exportRoute } from '../../services/gpx'
 import { useShareSession } from '../../hooks/useShareSession'
 import { fmtDist } from '../../utils/units'
+import { useT, type Translations } from '../../i18n/useT'
 import styles from './MobileHeader.module.css'
 
 const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
@@ -14,17 +15,17 @@ const PROFILE_ICONS: Record<RoutingProfile, typeof Bicycle> = {
   racingbike: Lightning,
 }
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds: number, t: Translations): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h} ч ${m} мин`
-  return `${m} мин`
+  if (h > 0) return t.units.durationHM(h, m)
+  return t.units.durationM(m)
 }
 
-function formatDurationCompact(seconds: number): string {
+function formatDurationCompact(seconds: number, t: Translations): string {
   const h = seconds / 3600
-  if (h >= 1) return `${h.toFixed(1).replace('.0', '')} ч`
-  return `${Math.round(seconds / 60)} мин`
+  if (h >= 1) return t.units.durationCompactH(h.toFixed(1).replace('.0', ''))
+  return t.units.durationCompactM(Math.round(seconds / 60))
 }
 
 export function MobileHeader() {
@@ -34,6 +35,7 @@ export function MobileHeader() {
   const speeds = useMapStore((s) => s.appSettings.speeds)
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { share, isSharing, error, clearError } = useShareSession()
+  const t = useT()
 
   const ProfileIcon = PROFILE_ICONS[profile]
 
@@ -49,11 +51,11 @@ export function MobileHeader() {
         <div className={styles.stats}>
           <span className={`${styles.statChipAccent} ${styles.durationFull}`}>
             <Clock size={12} weight="fill" />
-            {formatDuration(durationSec)}
+            {formatDuration(durationSec, t)}
           </span>
           <span className={`${styles.statChipAccent} ${styles.durationCompact}`}>
             <Clock size={12} weight="fill" />
-            {formatDurationCompact(durationSec)}
+            {formatDurationCompact(durationSec, t)}
           </span>
           <span className={styles.statChip}>
             <Path size={12} weight="fill" />
@@ -65,15 +67,15 @@ export function MobileHeader() {
             className={`${styles.actionBtn} ${error ? styles.actionBtnError : ''}`}
             onClick={error ? clearError : share}
             disabled={isSharing}
-            aria-label={error ? error : 'Поделиться'}
-            title={error ?? 'Поделиться'}
+            aria-label={error ? error : t.mobileHeader.shareAriaLabel}
+            title={error ?? t.mobileHeader.shareTitle}
           >
             {error
               ? <Warning size={16} weight="fill" />
               : <ShareNetwork size={16} weight="regular" />
             }
           </button>
-          <button className={styles.actionBtn} onClick={exportRoute} aria-label="Скачать GPX" title="Скачать GPX">
+          <button className={styles.actionBtn} onClick={exportRoute} aria-label={t.mobileHeader.downloadAriaLabel} title={t.mobileHeader.downloadTitle}>
             <DownloadSimple size={16} weight="regular" />
           </button>
         </div>
@@ -86,7 +88,7 @@ export function MobileHeader() {
       <div className={styles.hintIcon}>
         <MapPin size={18} weight="duotone" />
       </div>
-      <p className={styles.hintText}>Добавьте точки маршрута в выдвижном меню</p>
+      <p className={styles.hintText}>{t.mobileHeader.hintText}</p>
     </div>
   )
 }

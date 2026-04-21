@@ -27,6 +27,7 @@ import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
 import { generatePOIIcon } from '../../utils/poiIcon'
 import { reverseGeocode } from '../../services/nominatim'
+import { useT } from '../../i18n/useT'
 import styles from './MapView.module.css'
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
@@ -238,6 +239,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const [mapVersion, setMapVersion] = useState(0)
   const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
 
+  const t = useT()
   const waypoints = useMapStore((s) => s.waypoints)
   const routeResult = useMapStore((s) => s.routeResult)
   const isRouting = useMapStore((s) => s.isRouting)
@@ -591,13 +593,13 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
       {isRouting && (
         <div className={styles.spinnerOverlay}>
           <span className={styles.spinner} />
-          Building route…
+          {t.mapView.buildingRoute}
         </div>
       )}
       {isSearchingPOI && !isRouting && (
         <div className={styles.spinnerOverlay}>
           <span className={styles.spinner} />
-          Searching POI…
+          {t.mapView.searchingPoi}
         </div>
       )}
       {contextMenu && (

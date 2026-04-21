@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react'
 import {
   Drop, Wrench, House, Bicycle, Tent, ForkKnife, CastleTurret, Binoculars, MapPin,
 } from '@phosphor-icons/react'
-import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
+import { POI_CATEGORIES, POI_COLORS } from '@trailx/shared'
 import type { POICategory } from '@trailx/shared'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import { fmtDist } from '../../utils/units'
+import { useT } from '../../i18n/useT'
 import styles from './POIFilter.module.css'
 
 const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
@@ -31,6 +32,7 @@ export function POIFilter({ onClose }: POIFilterProps) {
   const unit = useMapStore((s) => s.appSettings.distanceUnit)
   const { toggleCategory, setActiveCategories, updateSettings } = useMapStore((s) => s.actions)
 
+  const t = useT()
   const allOn = activeCategories.length === POI_CATEGORIES.length
   const allOff = activeCategories.length === 0
 
@@ -47,12 +49,12 @@ export function POIFilter({ onClose }: POIFilterProps) {
     >
       <div ref={panelRef} className={styles.panel}>
         <div className={styles.header}>
-          <span className={styles.title}>Фильтр POI</span>
+          <span className={styles.title}>{t.poiFilter.title}</span>
           <button
             className={`${styles.toggleAll} ${allOn ? styles.toggleAllActive : ''}`}
             onClick={() => setActiveCategories(allOn ? [] : [...POI_CATEGORIES])}
           >
-            {allOn ? 'Скрыть все' : allOff ? 'Показать все' : 'Выбрать все'}
+            {allOn ? t.poiFilter.hideAll : allOff ? t.poiFilter.showAll : t.poiFilter.selectAll}
           </button>
         </div>
 
@@ -69,14 +71,14 @@ export function POIFilter({ onClose }: POIFilterProps) {
                 <span className={styles.icon} style={{ color: POI_COLORS[cat] }}>
                   {CATEGORY_ICONS[cat]}
                 </span>
-                <span className={styles.label}>{POI_LABELS[cat]}</span>
+                <span className={styles.label}>{t.poi[cat]}</span>
               </button>
             )
           })}
         </div>
 
         <div className={styles.bufferSection}>
-          <span className={styles.bufferLabel}>Радиус поиска</span>
+          <span className={styles.bufferLabel}>{t.poiFilter.searchRadius}</span>
           <div className={styles.sliderRow}>
             <input
               type="range"

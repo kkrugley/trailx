@@ -11,8 +11,9 @@ import {
   MapPin,
 } from '@phosphor-icons/react'
 import type { POICategory } from '@trailx/shared'
-import { POI_CATEGORIES, POI_LABELS, POI_COLORS } from '@trailx/shared'
+import { POI_CATEGORIES, POI_COLORS } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
+import { useT } from '../../i18n/useT'
 import styles from './FilterBar.module.css'
 
 const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
@@ -31,6 +32,7 @@ export function FilterBar() {
   const pois = useMapStore((s) => s.pois)
   const activeCategories = useMapStore((s) => s.activeCategories)
   const { toggleCategory, setActiveCategories } = useMapStore((s) => s.actions)
+  const t = useT()
 
   const allActive = activeCategories.length === POI_CATEGORIES.length
 
@@ -53,7 +55,7 @@ export function FilterBar() {
         <span className={styles.chipIcon}>
           <GridFour size={15} weight="fill" />
         </span>
-        <span className={styles.chipLabel}>Все</span>
+        <span className={styles.chipLabel}>{t.filterBar.all}</span>
       </button>
 
       {POI_CATEGORIES.map((cat) => {
@@ -66,10 +68,10 @@ export function FilterBar() {
             style={{ '--chip-color': POI_COLORS[cat] } as React.CSSProperties}
             onClick={() => toggleCategory(cat)}
             aria-pressed={isActive}
-            aria-label={POI_LABELS[cat]}
+            aria-label={t.poi[cat]}
           >
             <span className={styles.chipIcon}>{CATEGORY_ICONS[cat]}</span>
-            <span className={styles.chipLabel}>{POI_LABELS[cat]}</span>
+            <span className={styles.chipLabel}>{t.poi[cat]}</span>
             {count > 0 && <span className={styles.chipCount}>{count}</span>}
           </button>
         )

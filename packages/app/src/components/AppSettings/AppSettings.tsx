@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CaretDown, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useMapStore, type AppSettings } from '../../store/useMapStore'
 import { kphToDisplay, displayToKph, speedUnit } from '../../utils/units'
+import { useT } from '../../i18n/useT'
 import styles from './AppSettings.module.css'
 
 const DEFAULT_SPEEDS = { foot: 5, bike: 20, mtb: 15, racingbike: 28 }
@@ -23,6 +24,7 @@ interface AppSettingsProps {
 export function AppSettingsPanel({ onClose }: AppSettingsProps) {
   const settings = useMapStore((s) => s.appSettings)
   const { updateSettings } = useMapStore((s) => s.actions)
+  const t = useT()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,49 +58,49 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
   return (
     <div ref={panelRef} className={styles.panel}>
       <div className={styles.panelHeader}>
-        <span>Настройки</span>
-        <button className={styles.resetBtn} onClick={resetToDefaults} title="Сбросить к стандартным">
+        <span>{t.appSettings.title}</span>
+        <button className={styles.resetBtn} onClick={resetToDefaults} title={t.appSettings.resetTitle}>
           <ArrowCounterClockwise size={13} weight="bold" />
-          <span>Сброс</span>
+          <span>{t.appSettings.resetLabel}</span>
         </button>
       </div>
 
       {/* Language */}
-      <Section title="Язык интерфейса">
+      <Section title={t.appSettings.sectionLanguage}>
         <Segmented
-          options={[{ value: 'ru', label: 'Русский' }, { value: 'en', label: 'English' }]}
+          options={[{ value: 'ru', label: t.appSettings.langRu }, { value: 'en', label: t.appSettings.langEn }]}
           value={settings.language}
           onChange={(v) => patch('language', v as AppSettings['language'])}
         />
       </Section>
 
       {/* Units */}
-      <Section title="Единицы расстояния">
+      <Section title={t.appSettings.sectionUnits}>
         <Segmented
-          options={[{ value: 'km', label: 'Километры' }, { value: 'mi', label: 'Мили' }]}
+          options={[{ value: 'km', label: t.appSettings.unitKm }, { value: 'mi', label: t.appSettings.unitMi }]}
           value={settings.distanceUnit}
           onChange={(v) => patch('distanceUnit', v as AppSettings['distanceUnit'])}
         />
       </Section>
 
       {/* Map — auto-fit */}
-      <Section title="Карта">
+      <Section title={t.appSettings.sectionMap}>
         <Toggle
-          label="Авто-центрирование на маршруте"
+          label={t.appSettings.autoFit}
           value={settings.autoFitRoute}
           onChange={(v) => updateSettings({ autoFitRoute: v })}
         />
       </Section>
 
       {/* Speeds — accordion */}
-      <Accordion title="Скорость движения">
+      <Accordion title={t.appSettings.sectionSpeeds}>
         <div className={styles.speedGrid}>
           {(
             [
-              { key: 'foot',       label: 'Пеший' },
-              { key: 'bike',       label: 'Велосипед' },
-              { key: 'mtb',        label: 'Горный' },
-              { key: 'racingbike', label: 'Шоссейный' },
+              { key: 'foot',       label: t.appSettings.speedFoot },
+              { key: 'bike',       label: t.appSettings.speedBike },
+              { key: 'mtb',        label: t.appSettings.speedMtb },
+              { key: 'racingbike', label: t.appSettings.speedRacingbike },
             ] as const
           ).map(({ key, label }) => (
             <SpeedInput
@@ -107,25 +109,26 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
               label={label}
               settings={settings}
               patchNested={patchNested}
+              speedUnitLabel={t.units.speedKmh}
             />
           ))}
         </div>
       </Accordion>
 
       {/* GPX Export — accordion */}
-      <Accordion title="Настройки экспорта GPX">
+      <Accordion title={t.appSettings.sectionGpx}>
         <Toggle
-          label="Включить трек (trk)"
+          label={t.appSettings.gpxIncludeTrk}
           value={settings.gpxExport.includeTrk}
           onChange={(v) => patchNested('gpxExport', { includeTrk: v })}
         />
         <Toggle
-          label="Включить маршрут (rte)"
+          label={t.appSettings.gpxIncludeRte}
           value={settings.gpxExport.includeRte}
           onChange={(v) => patchNested('gpxExport', { includeRte: v })}
         />
         <Toggle
-          label="Включить точки POI (wpt)"
+          label={t.appSettings.gpxIncludeWpt}
           value={settings.gpxExport.includeWpt}
           onChange={(v) => patchNested('gpxExport', { includeWpt: v })}
         />
@@ -133,7 +136,7 @@ export function AppSettingsPanel({ onClose }: AppSettingsProps) {
 
       {/* Info */}
       <div className={styles.infoRow}>
-        <span className={styles.infoText}>TrailX — планировщик велосипедных маршрутов</span>
+        <span className={styles.infoText}>{t.appSettings.footer}</span>
         <span className={styles.infoVersion}>v1.0</span>
       </div>
     </div>
@@ -198,11 +201,13 @@ function SpeedInput({
   label,
   settings,
   patchNested,
+  speedUnitLabel,
 }: {
   speedKey: 'foot' | 'bike' | 'mtb' | 'racingbike'
   label: string
   settings: AppSettings
   patchNested: <K extends keyof AppSettings>(key: K, nested: Partial<AppSettings[K]>) => void
+  speedUnitLabel?: string
 }) {
   const [raw, setRaw] = useState(
     () => String(kphToDisplay(settings.speeds[speedKey], settings.distanceUnit)),
@@ -230,7 +235,7 @@ function SpeedInput({
           }}
           className={styles.spinnerInput}
         />
-        <span className={styles.spinnerUnit}>{speedUnit(settings.distanceUnit)}</span>
+        <span className={styles.spinnerUnit}>{speedUnit(settings.distanceUnit, speedUnitLabel)}</span>
       </div>
     </div>
   )

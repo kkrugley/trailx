@@ -14,6 +14,7 @@ import { BottomSheet } from './BottomSheet'
 import { MapControls } from '../MapControls/MapControls'
 import { ElevationBar } from '../ElevationBar/ElevationBar'
 import { KeyboardDismissBar } from '../KeyboardDismissBar/KeyboardDismissBar'
+import { useT } from '../../i18n/useT'
 import styles from './AppShell.module.css'
 
 export function AppShell() {
@@ -22,6 +23,7 @@ export function AppShell() {
   const isDesktop = !isMobile && !isTMA && !isIAB
   const mapRef = useRef<MapViewHandle>(null)
   useIPGeolocation(mapRef)
+  const t = useT()
   const [filterOpen, setFilterOpen] = useState(false)
 
   const isExportOpen = useMapStore((s) => s.isExportOpen)
@@ -65,11 +67,11 @@ export function AppShell() {
         <button
           className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
           onClick={() => setFilterOpen((v) => !v)}
-          aria-label="Фильтр POI"
-          title="Фильтр POI"
+          aria-label={t.appShell.filterAriaLabel}
+          title={t.appShell.filterAriaLabel}
         >
           <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
-          <span>Фильтр</span>
+          <span>{t.appShell.filterLabel}</span>
         </button>
         {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
       </div>

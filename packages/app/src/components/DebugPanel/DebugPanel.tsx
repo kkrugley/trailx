@@ -270,6 +270,8 @@ export function DebugPanel({ onClose, mapRef }: DebugPanelProps) {
 
   const { isTMA, isMobile: isMobileHook } = usePlatform()
   const { logs: tmaLogs, refresh: refreshLogs } = useTmaDebug()
+  const debugSimulateAuth = useMapStore((s) => s.debugSimulateAuth)
+  const { toggleDebugSimulateAuth } = useMapStore((s) => s.actions)
 
   const [vpValues, setVpValues] = useState(readViewportValues)
   const [desktopMaxHeight, setDesktopMaxHeight] = useState<number | undefined>(undefined)
@@ -551,26 +553,33 @@ export function DebugPanel({ onClose, mapRef }: DebugPanelProps) {
         </button>
       </Section>
 
-      {/* 7. Tools */}
-      <Section title="Tools" sectionKey="tools" open={sections.tools} onToggle={toggle}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-          <button className={styles.actionBtn} onClick={loadTestRoute}>
-            Тестовый маршрут
-            <span className={styles.actionHint}>Random route</span>
-          </button>
-          <button className={styles.actionBtn} onClick={copyLogs}>
-            {copiedLogs ? '✓ Copied' : 'Copy logs'}
-            <span className={styles.actionHint}>viewport events</span>
-          </button>
-          <button className={styles.actionBtn} onClick={() => location.reload()}>
-            Force reload
-          </button>
-          <button className={`${styles.actionBtn} ${styles.dangerBtn}`} onClick={clearLocalStorage}>
-            Clear localStorage
-            <span className={styles.actionHint}>+ reload</span>
-          </button>
-        </div>
-      </Section>
+  {/* 7. Tools */}
+  <Section title="Tools" sectionKey="tools" open={sections.tools} onToggle={toggle}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+      <button
+        className={`${styles.actionBtn} ${debugSimulateAuth ? styles.activeBtn : ''}`}
+        onClick={toggleDebugSimulateAuth}
+      >
+        {debugSimulateAuth ? '✓ Simulating Auth' : 'Simulate Auth'}
+        <span className={styles.actionHint}>Fake logged-in state</span>
+      </button>
+      <button className={styles.actionBtn} onClick={loadTestRoute}>
+        Тестовый маршрут
+        <span className={styles.actionHint}>Random route</span>
+      </button>
+      <button className={styles.actionBtn} onClick={copyLogs}>
+        {copiedLogs ? '✓ Copied' : 'Copy logs'}
+        <span className={styles.actionHint}>viewport events</span>
+      </button>
+      <button className={styles.actionBtn} onClick={() => location.reload()}>
+        Force reload
+      </button>
+      <button className={`${styles.actionBtn} ${styles.dangerBtn}`} onClick={clearLocalStorage}>
+        Clear localStorage
+        <span className={styles.actionHint}>+ reload</span>
+      </button>
+    </div>
+  </Section>
 
       {/* 8. Event Log */}
       <Section title="Event Log" sectionKey="log" open={sections.log} onToggle={toggle}>

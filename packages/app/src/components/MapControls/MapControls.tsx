@@ -1,11 +1,13 @@
 import { useState, useRef, type RefObject } from 'react'
-import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Toolbox } from '@phosphor-icons/react'
+import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Toolbox, User } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
 import { MapLayers } from '../MapLayers/MapLayers'
 import { AppInfo } from '../AppInfo/AppInfo'
 import { DebugPanel } from '../DebugPanel/DebugPanel'
 import { ToolsPanel } from '../ToolsPanel/ToolsPanel'
+import { AccountPanel } from '../AccountPanel'
+import { useMapStore } from '../../store/useMapStore'
 import { useT } from '../../i18n/useT'
 import styles from './MapControls.module.css'
 
@@ -17,6 +19,8 @@ export function MapControls({ mapRef }: MapControlsProps) {
   const debugPopoverClass = styles.popoverUp
   const [infoOpen, setInfoOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const authUser = useMapStore((s) => s.authUser)
   const [layersOpen, setLayersOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [debugOpen, setDebugOpen] = useState(false)
@@ -56,6 +60,23 @@ export function MapControls({ mapRef }: MapControlsProps) {
           </div>
         )}
       </div>
+
+  {/* Account button */}
+  <div className={styles.popoverAnchor}>
+    <button
+      className={`${styles.iconBtn} ${accountOpen ? styles.iconBtnActive : ''}`}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={() => { setAccountOpen((v) => !v); setInfoOpen(false); setSettingsOpen(false); setLayersOpen(false); setDebugOpen(false) }}
+      aria-label="Account"
+    >
+      <User size={17} weight={authUser ? 'fill' : 'regular'} />
+    </button>
+    {accountOpen && (
+      <div className={styles.popoverWide}>
+        <AccountPanel onClose={() => setAccountOpen(false)} />
+      </div>
+    )}
+  </div>
 
       {/* Settings button */}
       <div className={styles.popoverAnchor}>

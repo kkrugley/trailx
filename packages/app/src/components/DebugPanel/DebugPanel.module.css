@@ -208,6 +208,12 @@
   color: rgba(200, 40, 40, 0.9);
 }
 
+.activeBtn {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: rgba(46, 204, 113, 0.5);
+  color: #27ae60;
+}
+
 .actionHint {
   font-size: 0.6875rem;
   font-weight: 400;

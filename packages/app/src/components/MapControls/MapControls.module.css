@@ -56,6 +56,15 @@
   z-index: 30;
 }
 
+/* Wider popover for Account panel to fit Telegram auth button */
+.popoverWide {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 0.625rem);
+  z-index: 30;
+  min-width: 320px;
+}
+
 /* Opens upward — for mobile where controls sit near the bottom */
 .popoverUp {
   position: absolute;

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile } from '@trailx/shared'
+import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile, AuthUser, LocalRoute } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
 // ── Measure tool ─────────────────────────────────────────────────────────────
@@ -124,6 +124,15 @@ interface MapStoreActions {
   deleteAllMeasureSessions: () => void
   // Chart hover position
   setHoveredRoutePosition: (pos: [number, number] | null) => void
+  // Auth
+  setAuthUser: (user: AuthUser | null) => void
+  setAccountOpen: (open: boolean) => void
+  // Debug
+  toggleDebugSimulateAuth: () => void
+  // Local routes
+  addLocalRoute: (route: LocalRoute) => void
+  removeLocalRoute: (id: string) => void
+  clearLocalRoutes: () => void
 }
 
 interface MapStore {
@@ -152,6 +161,13 @@ interface MapStore {
   measureActiveSessionId: string | null
   // Chart hover position
   hoveredRoutePosition: [number, number] | null
+  // Auth (NOT persisted)
+  authUser: AuthUser | null
+  isAccountOpen: boolean
+  // Debug
+  debugSimulateAuth: boolean
+  // Local routes (persisted — anonymous users)
+  localRoutes: LocalRoute[]
   actions: MapStoreActions
 }
 
@@ -196,6 +212,10 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   measureSessions: [],
   measureActiveSessionId: null,
   hoveredRoutePosition: null,
+  authUser: null,
+  isAccountOpen: false,
+  debugSimulateAuth: false,
+  localRoutes: [],
 
   actions: {
     addWaypoint: (point) =>
@@ -443,6 +463,21 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
 
     setHoveredRoutePosition: (pos) => set({ hoveredRoutePosition: pos }),
 
+    setAuthUser: (user) => set({ authUser: user }),
+
+    setAccountOpen: (open) => set({ isAccountOpen: open }),
+
+    toggleDebugSimulateAuth: () =>
+      set((state) => ({ debugSimulateAuth: !state.debugSimulateAuth })),
+
+    addLocalRoute: (route) =>
+      set((state) => ({ localRoutes: [...state.localRoutes, route] })),
+
+    removeLocalRoute: (id) =>
+      set((state) => ({ localRoutes: state.localRoutes.filter((r) => r.id !== id) })),
+
+    clearLocalRoutes: () => set({ localRoutes: [] }),
+
     loadRouteFromGPX: (gpxFile) =>
       set((state) => {
         // GPX <wpt> elements become standalone POIs
@@ -486,7 +521,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   },
 }), {
   name: 'trailx-session',
-  version: 2,
+  version: 3,
   // JSON.stringify(NaN) === "null", so waypoints with lat/lng NaN are stored as null.
   // The reviver restores null back to NaN on every load, preventing runtime crashes
   // in components that call .toFixed() / .toFixed() on supposedly-numeric coordinates.
@@ -499,6 +534,9 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     if (version < 2) {
       state.measureSessions = []
       state.measureActiveSessionId = null
+    }
+    if (version < 3) {
+      state.localRoutes = []
     }
     // Ensure new AppSettings fields added after v2 have their default values
     const settings = state.appSettings as Partial<AppSettings> | undefined
@@ -515,5 +553,6 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     measureSessions: state.measureSessions,
     measureActiveSessionId: state.measureActiveSessionId,
     appSettings: state.appSettings,
+    localRoutes: state.localRoutes,
   }),
 }))

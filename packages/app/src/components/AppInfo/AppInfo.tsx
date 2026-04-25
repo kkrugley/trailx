@@ -132,7 +132,8 @@ export function AppInfo({ onClose }: AppInfoProps) {
           <span>{t.appInfo.footer}</span>
           <span className={styles.attribution}>
             {t.appInfo.mapAttribution} © <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a>
-            {' · '}© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
+            {' · '}© <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a>
+            <br></br>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors
           </span>
         </div>
       </div>

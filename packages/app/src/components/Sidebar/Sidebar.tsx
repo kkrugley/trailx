@@ -7,11 +7,13 @@ import { RouteResults } from '../RouteResults/RouteResults'
 import { ExportPanel } from '../ExportPanel/ExportPanel'
 import { ErrorMessage } from '../ErrorMessage/ErrorMessage'
 import { PoweredBy } from '../PoweredBy/PoweredBy'
+import { AccountPanel } from '../AccountPanel'
 import styles from './Sidebar.module.css'
 
 export function Sidebar() {
   const [open, setOpen] = useState(true)
   const routeResult = useMapStore((s) => s.routeResult)
+  const isAccountOpen = useMapStore((s) => s.isAccountOpen)
 
   if (!open) {
     return (
@@ -23,6 +25,10 @@ export function Sidebar() {
         <List size={22} weight="regular" />
       </button>
     )
+  }
+
+  if (isAccountOpen) {
+    return <AccountPanel />
   }
 
   return (

@@ -2,6 +2,7 @@ import './instrument.js'
 import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import cookie from '@fastify/cookie'
 import rawBody from 'fastify-raw-body'
 import websocket from '@fastify/websocket'
 import { Bot } from 'grammy'
@@ -9,6 +10,8 @@ import { prisma } from './db'
 import { registerCommands } from './commands'
 import { registerClient, unregisterClient } from './ws/hub'
 import { sessionRoutes } from './routes/sessions'
+import { authRoutes } from './routes/auth.js'
+import { savedRoutesRoutes } from './routes/savedRoutes.js'
 import { graphhopperRoutes } from './routes/graphhopper.js'
 import { webpayRoutes } from './routes/webpay'
 import { cryptopayRoutes } from './routes/cryptopay'
@@ -42,9 +45,13 @@ await fastify.register(cors, {
   origin: (origin, cb) => {
     const allowed = [
       'https://trailx-app.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'http://localhost:3001',
       'http://localhost',
       'http://127.0.0.1',
-    ]
+      process.env.FRONTEND_URL,
+    ].filter(Boolean) as string[]
     if (!origin || allowed.some(o => origin.startsWith(o))) {
       cb(null, true)
     } else {
@@ -52,6 +59,11 @@ await fastify.register(cors, {
     }
   },
   credentials: true,
+})
+
+// Cookie plugin — must be registered before any route that reads cookies
+await fastify.register(cookie, {
+  secret: process.env.COOKIE_SECRET ?? 'trailx-dev-cookie-secret-change-in-prod',
 })
 
 await fastify.register(rawBody)
@@ -99,6 +111,10 @@ fastify.get<{ Params: { id: string } }>('/routes/:id', async (req, reply) => {
 
 // Session sharing REST API
 fastify.register(sessionRoutes, { prefix: '/api/sessions' })
+
+// Auth and saved routes
+fastify.register(authRoutes, { prefix: '/api/auth' })
+fastify.register(savedRoutesRoutes, { prefix: '/api/saved-routes' })
 
 // Payment webhooks
 fastify.register(webpayRoutes)

@@ -3,12 +3,14 @@ import { AppShell } from './components/shell/AppShell'
 import { useTelegramWebApp } from './hooks/useTelegramWebApp'
 import { useRouteSync } from './hooks/useRouteSync'
 import { useSessionLoader } from './hooks/useSessionLoader'
+import { useAuth } from './hooks/useAuth'
 import { useMapStore } from './store/useMapStore'
 import { initDB } from './db'
 import styles from './App.module.css'
 
 export function App() {
   useRouteSync()
+  useAuth()
 
   // Initialise IndexedDB for Overpass tile cache (once on mount)
   useEffect(() => {

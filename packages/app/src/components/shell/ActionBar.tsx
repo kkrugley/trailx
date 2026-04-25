@@ -5,6 +5,7 @@ import {
   ArrowsDownUp,
   Funnel,
   ArrowRight,
+  User,
 } from '@phosphor-icons/react'
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { usePlatform } from '../../hooks/usePlatform'
@@ -16,7 +17,9 @@ export function ActionBar() {
   const { isTMA } = usePlatform()
   const isSearchOpen = useMapStore((s) => s.isSearchOpen)
   const isExportOpen = useMapStore((s) => s.isExportOpen)
-  const { setSearchOpen, setExportOpen } = useMapStore((s) => s.actions)
+  const isAccountOpen = useMapStore((s) => s.isAccountOpen)
+  const authUser = useMapStore((s) => s.authUser)
+  const { setSearchOpen, setExportOpen, setAccountOpen } = useMapStore((s) => s.actions)
 
   useEffect(() => {
     if (isTMA && webApp?.MainButton) {
@@ -42,6 +45,13 @@ export function ActionBar() {
       </button>
       <button className={styles.button} aria-label="Filter">
         <Funnel size={24} weight="regular" />
+      </button>
+      <button
+        className={`${styles.button} ${isAccountOpen ? styles.active : ''}`}
+        aria-label={isAccountOpen ? 'Close account' : 'Account'}
+        onClick={() => setAccountOpen(!isAccountOpen)}
+      >
+        <User size={24} weight={authUser ? 'fill' : 'regular'} />
       </button>
       <button
         className={`${styles.button} ${isExportOpen ? styles.active : ''}`}

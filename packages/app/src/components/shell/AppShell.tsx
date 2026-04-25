@@ -14,6 +14,8 @@ import { BottomSheet } from './BottomSheet'
 import { MapControls } from '../MapControls/MapControls'
 import { ElevationBar } from '../ElevationBar/ElevationBar'
 import { KeyboardDismissBar } from '../KeyboardDismissBar/KeyboardDismissBar'
+import { AccountPanel } from '../AccountPanel'
+import { CookieBanner } from '../CookieBanner'
 import { useT } from '../../i18n/useT'
 import styles from './AppShell.module.css'
 
@@ -27,6 +29,7 @@ export function AppShell() {
   const [filterOpen, setFilterOpen] = useState(false)
 
   const isExportOpen = useMapStore((s) => s.isExportOpen)
+  const isAccountOpen = useMapStore((s) => s.isAccountOpen)
   const selectedPOI = useMapStore((s) => s.selectedPOI)
   const newPoiDraft = useMapStore((s) => s.newPoiDraft)
   const { setSelectedPOI, setNewPoiDraft } = useMapStore((s) => s.actions)
@@ -63,20 +66,22 @@ export function AppShell() {
           onClose={() => { setSelectedPOI(null); setNewPoiDraft(null) }}
         />
 
-        {/* POI filter — fixed bottom-right */}
-        <button
-          className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
-          onClick={() => setFilterOpen((v) => !v)}
-          aria-label={t.appShell.filterAriaLabel}
-          title={t.appShell.filterAriaLabel}
-        >
-          <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
-          <span>{t.appShell.filterLabel}</span>
-        </button>
-        {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
-      </div>
-    )
-  }
+      {/* POI filter — fixed bottom-right */}
+      <button
+        className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ''}`}
+        onClick={() => setFilterOpen((v) => !v)}
+        aria-label={t.appShell.filterAriaLabel}
+        title={t.appShell.filterAriaLabel}
+      >
+        <Funnel size={16} weight={filterOpen ? 'fill' : 'regular'} />
+        <span>{t.appShell.filterLabel}</span>
+      </button>
+      {filterOpen && <POIFilter onClose={() => setFilterOpen(false)} />}
+
+      <CookieBanner />
+    </div>
+  )
+}
 
   // Mobile / TMA layout
   return (
@@ -104,6 +109,14 @@ export function AppShell() {
       )}
 
       <POICard poi={selectedPOI} onClose={() => setSelectedPOI(null)} />
+
+      {isAccountOpen && (
+        <div className={styles.mobileExportOverlay}>
+          <AccountPanel />
+        </div>
+      )}
+
+      <CookieBanner />
 
       <KeyboardDismissBar />
     </div>

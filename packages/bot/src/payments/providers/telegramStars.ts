@@ -10,7 +10,7 @@
  */
 import type { TelegramInvoiceProvider } from '../IPaymentProvider'
 import type { PlanId } from '../plans'
-import { PLANS } from '../plans'
+import { getPricingForProviderSafe } from '../../services/pricing'
 
 export class TelegramStarsProvider implements TelegramInvoiceProvider {
   readonly id = 'stars'
@@ -19,18 +19,27 @@ export class TelegramStarsProvider implements TelegramInvoiceProvider {
   readonly flow = 'telegram_invoice' as const
 
   isAvailable(): boolean {
-    return true  // Always available — no config required
+    return true // Always available — no config required
+  }
+
+  async supportsPlan(planId: PlanId): Promise<boolean> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    return pricing !== null && pricing.enabled
   }
 
   getToken(): string {
-    return ''  // Stars don't use a provider_token
+    return '' // Stars don't use a provider_token
   }
 
   getCurrency(_planId: PlanId): string {
     return 'XTR'
   }
 
-  getAmount(planId: PlanId): number {
-    return PLANS[planId].starsAmount
+  async getAmount(planId: PlanId): Promise<number> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    if (!pricing) {
+      throw new Error(`No pricing found for plan ${planId} and provider ${this.id}`)
+    }
+    return parseInt(pricing.amount, 10)
   }
 }

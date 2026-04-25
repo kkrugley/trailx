@@ -6,14 +6,15 @@
  * Docs: https://help.crypt.bot/crypto-pay-api#webhooks
  *
  * Configure in @CryptoBot → /pay → Webhooks → set URL to:
- *   https://<your-domain>/api/payments/cryptopay
+ * https://<your-domain>/api/payments/cryptopay
  */
 import type { FastifyInstance } from 'fastify'
 import type { Bot, Context } from 'grammy'
 import { prisma } from '../db'
 import { CryptoPayProvider } from '../payments/providers/cryptopay'
-import { PLANS, calcExpiresAt, isPlanId } from '../payments/plans'
+import { calcExpiresAt, isPlanId } from '../payments/plans'
 import type { PlanId } from '../payments/plans'
+import { getPlanSafe } from '../services/pricing'
 
 interface CryptoPayWebhookBody {
   update_type: string
@@ -23,7 +24,7 @@ interface CryptoPayWebhookBody {
     status: string
     asset: string
     amount: string
-    payload: string  // our custom payload: "chatId:planId"
+    payload: string // our custom payload: "chatId:planId"
     paid_at?: string
     paid_anonymously?: boolean
   }
@@ -77,10 +78,10 @@ export function cryptopayRoutes(bot: Bot<Context>) {
       }
 
       const planId = planIdStr as PlanId
-      const plan = PLANS[planId]
+      const plan = await getPlanSafe(planId)
       const expiresAt = calcExpiresAt(plan)
       const chargeId = `cryptopay_${invoice.invoice_id}`
-      // Store the actual paid amount in nanoTON (integer) for consistency with plan.amount (kopecks for BYN)
+      // Store the actual paid amount in nanoTON (integer) for consistency
       const paidAmountInt = Math.round(parseFloat(invoice.amount) * 1e9)
 
       try {
@@ -89,7 +90,7 @@ export function cryptopayRoutes(bot: Bot<Context>) {
             where: { chatId },
             create: {
               chatId,
-              userId: 0n,  // userId not available from CryptoPay webhook
+              userId: 0n, // userId not available from CryptoPay webhook
               plan: planId,
               status: 'active',
               provider: 'cryptopay',

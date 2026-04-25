@@ -10,11 +10,15 @@ import {
   isExternalLink,
 } from '../payments/IPaymentProvider'
 import {
-  PLANS,
   daysRemaining,
   isExpiringSoon,
   type PlanId,
 } from '../payments/plans'
+import {
+  getPlans,
+  getPlanSafe,
+  getPricingForProviderSafe,
+} from '../services/pricing'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,25 +49,58 @@ async function getActiveSub(chatId: bigint) {
 
 // ── Keyboard builders ─────────────────────────────────────────────────────────
 
-function planKeyboard(): InlineKeyboard {
-  const monthly = PLANS.monthly
-  const annual = PLANS.annual
-  return new InlineKeyboard()
-    .text(`✅ ${monthly.label} — 5 BYN`, 'pay:monthly').row()
-    .text(`🔥 ${annual.label} — 45 BYN (-25%)`, 'pay:annual')
+async function planKeyboard(): Promise<InlineKeyboard> {
+  const plans = await getPlans()
+  const kb = new InlineKeyboard()
+
+  for (const plan of plans) {
+    const providers = getAvailableProviders()
+    let displayPrice = ''
+
+    for (const provider of providers) {
+      const supports = await provider.supportsPlan?.(plan.id)
+      if (supports !== false) {
+        const pricing = await getPricingForProviderSafe(plan.id, provider.id)
+        if (pricing) {
+          displayPrice = pricing.displayAmount
+          break
+        }
+      }
+    }
+
+    const prefix = plan.id === 'annual' ? '🔥' : '✅'
+    const label = displayPrice
+      ? `${prefix} ${plan.label} — ${displayPrice}`
+      : `${prefix} ${plan.label}`
+
+    kb.text(label, `pay:${plan.id}`).row()
+  }
+
+  return kb
 }
 
-function providerKeyboard(planId: PlanId): InlineKeyboard {
+async function providerKeyboard(planId: PlanId): Promise<InlineKeyboard> {
   const providers = getAvailableProviders()
   const kb = new InlineKeyboard()
+
   for (const p of providers) {
-    const amount = isTelegramInvoice(p)
-      ? p.getCurrency(planId) === 'XTR'
-        ? `${p.getAmount(planId)} ⭐`
-        : `${p.getAmount(planId) / 100} ${p.getCurrency(planId)}`
-      : p.formatAmount(planId)
+    const supports = await p.supportsPlan?.(planId)
+    if (supports === false) continue
+
+    let amount: string
+    if (isTelegramInvoice(p)) {
+      const currency = await p.getCurrency(planId)
+      const amt = await p.getAmount(planId)
+      amount = currency === 'XTR'
+        ? `${amt} ⭐`
+        : `${amt / 100} ${currency}`
+    } else {
+      amount = await p.formatAmount(planId)
+    }
+
     kb.text(`${p.emoji} ${p.name} — ${amount}`, `method:${p.id}:${planId}`).row()
   }
+
   kb.text('‹ Назад к планам', 'back:plans')
   return kb
 }
@@ -82,9 +119,9 @@ function manageKeyboard(sub: NonNullable<Awaited<ReturnType<typeof getActiveSub>
 
 // ── Message builders ──────────────────────────────────────────────────────────
 
-function statusText(sub: NonNullable<Awaited<ReturnType<typeof getActiveSub>>>): string {
+async function statusText(sub: NonNullable<Awaited<ReturnType<typeof getActiveSub>>>): Promise<string> {
   const days = daysRemaining(sub.expiresAt)
-  const plan = PLANS[sub.plan as PlanId] ?? { label: sub.plan }
+  const plan = await getPlanSafe(sub.plan as PlanId)
   const header = isExpiringSoon(sub.expiresAt)
     ? '⚠️ <b>TrailX Pro — истекает скоро!</b>'
     : '✅ <b>TrailX Pro — активна</b>'
@@ -124,14 +161,14 @@ export function registerUpgrade(bot: Bot<Context>): void {
       const chatId = BigInt(ctx.chat?.id ?? 0)
       const sub = await getActiveSub(chatId)
       if (sub?.status === 'active') {
-        await ctx.reply(statusText(sub), {
+        await ctx.reply(await statusText(sub), {
           parse_mode: 'HTML',
           reply_markup: manageKeyboard(sub),
         })
       } else {
         await ctx.reply(upgradeText(sub ?? undefined), {
           parse_mode: 'HTML',
-          reply_markup: planKeyboard(),
+          reply_markup: await planKeyboard(),
         })
       }
     } catch (err) {
@@ -144,7 +181,7 @@ export function registerUpgrade(bot: Bot<Context>): void {
   bot.callbackQuery(/^pay:(monthly|annual)$/, async (ctx) => {
     await ctx.answerCallbackQuery()
     const planId = ctx.match[1] as PlanId
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
     const providers = getAvailableProviders()
 
     if (providers.length === 0) {
@@ -154,7 +191,7 @@ export function registerUpgrade(bot: Bot<Context>): void {
 
     await ctx.reply(
       `📦 <b>${plan.label}</b> — выбери способ оплаты:`,
-      { parse_mode: 'HTML', reply_markup: providerKeyboard(planId) },
+      { parse_mode: 'HTML', reply_markup: await providerKeyboard(planId) },
     )
   })
 
@@ -163,7 +200,7 @@ export function registerUpgrade(bot: Bot<Context>): void {
     await ctx.answerCallbackQuery()
     await ctx.reply(upgradeText(), {
       parse_mode: 'HTML',
-      reply_markup: planKeyboard(),
+      reply_markup: await planKeyboard(),
     })
   })
 
@@ -172,7 +209,7 @@ export function registerUpgrade(bot: Bot<Context>): void {
     await ctx.answerCallbackQuery()
     const providerId = ctx.match[1]
     const planId = ctx.match[2] as PlanId
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
     const chatId = BigInt(ctx.chat?.id ?? 0)
 
     const provider = findProvider(providerId)
@@ -182,11 +219,10 @@ export function registerUpgrade(bot: Bot<Context>): void {
     }
 
     try {
-      // ── Telegram invoice flow (Stars, WebPay via Telegram) ────────────────
       if (isTelegramInvoice(provider)) {
         const token = provider.getToken()
-        const currency = provider.getCurrency(planId)
-        const amount = provider.getAmount(planId)
+        const currency = await provider.getCurrency(planId)
+        const amount = await provider.getAmount(planId)
         await ctx.replyWithInvoice(
           `TrailX Pro — ${plan.label}`,
           plan.description,
@@ -198,10 +234,9 @@ export function registerUpgrade(bot: Bot<Context>): void {
         return
       }
 
-      // ── External link flow (TON, WebPay redirect) ─────────────────────────
       if (isExternalLink(provider)) {
         const url = await provider.createPaymentLink(planId, chatId)
-        const instructions = provider.getInstructions(planId, chatId)
+        const instructions = await provider.getInstructions(planId, chatId)
 
         const kb = new InlineKeyboard()
           .url(`${provider.emoji} Открыть ${provider.name}`, url)
@@ -214,7 +249,6 @@ export function registerUpgrade(bot: Bot<Context>): void {
           { parse_mode: 'HTML', reply_markup: kb },
         )
       } else {
-        // Exhaustive check — if a new flow type is added, TS will catch it here
         const _exhaustive: never = provider
         console.error('[upgrade] Unknown provider flow:', _exhaustive)
       }
@@ -264,10 +298,9 @@ export function registerUpgrade(bot: Bot<Context>): void {
     const planId = ctx.match[2] as PlanId
     const chatId = BigInt(ctx.chat?.id ?? 0)
     const userId = BigInt(ctx.from?.id ?? 0)
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
 
     try {
-      // Double-check: maybe it activated while user was deciding
       const existingSub = await getActiveSub(chatId)
       if (existingSub?.status === 'active') {
         await ctx.reply(
@@ -282,14 +315,12 @@ export function registerUpgrade(bot: Bot<Context>): void {
         const provider = findProvider(providerId)
         const providerName = provider?.name ?? providerId
 
-        // Build context for admin to verify the payment
         const contextLines = [
           `⚠️ <b>Проблема с платежом</b>\n`,
           `Пользователь: ${username}`,
           `Chat: <code>${chatId}</code>`,
           `Провайдер: ${providerName}`,
           `План: ${plan.label}`,
-          `Сумма: ${plan.tonDisplay}`,
         ]
         if (providerId === 'ton') {
           contextLines.push(`Memo: <code>TRAILX-${chatId}</code>`)
@@ -328,10 +359,9 @@ export function registerUpgrade(bot: Bot<Context>): void {
     await ctx.answerCallbackQuery()
     const chatId = BigInt(ctx.match[1])
     const planId = ctx.match[2] as PlanId
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
 
     try {
-      // If already activated by webhook/poller, skip
       const existingSub = await getActiveSub(chatId)
       if (existingSub?.status === 'active') {
         await ctx.editMessageText(`ℹ️ Подписка для chat ${chatId} уже активна — ручное подтверждение не требуется.`)
@@ -357,7 +387,6 @@ export function registerUpgrade(bot: Bot<Context>): void {
         day: '2-digit', month: '2-digit', year: 'numeric',
       })
 
-      // Notify subscriber
       await ctx.api.sendMessage(
         Number(chatId),
         `🎉 Подписка <b>TrailX Pro</b> активирована!\n\n` +
@@ -367,7 +396,6 @@ export function registerUpgrade(bot: Bot<Context>): void {
         { parse_mode: 'HTML' },
       )
 
-      // Update admin message
       await ctx.editMessageText(`✅ Подписка для chat ${chatId} активирована до ${expiryStr}.`)
     } catch (err) {
       console.error('[admin:confirm] error:', err)
@@ -418,13 +446,13 @@ export function registerUpgrade(bot: Bot<Context>): void {
         return
       }
 
-      const lines = records.map((r, i) => {
-        const plan = PLANS[r.plan as PlanId]
+      const lines = await Promise.all(records.map(async (r, i) => {
+        const plan = await getPlanSafe(r.plan as PlanId)
         const label = plan?.label ?? r.plan
         const date = fmt(r.createdAt)
         const amount = fmtAmount(r.amount, r.currency)
         return `${i + 1}. ${date} — ${label} — ${amount}`
-      })
+      }))
 
       await ctx.reply(
         `📋 <b>История платежей</b>:\n\n` + lines.join('\n'),

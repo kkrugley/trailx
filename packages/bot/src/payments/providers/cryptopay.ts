@@ -5,17 +5,17 @@
  * Supports: TON, USDT, BTC, ETH, LTC, BNB, TRX, USDC.
  *
  * Setup:
- *   1. @CryptoBot (prod) or @CryptoTestnetBot (test) → /pay → Create App → copy token
- *   2. Set CRYPTOPAY_TOKEN=... in .env
- *   3. Set CRYPTOPAY_TESTNET=true for testnet
- *   4. Configure webhook in @CryptoBot → /pay → Webhooks → https://<domain>/api/payments/cryptopay
+ * 1. @CryptoBot (prod) or @CryptoTestnetBot (test) → /pay → Create App → copy token
+ * 2. Set CRYPTOPAY_TOKEN=... in .env
+ * 3. Set CRYPTOPAY_TESTNET=true for testnet
+ * 4. Configure webhook in @CryptoBot → /pay → Webhooks → https://<domain>/api/payments/cryptopay
  *
  * Docs: https://help.crypt.bot/crypto-pay-api
  */
 import crypto from 'node:crypto'
 import type { ExternalLinkProvider } from '../IPaymentProvider'
 import type { PlanId } from '../plans'
-import { PLANS } from '../plans'
+import { getPricingForProviderSafe, getPlanSafe } from '../../services/pricing'
 
 interface CryptoPayInvoiceResponse {
   ok: boolean
@@ -24,7 +24,7 @@ interface CryptoPayInvoiceResponse {
     status: string
     asset: string
     amount: string
-    pay_url: string    // t.me/CryptoBot?start=IV...
+    pay_url: string // t.me/CryptoBot?start=IV...
     created_at: string
     expires_at: string
   }
@@ -48,10 +48,20 @@ export class CryptoPayProvider implements ExternalLinkProvider {
     return Boolean(this.token)
   }
 
+  async supportsPlan(planId: PlanId): Promise<boolean> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    return pricing !== null && pricing.enabled
+  }
+
   async createPaymentLink(planId: PlanId, chatId: bigint): Promise<string> {
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    if (!pricing) {
+      throw new Error(`No pricing found for plan ${planId} and provider ${this.id}`)
+    }
+
     // CryptoPay expects TON (not nanotons) — convert from nanoTON string
-    const tonAmount = (Number(BigInt(plan.tonNano)) / 1e9).toString()
+    const tonAmount = (Number(BigInt(pricing.amount)) / 1e9).toString()
 
     const res = await fetch(`${this.baseUrl}/createInvoice`, {
       method: 'POST',
@@ -62,12 +72,12 @@ export class CryptoPayProvider implements ExternalLinkProvider {
       body: JSON.stringify({
         asset: 'TON',
         amount: tonAmount,
-        payload: `${chatId}:${planId}`,   // returned as-is in the webhook
+        payload: `${chatId}:${planId}`, // returned as-is in the webhook
         description: plan.description,
         hidden_message: '🎉 Подписка TrailX Pro активирована! Возвращайся в бот.',
         paid_btn_name: 'openBot',
         paid_btn_url: `https://t.me/${process.env.BOT_USERNAME ?? 'TrailXBot'}`,
-        expires_in: 3600,  // 1 hour
+        expires_in: 3600, // 1 hour
       }),
     })
 
@@ -82,13 +92,18 @@ export class CryptoPayProvider implements ExternalLinkProvider {
     return data.result.pay_url
   }
 
-  formatAmount(planId: PlanId): string {
-    return PLANS[planId].tonDisplay
+  async formatAmount(planId: PlanId): Promise<string> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    if (!pricing) {
+      throw new Error(`No pricing found for plan ${planId} and provider ${this.id}`)
+    }
+    return pricing.displayAmount
   }
 
-  getInstructions(planId: PlanId, _chatId: bigint): string {
+  async getInstructions(planId: PlanId, _chatId: bigint): Promise<string> {
+    const displayAmount = await this.formatAmount(planId)
     return (
-      `Оплати <b>${PLANS[planId].tonDisplay}</b> через @CryptoBot.\n` +
+      `Оплати <b>${displayAmount}</b> через @CryptoBot.\n` +
       `Подписка активируется автоматически после оплаты.`
     )
   }

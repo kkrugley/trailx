@@ -33,10 +33,15 @@ export interface TelegramInvoiceProvider extends BaseProvider {
   readonly flow: 'telegram_invoice'
   /** provider_token from BotFather (empty string for Telegram Stars) */
   getToken(): string
-  /** Currency code: 'XTR' for Stars, 'BYN'/'USD' for fiat */
-  getCurrency(planId: PlanId): string
-  /** Amount in smallest unit (Stars for XTR, kopecks for BYN) */
-  getAmount(planId: PlanId): number
+  /** Currency code: 'XTR' for Stars, 'USD' for fiat */
+  getCurrency(planId: PlanId): string | Promise<string>
+  /** Amount in smallest unit (Stars for XTR, cents for USD) — async to support DB pricing */
+  getAmount(planId: PlanId): number | Promise<number>
+  /**
+   * Check if this provider supports the given plan.
+   * Used to filter plans when provider has selective availability.
+   */
+  supportsPlan?(planId: PlanId): boolean | Promise<boolean>
 }
 
 // ── External link flow ────────────────────────────────────────────────────────
@@ -45,10 +50,15 @@ export interface ExternalLinkProvider extends BaseProvider {
   readonly flow: 'external_link'
   /** Generates the payment URL (may hit an external API) */
   createPaymentLink(planId: PlanId, chatId: bigint): Promise<string>
-  /** Human-readable amount label, e.g. "2 TON" or "5 BYN" */
-  formatAmount(planId: PlanId): string
-  /** Instructions shown below the link in Telegram */
-  getInstructions(planId: PlanId, chatId: bigint): string
+  /** Human-readable amount label, e.g. "2 TON" or "5 USD" — async to support DB pricing */
+  formatAmount(planId: PlanId): string | Promise<string>
+  /** Instructions shown below the link in Telegram — async to support DB pricing */
+  getInstructions(planId: PlanId, chatId: bigint): string | Promise<string>
+  /**
+   * Check if this provider supports the given plan.
+   * Used to filter plans when provider has selective availability.
+   */
+  supportsPlan?(planId: PlanId): boolean | Promise<boolean>
 }
 
 // ── Union & type guards ───────────────────────────────────────────────────────

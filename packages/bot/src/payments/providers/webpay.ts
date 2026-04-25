@@ -2,25 +2,24 @@
  * WebPay.by payment provider (Belarusbank acquiring).
  *
  * Flow: POST /woc/order → receive invoiceUrl → send link to user →
- *       user pays on WebPay page → POST webhook to /api/payments/webpay →
- *       activate subscription.
+ * user pays on WebPay page → POST webhook to /api/payments/webpay →
+ * activate subscription.
  *
  * Setup (set in .env when you receive credentials from WebPay.by):
- *   WEBPAY_RESOURCE_ID  — merchant ID from WebPay merchant account
- *   WEBPAY_API_KEY      — API key for request signing (HmacSHA512)
- *   WEBPAY_SECRET_KEY   — secret for webhook signature validation (MD5)
- *   WEBPAY_SANDBOX      — "true" to use sandbox (sand-box.webpay.by), default: production
+ * WEBPAY_RESOURCE_ID — merchant ID from WebPay merchant account
+ * WEBPAY_API_KEY — API key for request signing (HmacSHA512)
+ * WEBPAY_SECRET_KEY — secret for webhook signature validation (MD5)
+ * WEBPAY_SANDBOX — "true" to use sandbox (sand-box.webpay.by), default: production
  *
  * Docs: https://docs.webpay.by/en/paymentIntegration/createOrderAPI/
  *
- * --- STUB — not yet active ---
- * isAvailable() returns false until WEBPAY_RESOURCE_ID is set.
- * The implementation below is complete and ready to enable.
+ * Note: Prices are in USD cents. The actual currency shown to user depends on
+ * WebPay configuration, but we store and track amounts in USD.
  */
 import crypto from 'node:crypto'
 import type { ExternalLinkProvider } from '../IPaymentProvider'
 import type { PlanId } from '../plans'
-import { PLANS } from '../plans'
+import { getPricingForProviderSafe, getPlanSafe } from '../../services/pricing'
 
 interface WebPayOrderResponse {
   webpayInvoiceId: string
@@ -47,17 +46,34 @@ export class WebPayProvider implements ExternalLinkProvider {
     return Boolean(this.resourceId && this.apiKey)
   }
 
-  formatAmount(planId: PlanId): string {
-    const plan = PLANS[planId]
-    return `${plan.amount / 100} ${plan.currency}`
+  async supportsPlan(planId: PlanId): Promise<boolean> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    return pricing !== null && pricing.enabled
   }
 
-  getInstructions(_planId: PlanId, _chatId: bigint): string {
+  async formatAmount(planId: PlanId): Promise<string> {
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    if (!pricing) {
+      throw new Error(`No pricing found for plan ${planId} and provider ${this.id}`)
+    }
+    return pricing.displayAmount
+  }
+
+  async getInstructions(_planId: PlanId, _chatId: bigint): Promise<string> {
     return 'Оплати через WebPay.by. После оплаты подписка активируется автоматически.'
   }
 
   async createPaymentLink(planId: PlanId, chatId: bigint): Promise<string> {
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
+    const pricing = await getPricingForProviderSafe(planId, this.id)
+    if (!pricing) {
+      throw new Error(`No pricing found for plan ${planId} and provider ${this.id}`)
+    }
+
+    // USD cents → dollars for WebPay API
+    const amountCents = parseInt(pricing.amount, 10)
+    const amountDollars = amountCents / 100
+
     const orderNumber = `TRAILX-${chatId}-${Date.now()}`
     const notifyUrl = process.env.WEBPAY_NOTIFY_URL ?? `${process.env.WEBHOOK_DOMAIN ?? ''}/api/payments/webpay`
 
@@ -66,9 +82,9 @@ export class WebPayProvider implements ExternalLinkProvider {
       resourceOrderNumber: orderNumber,
       items: [{
         name: `TrailX Pro — ${plan.label}`,
-        price: plan.amount / 100,
+        price: amountDollars,
         quantity: 1,
-        currency: plan.currency,
+        currency: pricing.currency, // 'USD'
       }],
       urls: {
         returnUrl: `${process.env.VITE_APP_URL ?? 'https://t.me'}/payment/success`,
@@ -103,7 +119,7 @@ export class WebPayProvider implements ExternalLinkProvider {
    * Call this in the /api/payments/webpay Fastify route.
    *
    * Signature = MD5(batch_timestamp,currency_id,amount,payment_method,
-   *                  order_id,site_order_id,transaction_id,payment_type,rrn,SecretKey)
+   * order_id,site_order_id,transaction_id,payment_type,rrn,SecretKey)
    */
   static validateWebhookSignature(params: Record<string, string>, secretKey: string): boolean {
     const fields = [

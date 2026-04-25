@@ -1,19 +1,20 @@
 /**
  * TON Center transaction poller — background job for TonCenterProvider confirmation.
  *
- * Runs every 10 seconds, checks for incoming transactions to the TON wallet,
+ * Runs every 30 seconds, checks for incoming transactions to the TON wallet,
  * matches them against subscriptions by memo (TRAILX-{chatId}),
  * and activates subscriptions on match.
  *
  * Works in two modes:
- *  - pending_ton: user clicked "Я оплатил" before paying (or after)
- *  - proactive:   user paid without clicking the button — poller still finds it
- *    by matching memo TRAILX-{chatId} against any chat that has no active subscription
+ * - pending_ton: user clicked "Я оплатил" before paying (or after)
+ * - proactive: user paid without clicking the button — poller still finds it
+ *   by matching memo TRAILX-{chatId} against any chat that has no active subscription
  */
 import type { Bot, Context } from 'grammy'
 import { prisma } from '../db'
-import { PLANS, calcExpiresAt, isPlanId } from '../payments/plans'
+import { calcExpiresAt, isPlanId } from '../payments/plans'
 import type { PlanId } from '../payments/plans'
+import { getPlanSafe, getPricingForProviderSafe } from './pricing'
 
 const POLL_INTERVAL_MS = 30_000
 const TX_LIMIT = 20
@@ -21,12 +22,12 @@ const TX_LIMIT = 20
 interface TonTransaction {
   transaction_id: { hash: string; lt: string }
   in_msg: {
-    message?: string       // decoded text comment (toncenter v2)
+    message?: string // decoded text comment (toncenter v2)
     msg_data?: {
-      text?: string        // alternative field in some API versions
+      text?: string // alternative field in some API versions
     }
-    value: string          // nanoTON as string
-    source?: string        // sender address
+    value: string // nanoTON as string
+    source?: string // sender address
   }
 }
 
@@ -48,6 +49,29 @@ function extractMemo(tx: TonTransaction): string {
   ).trim()
 }
 
+/** Get expected TON amounts for all plans from database */
+async function getExpectedTonAmounts(): Promise<Record<PlanId, bigint> | null> {
+  try {
+      const [monthlyPricing, annualPricing] = await Promise.all([
+        getPricingForProviderSafe('monthly', 'ton'),
+        getPricingForProviderSafe('annual', 'ton'),
+      ])
+
+    if (!monthlyPricing || !annualPricing) {
+      console.warn('[tonPoller] Could not load TON pricing from DB')
+      return null
+    }
+
+    return {
+      monthly: BigInt(monthlyPricing.amount),
+      annual: BigInt(annualPricing.amount),
+    }
+  } catch (err) {
+    console.warn('[tonPoller] Error loading TON pricing:', err)
+    return null
+  }
+}
+
 async function pollOnce(bot: Bot<Context>): Promise<void> {
   const address = process.env.TON_WALLET_ADDRESS
   if (!address) return
@@ -63,6 +87,10 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     return
   }
   if (pendingCount === 0) return
+
+  // Load expected amounts from DB
+  const expectedAmounts = await getExpectedTonAmounts()
+  if (!expectedAmounts) return
 
   const apiKey = process.env.TONCENTER_API_KEY ?? ''
   const isTestnet = process.env.TONCENTER_TESTNET === 'true'
@@ -136,11 +164,9 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
     if (sub?.provider === 'ton' && isPlanId(sub.plan)) {
       planId = sub.plan
     } else {
-      // Infer plan from amount paid
-      const monthly = BigInt(PLANS.monthly.tonNano)
-      const annual = BigInt(PLANS.annual.tonNano)
-      if (valueBigInt >= annual) planId = 'annual'
-      else if (valueBigInt >= monthly) planId = 'monthly'
+      // Infer plan from amount paid using DB values
+      if (valueBigInt >= expectedAmounts.annual) planId = 'annual'
+      else if (valueBigInt >= expectedAmounts.monthly) planId = 'monthly'
     }
 
     if (!planId) {
@@ -148,16 +174,24 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
       continue
     }
 
-    const plan = PLANS[planId]
-    const expectedNano = BigInt(plan.tonNano)
+    // Load plan and pricing from DB
+    const plan = await getPlanSafe(planId)
+    const pricing = await getPricingForProviderSafe(planId, 'ton')
+
+    if (!pricing) {
+      console.warn(`[tonPoller] No TON pricing found for plan ${planId}`)
+      continue
+    }
+
+    const expectedNano = BigInt(pricing.amount)
 
     if (valueBigInt < expectedNano) {
-      console.warn(`[tonPoller] Underpayment chatId=${chatId}: got ${valueStr}, need ${plan.tonNano}`)
+      console.warn(`[tonPoller] Underpayment chatId=${chatId}: got ${valueStr}, need ${pricing.amount}`)
       continue
     }
 
     const expiresAt = calcExpiresAt(plan)
-    const tonAmount = Number(BigInt(plan.tonNano))  // nanoTON for DB storage
+    const tonAmount = Number(expectedNano) // nanoTON for DB storage
     const expiryStr = expiresAt.toLocaleDateString('ru-RU', {
       day: '2-digit', month: '2-digit', year: 'numeric',
     })
@@ -214,7 +248,7 @@ async function pollOnce(bot: Bot<Context>): Promise<void> {
         Number(chatId),
         `🎉 Подписка <b>TrailX Pro</b> активирована!\n\n` +
         `📦 План: ${plan.label}\n` +
-        `💰 Оплачено: ${plan.tonDisplay}\n` +
+        `💰 Оплачено: ${pricing.displayAmount}\n` +
         `📅 Действует до: <b>${expiryStr}</b>\n\n` +
         `Теперь доступны все групповые функции: /add, /vote, /gpx, /weather.`,
         { parse_mode: 'HTML' },

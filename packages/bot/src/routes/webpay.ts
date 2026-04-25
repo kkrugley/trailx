@@ -6,13 +6,12 @@
  *
  * Source IP to whitelist: 178.163.225.84
  * Docs: https://docs.webpay.by/en/paymentIntegration/cardIntegration/paymentNotification/
- *
- * --- STUB — activate when WebPay credentials are configured ---
  */
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '../db'
 import { WebPayProvider } from '../payments/providers/webpay'
-import { PLANS, calcExpiresAt, isPlanId } from '../payments/plans'
+import { calcExpiresAt, isPlanId } from '../payments/plans'
+import { getPlanSafe, getPricingForProviderSafe } from '../services/pricing'
 
 export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post('/api/payments/webpay', async (req, reply) => {
@@ -20,7 +19,7 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
 
     if (!secretKey) {
       fastify.log.warn('[webpay] WEBPAY_SECRET_KEY not set — webhook ignored')
-      return reply.code(200).send('OK')  // Return 200 to stop WebPay retrying
+      return reply.code(200).send('OK') // Return 200 to stop WebPay retrying
     }
 
     const params = req.body as Record<string, string>
@@ -28,7 +27,7 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
     // Validate signature
     if (!WebPayProvider.validateWebhookSignature(params, secretKey)) {
       fastify.log.warn({ params }, '[webpay] Invalid webhook signature')
-      return reply.code(200).send('OK')  // Still return 200 to stop retries
+      return reply.code(200).send('OK') // Still return 200 to stop retries
     }
 
     // payment_type=1 or 4 means successful payment
@@ -46,16 +45,30 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     const chatId = BigInt(match[1])
-    // TODO: retrieve planId from DB pending record keyed by orderNumber
-    // For now, derive from amount: 5 BYN = monthly, 45 BYN = annual
-    const amount = Number(params['amount']) * 100  // WebPay sends decimal BYN, convert to kopecks
-    const planId = amount <= 500 ? 'monthly' : 'annual'
-    if (!isPlanId(planId)) {
+
+    // Determine plan from payment amount
+    // WebPay sends decimal USD, we compare with expected amounts from DB
+    const paidAmountCents = Math.round(Number(params['amount']) * 100)
+    let planId: string | null = null
+
+    // Check which plan's pricing matches the paid amount
+    for (const pid of ['monthly', 'annual'] as const) {
+      const pricing = await getPricingForProviderSafe(pid, 'webpay')
+      if (pricing && pricing.enabled) {
+        const expectedAmount = parseInt(pricing.amount, 10)
+        if (Math.abs(paidAmountCents - expectedAmount) < 10) { // Allow 10 cent tolerance
+          planId = pid
+          break
+        }
+      }
+    }
+
+    if (!planId || !isPlanId(planId)) {
       fastify.log.warn({ amount: params['amount'] }, '[webpay] Cannot determine planId from amount')
       return reply.code(200).send('OK')
     }
 
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
     const expiresAt = calcExpiresAt(plan)
     const transactionId = params['transaction_id'] ?? ''
 
@@ -65,12 +78,12 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
           where: { chatId },
           create: {
             chatId,
-            userId: 0n,  // userId not available from WebPay webhook
+            userId: 0n, // userId not available from WebPay webhook
             plan: planId,
             status: 'active',
             provider: 'webpay',
-            amount,
-            currency: params['currency_id'] ?? 'BYN',
+            amount: paidAmountCents,
+            currency: params['currency_id'] ?? 'USD',
             telegramPaymentChargeId: `webpay_${transactionId}`,
             providerPaymentChargeId: transactionId,
             expiresAt,
@@ -79,7 +92,7 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
             plan: planId,
             status: 'active',
             provider: 'webpay',
-            amount,
+            amount: paidAmountCents,
             expiresAt,
           },
         }),
@@ -88,8 +101,8 @@ export async function webpayRoutes(fastify: FastifyInstance): Promise<void> {
             chatId,
             userId: 0n,
             plan: planId,
-            amount,
-            currency: params['currency_id'] ?? 'BYN',
+            amount: paidAmountCents,
+            currency: params['currency_id'] ?? 'USD',
             telegramPaymentChargeId: `webpay_${transactionId}`,
             providerPaymentChargeId: transactionId,
             status: 'paid',

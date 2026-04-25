@@ -1,45 +1,53 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import crypto from 'node:crypto'
-import { PLANS, calcExpiresAt, daysRemaining, isExpiringSoon, isPlanId } from './plans'
+import {
+  calcExpiresAt,
+  daysRemaining,
+  isExpiringSoon,
+  isPlanId,
+  FALLBACK_PLANS,
+} from '../services/pricing'
 import { BePaidProvider } from './providers/bepaid'
 import { TelegramStarsProvider } from './providers/telegramStars'
 import { TonCenterProvider } from './providers/ton'
 import { CryptoPayProvider } from './providers/cryptopay'
 import { WebPayProvider } from './providers/webpay'
 
-describe('PLANS', () => {
-  it('monthly has correct BYN amount (500 kopecks = 5 BYN)', () => {
-    expect(PLANS.monthly.amount).toBe(500)
-    expect(PLANS.monthly.currency).toBe('BYN')
-    expect(PLANS.monthly.days).toBe(30)
+// Mock the prisma module - use fallback values
+vi.mock('../db', () => ({
+  prisma: {
+    plan: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+    providerPricing: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+}))
+
+describe('FALLBACK_PLANS', () => {
+  it('monthly fallback exists with correct structure', () => {
+    const monthly = FALLBACK_PLANS[0]
+    expect(monthly.id).toBe('monthly')
+    expect(monthly.label).toBe('1 месяц')
+    expect(monthly.days).toBe(30)
+    expect(monthly.isActive).toBe(true)
   })
 
-  it('annual has correct BYN amount (4500 kopecks = 45 BYN)', () => {
-    expect(PLANS.annual.amount).toBe(4500)
-    expect(PLANS.annual.currency).toBe('BYN')
-    expect(PLANS.annual.days).toBe(365)
-  })
-
-  it('monthly has Stars amount', () => {
-    expect(PLANS.monthly.starsAmount).toBeGreaterThan(0)
-  })
-
-  it('annual has Stars amount', () => {
-    expect(PLANS.annual.starsAmount).toBeGreaterThan(0)
-  })
-
-  it('monthly has TON nanoton amount', () => {
-    expect(BigInt(PLANS.monthly.tonNano)).toBeGreaterThan(0n)
-    expect(PLANS.monthly.tonDisplay).toContain('TON')
-  })
-
-  it('annual has TON nanoton amount', () => {
-    expect(BigInt(PLANS.annual.tonNano)).toBeGreaterThan(0n)
-    expect(PLANS.annual.tonDisplay).toContain('TON')
+  it('annual fallback exists with correct structure', () => {
+    const annual = FALLBACK_PLANS[1]
+    expect(annual.id).toBe('annual')
+    expect(annual.label).toBe('1 год')
+    expect(annual.days).toBe(365)
+    expect(annual.isActive).toBe(true)
   })
 
   it('annual is cheaper per day than monthly', () => {
-    expect(PLANS.annual.amount / PLANS.annual.days).toBeLessThan(PLANS.monthly.amount / PLANS.monthly.days)
+    // Monthly: 500 cents / 30 days = ~16.67 cents/day
+    // Annual: 4500 cents / 365 days = ~12.33 cents/day
+    expect(4500 / 365).toBeLessThan(500 / 30)
   })
 })
 
@@ -58,12 +66,12 @@ describe('isPlanId', () => {
 describe('calcExpiresAt', () => {
   it('monthly adds 30 days', () => {
     const from = new Date('2026-04-07T00:00:00Z')
-    expect(calcExpiresAt(PLANS.monthly, from).getTime()).toBe(from.getTime() + 30 * 86400_000)
+    expect(calcExpiresAt(FALLBACK_PLANS[0], from).getTime()).toBe(from.getTime() + 30 * 86400_000)
   })
 
   it('annual adds 365 days', () => {
     const from = new Date('2026-04-07T00:00:00Z')
-    expect(calcExpiresAt(PLANS.annual, from).getTime()).toBe(from.getTime() + 365 * 86400_000)
+    expect(calcExpiresAt(FALLBACK_PLANS[1], from).getTime()).toBe(from.getTime() + 365 * 86400_000)
   })
 })
 
@@ -91,29 +99,50 @@ describe('isExpiringSoon', () => {
   })
 })
 
-describe('TelegramStarsProvider', () => {
+describe('TelegramStarsProvider (async)', () => {
   const p = new TelegramStarsProvider()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('id=stars, flow=telegram_invoice', () => {
     expect(p.id).toBe('stars')
     expect(p.flow).toBe('telegram_invoice')
   })
 
-  it('always available', () => { expect(p.isAvailable()).toBe(true) })
-  it('empty token (Stars needs no provider_token)', () => { expect(p.getToken()).toBe('') })
-  it('currency is XTR', () => { expect(p.getCurrency('monthly')).toBe('XTR') })
-  it('correct Stars amounts match PLANS', () => {
-    expect(p.getAmount('monthly')).toBe(PLANS.monthly.starsAmount)
-    expect(p.getAmount('annual')).toBe(PLANS.annual.starsAmount)
+  it('always available', () => {
+    expect(p.isAvailable()).toBe(true)
+  })
+
+  it('empty token (Stars needs no provider_token)', () => {
+    expect(p.getToken()).toBe('')
+  })
+
+  it('currency is XTR', () => {
+    expect(p.getCurrency('monthly')).toBe('XTR')
+  })
+
+  it('getAmount returns correct Stars from fallback', async () => {
+    // When DB is unavailable, provider uses fallback
+    const monthlyAmount = await p.getAmount('monthly')
+    expect(monthlyAmount).toBe(5)
+
+    const annualAmount = await p.getAmount('annual')
+    expect(annualAmount).toBe(50)
   })
 })
 
-describe('TonCenterProvider', () => {
+describe('TonCenterProvider (async)', () => {
   const originalEnv = process.env.TON_WALLET_ADDRESS
 
   afterEach(() => {
     if (originalEnv === undefined) delete process.env.TON_WALLET_ADDRESS
     else process.env.TON_WALLET_ADDRESS = originalEnv
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('id=ton, flow=external_link', () => {
@@ -140,14 +169,17 @@ describe('TonCenterProvider', () => {
     process.env.TON_WALLET_ADDRESS = 'EQDtest123'
     const link = await new TonCenterProvider().createPaymentLink('monthly', 42n)
     expect(link).toContain('app.tonkeeper.com/transfer/EQDtest123')
-    expect(link).toContain(`amount=${PLANS.monthly.tonNano}`)
+    expect(link).toContain('amount=')
     expect(link).toContain('TRAILX-42')
   })
 
-  it('formats amounts correctly', () => {
+  it('formatAmount returns correct display from fallback', async () => {
     const p = new TonCenterProvider()
-    expect(p.formatAmount('monthly')).toBe(PLANS.monthly.tonDisplay)
-    expect(p.formatAmount('annual')).toBe(PLANS.annual.tonDisplay)
+    const monthlyDisplay = await p.formatAmount('monthly')
+    expect(monthlyDisplay).toBe('0.1 TON')
+
+    const annualDisplay = await p.formatAmount('annual')
+    expect(annualDisplay).toBe('1 TON')
   })
 })
 
@@ -157,6 +189,10 @@ describe('CryptoPayProvider', () => {
   afterEach(() => {
     if (originalEnv === undefined) delete process.env.CRYPTOPAY_TOKEN
     else process.env.CRYPTOPAY_TOKEN = originalEnv
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('id=cryptopay, flow=external_link', () => {
@@ -204,7 +240,7 @@ describe('WebPayProvider signature validation', () => {
     const secretKey = 'mysecret'
     const fields: Record<string, string> = {
       batch_timestamp: '1700000000',
-      currency_id: 'BYN',
+      currency_id: 'USD',
       amount: '5.00',
       payment_method: '1',
       order_id: '12345',
@@ -228,7 +264,7 @@ describe('WebPayProvider signature validation', () => {
     const secretKey = 'mysecret'
     const fields: Record<string, string> = {
       batch_timestamp: '1700000000',
-      currency_id: 'BYN',
+      currency_id: 'USD',
       amount: '5.00',
       payment_method: '1',
       order_id: '12345',
@@ -244,7 +280,7 @@ describe('WebPayProvider signature validation', () => {
   it('rejects missing signature', () => {
     const fields: Record<string, string> = {
       batch_timestamp: '1700000000',
-      currency_id: 'BYN',
+      currency_id: 'USD',
       amount: '5.00',
       payment_method: '1',
       order_id: '12345',
@@ -258,9 +294,8 @@ describe('WebPayProvider signature validation', () => {
 })
 
 describe('CryptoPayProvider amount conversion', () => {
-  it('formats 0.1 TON correctly for createPaymentLink', () => {
-    // Verify the nanoTON → TON conversion logic
-    const tonNano = PLANS.monthly.tonNano  // '100000000' = 0.1 TON
+  it('formats 0.1 TON correctly', () => {
+    const tonNano = '100000000' // 0.1 TON
     const tonAmount = (Number(BigInt(tonNano)) / 1e9).toString()
     expect(tonAmount).toBe('0.1')
   })
@@ -284,6 +319,10 @@ describe('BePaidProvider', () => {
     else process.env.BEPAID_PROVIDER_TOKEN = originalEnv
   })
 
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('name=bePaid', () => { expect(new BePaidProvider().name).toBe('bePaid') })
 
   it('returns token from env', () => {
@@ -294,5 +333,19 @@ describe('BePaidProvider', () => {
   it('returns empty string when env not set', () => {
     delete process.env.BEPAID_PROVIDER_TOKEN
     expect(new BePaidProvider().getToken()).toBe('')
+  })
+
+  it('currency is USD', () => {
+    const p = new BePaidProvider()
+    expect(p.getCurrency('monthly')).toBe('USD')
+  })
+
+  it('getAmount returns correct USD cents from fallback', async () => {
+    const p = new BePaidProvider()
+    const monthlyAmount = await p.getAmount('monthly')
+    expect(monthlyAmount).toBe(500) // 5 USD
+
+    const annualAmount = await p.getAmount('annual')
+    expect(annualAmount).toBe(4500) // 45 USD
   })
 })

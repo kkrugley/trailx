@@ -1,14 +1,15 @@
 import type { Bot, Context } from 'grammy'
 import { prisma } from '../db'
-import { PLANS, calcExpiresAt, isPlanId } from './plans'
+import { calcExpiresAt, isPlanId } from './plans'
+import { getPlanSafe } from '../services/pricing'
 
 /**
  * Registers Telegram Payments lifecycle handlers — covers both:
- *  - Telegram Stars (currency='XTR')
- *  - Any fiat provider using Telegram's invoice flow (WebPay via Telegram Payments, etc.)
+ * - Telegram Stars (currency='XTR')
+ * - Any fiat provider using Telegram's invoice flow
  *
- *  pre_checkout_query  — must respond within 10 seconds
- *  message:successful_payment — activate/renew subscription in DB
+ * pre_checkout_query — must respond within 10 seconds
+ * message:successful_payment — activate/renew subscription in DB
  */
 export function registerPaymentHandlers(bot: Bot<Context>): void {
   // ── Pre-checkout validation ──────────────────────────────────────────────
@@ -36,14 +37,14 @@ export function registerPaymentHandlers(bot: Bot<Context>): void {
 
     const chatId = BigInt(ctx.chat.id)
     const userId = BigInt(ctx.from.id)
-    const plan = PLANS[planId]
+    const plan = await getPlanSafe(planId)
     const now = new Date()
     const expiresAt = calcExpiresAt(plan, now)
 
     // Detect provider from currency
-    const currency = payment.currency  // 'XTR' for Stars, 'BYN' for fiat
+    const currency = payment.currency // 'XTR' for Stars, 'USD' for fiat
     const providerId = currency === 'XTR' ? 'stars' : 'webpay'
-    const amount = payment.total_amount  // Stars or kopecks depending on currency
+    const amount = payment.total_amount // Stars or cents depending on currency
 
     const telegramPaymentChargeId = payment.telegram_payment_charge_id
     const providerPaymentChargeId = payment.provider_payment_charge_id ?? null

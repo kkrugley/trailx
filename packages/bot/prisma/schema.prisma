@@ -94,3 +94,77 @@ model SharedSession {
   @@index([deviceId])
   @@index([expiresAt])
 }
+
+model User {
+  id          String       @id @default(cuid())
+  telegramId  BigInt       @unique
+  username    String?
+  name        String?
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  savedRoutes SavedRoute[]
+  sessions    WebSession[]
+}
+
+model SavedRoute {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  waypoints   Json
+  gpxSnapshot String?
+  distanceKm  Float?
+  elevationM  Float?
+  profileId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WebSession {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token String @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Subscription plans — dynamic pricing from DB
+model Plan {
+  id String @id // 'monthly' | 'annual'
+  label String // '1 месяц' | '1 год'
+  description String // описание подписки
+  days Int // срок в днях
+  isActive Boolean @default(true)
+  sortOrder Int @default(0) // для сортировки в UI
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pricing ProviderPricing[]
+}
+
+// Provider-specific pricing for each plan
+model ProviderPricing {
+  id String @id @default(cuid())
+  planId String
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  provider String // 'stars' | 'cryptopay' | 'ton' | 'webpay' | 'bepaid'
+  // Цена в минимальных единицах валюты провайдера:
+  // - stars: количество звезд (целое)
+  // - ton/cryptopay: нанотоны (строка для точности)
+  // - webpay/bepaid: центы USD
+  amount String
+  // Валюта для отображения
+  currency String // 'XTR', 'TON', 'USD'
+  // Человекочитаемое значение для UI
+  displayAmount String // "5 ⭐", "0.1 TON", "2 USD"
+  // Включён ли способ оплаты для этого плана
+  enabled Boolean @default(true)
+  // Метаданные (для специфичных настроек провайдера)
+  metadata Json?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([planId, provider])
+  @@index([provider])
+}

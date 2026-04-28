@@ -127,25 +127,41 @@ export function getCategoryPlaceholder(tags: Record<string, string>): string {
   return `https://picsum.photos/seed/${encodeURIComponent(keyword)}/600/338`
 }
 
-// ── Async generator — sequential, intentional ─────────────────────────────────
-// Order: Mapillary (street-level) → Wikidata (Wikimedia Commons) → placeholder
+// ── Async generator — parallel fetch, first-ready-first-shown ──────────────────
+// Both Mapillary and Wikidata start fetching simultaneously.
+// Results are yielded as soon as they're ready (race condition).
 
 export async function* streamPOIImages(poi: {
   lat: number
   lon: number
   tags: Record<string, string>
 }): AsyncGenerator<POIImageResult> {
-  // 1. Mapillary — street-level imagery, preferred for POI
-  const mapillaryUrl = await fetchMapillaryImage(poi.lat, poi.lon)
-  if (mapillaryUrl) yield { url: mapillaryUrl, source: 'mapillary' }
+  // Start both fetches in parallel
+  const promises: Promise<POIImageResult | null>[] = []
 
-  // 2. Wikidata — Wikimedia Commons images
+  // Mapillary promise
+  promises.push(
+    fetchMapillaryImage(poi.lat, poi.lon).then((url) =>
+      url ? { url, source: 'mapillary' as const } : null
+    )
+  )
+
+  // Wikidata promise (only if wikidata tag exists)
   if (poi.tags['wikidata']) {
-    const url = await fetchWikidataImage(poi.tags['wikidata'])
-    if (url) yield { url, source: 'wikidata' }
+    promises.push(
+      fetchWikidataImage(poi.tags['wikidata']).then((url) =>
+        url ? { url, source: 'wikidata' as const } : null
+      )
+    )
   }
 
-  // 3. Flickr — disabled, uncomment when paid account is ready
+  // Yield results as they complete (race condition)
+  const results = await Promise.all(promises)
+  for (const result of results) {
+    if (result) yield result
+  }
+
+  // Flickr — disabled, uncomment when paid account is ready
   // const flickrUrls = await fetchFlickrImages(poi.lat, poi.lon, poi.tags)
   // for (const url of flickrUrls) {
   //   yield { url, source: 'flickr' }

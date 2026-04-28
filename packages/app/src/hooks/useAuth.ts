@@ -66,7 +66,8 @@ export function useAuth(): UseAuthReturn {
   }, [isTMA, webApp?.initData])
 
   const loginWithTelegram = useCallback(() => {
-    window.location.href = `${API_BASE}/auth/telegram`
+    const returnTo = encodeURIComponent(window.location.origin)
+    window.location.href = `${API_BASE}/auth/telegram?return_to=${returnTo}`
   }, [])
 
   const logout = useCallback(async () => {

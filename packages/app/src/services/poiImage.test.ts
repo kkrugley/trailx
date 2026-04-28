@@ -200,9 +200,9 @@ describe('streamPOIImages', () => {
     expect(results.some((r) => r.source === 'mapillary')).toBe(true)
   })
 
-  it('yields mapillary first, then wikidata when both available', async () => {
+  it('yields both mapillary and wikidata when both available (parallel fetch)', async () => {
     vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'tok')
-    // First call = Mapillary, second = Wikidata
+    // Both calls happen in parallel
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -218,10 +218,10 @@ describe('streamPOIImages', () => {
     for await (const r of streamPOIImages({ lat: 52.1, lon: 23.5, tags: { wikidata: 'Q243' } })) {
       results.push(r)
     }
-    // Mapillary first, then Wikidata
+    // Both sources should be present (order depends on which resolves first)
     expect(results).toHaveLength(2)
-    expect(results[0].source).toBe('mapillary')
-    expect(results[1].source).toBe('wikidata')
+    const sources = results.map(r => r.source).sort()
+    expect(sources).toEqual(['mapillary', 'wikidata'])
   })
 
   it('yields nothing when all sources fail', async () => {

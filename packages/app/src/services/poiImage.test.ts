@@ -200,21 +200,28 @@ describe('streamPOIImages', () => {
     expect(results.some((r) => r.source === 'mapillary')).toBe(true)
   })
 
-  it('skips wikidata step when no wikidata tag', async () => {
+  it('yields mapillary first, then wikidata when both available', async () => {
     vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'tok')
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ data: [] }),
-    })
+    // First call = Mapillary, second = Wikidata
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [{ thumb_256_url: 'https://mapillary.example/x.jpg' }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ claims: { P18: [{ mainsnak: { datavalue: { value: 'img.jpg' } } }] } }),
+      })
     vi.stubGlobal('fetch', fetchMock)
 
     const results = []
-    for await (const r of streamPOIImages({ lat: 52.1, lon: 23.5, tags: {} })) {
+    for await (const r of streamPOIImages({ lat: 52.1, lon: 23.5, tags: { wikidata: 'Q243' } })) {
       results.push(r)
     }
-    // fetch was only called once (Mapillary), not twice
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(results).toHaveLength(0)
+    // Mapillary first, then Wikidata
+    expect(results).toHaveLength(2)
+    expect(results[0].source).toBe('mapillary')
+    expect(results[1].source).toBe('wikidata')
   })
 
   it('yields nothing when all sources fail', async () => {

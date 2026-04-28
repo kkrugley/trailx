@@ -128,25 +128,26 @@ export function getCategoryPlaceholder(tags: Record<string, string>): string {
 }
 
 // ── Async generator — sequential, intentional ─────────────────────────────────
+// Order: Mapillary (street-level) → Wikidata (Wikimedia Commons) → placeholder
 
 export async function* streamPOIImages(poi: {
   lat: number
   lon: number
   tags: Record<string, string>
 }): AsyncGenerator<POIImageResult> {
-  // 1. Wikidata
+  // 1. Mapillary — street-level imagery, preferred for POI
+  const mapillaryUrl = await fetchMapillaryImage(poi.lat, poi.lon)
+  if (mapillaryUrl) yield { url: mapillaryUrl, source: 'mapillary' }
+
+  // 2. Wikidata — Wikimedia Commons images
   if (poi.tags['wikidata']) {
     const url = await fetchWikidataImage(poi.tags['wikidata'])
     if (url) yield { url, source: 'wikidata' }
   }
 
-  // 2. Flickr — disabled, uncomment when paid account is ready
+  // 3. Flickr — disabled, uncomment when paid account is ready
   // const flickrUrls = await fetchFlickrImages(poi.lat, poi.lon, poi.tags)
   // for (const url of flickrUrls) {
   //   yield { url, source: 'flickr' }
   // }
-
-  // 3. Mapillary
-  const mapillaryUrl = await fetchMapillaryImage(poi.lat, poi.lon)
-  if (mapillaryUrl) yield { url: mapillaryUrl, source: 'mapillary' }
 }

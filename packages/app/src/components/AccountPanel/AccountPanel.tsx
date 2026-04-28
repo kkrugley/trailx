@@ -6,9 +6,13 @@ import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { useMapStore } from '../../store/useMapStore'
 import { useAuth } from '../../hooks/useAuth'
 import { useSavedRoutes } from '../../hooks/useSavedRoutes'
+import { getMe } from '../../services/api'
 import { RouteListItem } from './RouteListItem'
 import { SaveRouteModal } from './SaveRouteModal'
 import styles from './AccountPanel.module.css'
+
+const TG_CLIENT_ID = '8613521247'
+const TG_SCRIPT_ID = 'tg-login-script'
 
 interface AccountPanelProps {
   onClose?: () => void
@@ -19,12 +23,37 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
   const { webApp } = useTelegramWebApp()
   const { authUser, isLoggedIn, isSimulated, logout, loginWithTelegram } = useAuth()
   const { savedRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, loadRoute } = useSavedRoutes()
+  const { setAuthUser } = useMapStore((s) => s.actions)
   const localRoutes = useMapStore((s) => s.localRoutes)
   const waypoints = useMapStore((s) => s.waypoints)
 
   const [showSaveModal, setShowSaveModal] = useState(false)
 
   const canSave = waypoints.filter((w) => !isNaN(w.lat)).length >= 2
+
+  // Load official Telegram Login widget (styles the tg-auth-button)
+  useEffect(() => {
+    if (isLoggedIn || isTMA) return
+
+    type Win = Window & typeof globalThis & { __tgAuth?: () => void }
+    // Popup-flow fallback: if the widget completes auth in a popup, refresh state
+    ;(window as Win).__tgAuth = async () => {
+      const user = await getMe()
+      if (user) setAuthUser(user)
+    }
+
+    if (!document.getElementById(TG_SCRIPT_ID)) {
+      const script = document.createElement('script')
+      script.id = TG_SCRIPT_ID
+      script.src = 'https://oauth.telegram.org/js/telegram-login.js?3'
+      script.async = true
+      script.setAttribute('data-client-id', TG_CLIENT_ID)
+      script.setAttribute('data-onauth', '__tgAuth()')
+      document.head.appendChild(script)
+    }
+
+    return () => { (window as Win).__tgAuth = undefined }
+  }, [isLoggedIn, isTMA, setAuthUser])
 
   // TMA BackButton to close panel
   useEffect(() => {
@@ -69,9 +98,12 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
           <p className={styles.loginHint}>
             Sign in to save routes and access them from any device.
           </p>
-          {/* SDK renders into this container and transforms the button */}
-          <button className={styles.loginBtn} onClick={loginWithTelegram}>
-            Sign in with Telegram
+          <button
+            className="tg-auth-button"
+            data-style="shine"
+            onClick={loginWithTelegram}
+          >
+            Sign In with Telegram
           </button>
         </div>
 

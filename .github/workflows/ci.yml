@@ -87,9 +87,9 @@ jobs:
       - name: Build app
         run: pnpm --filter @trailx/app build
         env:
-      VITE_API_URL: "https://example.com"
-      VITE_BOT_WS_URL: "wss://example.com"
-      VITE_MAPILLARY_ACCESS_TOKEN: ""
+          VITE_API_URL: "https://example.com"
+          VITE_BOT_WS_URL: "wss://example.com"
+          VITE_MAPILLARY_ACCESS_TOKEN: ""
           VITE_SENTRY_DSN: ""
 
       - name: Upload build artifact

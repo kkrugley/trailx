@@ -20,6 +20,19 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       sourcemap: 'hidden',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('maplibre-gl')) return 'vendor-map'
+            if (id.includes('@phosphor-icons')) return 'vendor-icons'
+            if (id.includes('@dnd-kit')) return 'vendor-dnd'
+            if (id.includes('dexie')) return 'vendor-db'
+            if (id.includes('@sentry')) return 'vendor-sentry'
+            if (id.includes('react-dom') || /[/\\]react[/\\]/.test(id)) return 'vendor-react'
+            if (id.includes('node_modules')) return 'vendor'
+          },
+        },
+      },
     },
     resolve: { tsconfigPaths: true },
     // Load .env from the monorepo root instead of packages/app

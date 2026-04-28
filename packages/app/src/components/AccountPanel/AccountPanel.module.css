@@ -237,6 +237,7 @@
 }
 
 .tgLoginBtn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -244,14 +245,37 @@
   background: linear-gradient(180deg, #2AABEE 0%, #229ED9 100%);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 9999px;
   font-family: var(--font-family);
   font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
   letter-spacing: 0.01em;
   box-shadow: 0 1px 4px rgba(34, 158, 217, 0.35);
+  overflow: hidden;
   transition: filter 0.15s;
+}
+
+.tgLoginBtn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  animation: tgShine 2.4s ease-in-out infinite;
+}
+
+@keyframes tgShine {
+  0%   { left: -75% }
+  40%  { left: 125% }
+  100% { left: 125% }
 }
 
 .tgLoginBtn:hover {

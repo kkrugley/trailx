@@ -59,17 +59,6 @@ export async function getSession(id: string): Promise<GetSessionResponse> {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-export async function verifyTelegramToken(idToken: string): Promise<AuthUser> {
-  const res = await fetch(`${API_BASE}/api/auth/telegram`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id_token: idToken }),
-  })
-  if (!res.ok) throw new Error(`Auth failed: ${res.status}`)
-  return res.json() as Promise<AuthUser>
-}
-
 export async function getMe(): Promise<AuthUser | null> {
   const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
   if (res.status === 401) return null

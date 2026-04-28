@@ -3,14 +3,17 @@ import type { AuthUser } from '@trailx/shared'
 import { usePlatform } from './usePlatform'
 import { useTelegramWebApp } from './useTelegramWebApp'
 import { useMapStore } from '../store/useMapStore'
-import { verifyTelegramToken, getMe, loginWithTMA, logout as apiLogout } from '../services/api'
+import { getMe, loginWithTMA, logout as apiLogout } from '../services/api'
+
+const API_BASE = (import.meta as ImportMeta & { env: Record<string, string> }).env
+  .VITE_API_URL ?? 'http://localhost:3000'
 
 export interface UseAuthReturn {
   authUser: AuthUser | null
   isLoggedIn: boolean
   isSimulated: boolean
+  loginWithTelegram: () => void
   logout: () => Promise<void>
-  onTelegramSDKCallback: (idToken: string) => Promise<void>
 }
 
 const SIMULATED_USER: AuthUser = {
@@ -44,7 +47,14 @@ export function useAuth(): UseAuthReturn {
 
       try {
         const user = await getMe()
-        if (!cancelled && user) setAuthUser(user)
+        if (!cancelled && user) {
+          setAuthUser(user)
+          // Clean up ?auth=success param left by OIDC callback redirect
+          const params = new URLSearchParams(window.location.search)
+          if (params.has('auth')) {
+            window.history.replaceState({}, '', window.location.pathname)
+          }
+        }
       } catch {
         // Unauthenticated is valid state
       }
@@ -55,6 +65,10 @@ export function useAuth(): UseAuthReturn {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTMA, webApp?.initData])
 
+  const loginWithTelegram = useCallback(() => {
+    window.location.href = `${API_BASE}/auth/telegram`
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       await apiLogout()
@@ -63,23 +77,13 @@ export function useAuth(): UseAuthReturn {
     }
   }, [setAuthUser])
 
-  const onTelegramSDKCallback = useCallback(async (idToken: string) => {
-    try {
-      const user = await verifyTelegramToken(idToken)
-      setAuthUser(user)
-    } catch (err) {
-      console.error('[useAuth] Telegram SDK verification failed:', err)
-    }
-  }, [setAuthUser])
-
-  // Return simulated user when debug mode is active
   if (debugSimulateAuth) {
     return {
       authUser: SIMULATED_USER,
       isLoggedIn: true,
       isSimulated: true,
+      loginWithTelegram: () => {},
       logout: async () => {},
-      onTelegramSDKCallback: async () => {},
     }
   }
 
@@ -87,7 +91,7 @@ export function useAuth(): UseAuthReturn {
     authUser,
     isLoggedIn: authUser !== null,
     isSimulated: false,
+    loginWithTelegram,
     logout,
-    onTelegramSDKCallback,
   }
 }

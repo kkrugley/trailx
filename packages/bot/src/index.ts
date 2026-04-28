@@ -10,7 +10,7 @@ import { prisma } from './db'
 import { registerCommands } from './commands'
 import { registerClient, unregisterClient } from './ws/hub'
 import { sessionRoutes } from './routes/sessions'
-import { authRoutes } from './routes/auth.js'
+import { authRoutes, authOidcRoutes } from './routes/auth.js'
 import { savedRoutesRoutes } from './routes/savedRoutes.js'
 import { graphhopperRoutes } from './routes/graphhopper.js'
 import { webpayRoutes } from './routes/webpay'
@@ -45,6 +45,7 @@ await fastify.register(cors, {
   origin: (origin, cb) => {
     const allowed = [
       'https://trailx-app.vercel.app',
+      'https://trailx.ru',
       'http://localhost:5173',
       'http://localhost:4173',
       'http://localhost:3001',
@@ -112,7 +113,8 @@ fastify.get<{ Params: { id: string } }>('/routes/:id', async (req, reply) => {
 // Session sharing REST API
 fastify.register(sessionRoutes, { prefix: '/api/sessions' })
 
-// Auth and saved routes
+// Auth: OIDC browser-redirect flow + API session routes
+fastify.register(authOidcRoutes, { prefix: '/auth' })
 fastify.register(authRoutes, { prefix: '/api/auth' })
 fastify.register(savedRoutesRoutes, { prefix: '/api/saved-routes' })
 

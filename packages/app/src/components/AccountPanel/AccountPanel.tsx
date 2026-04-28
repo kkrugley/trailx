@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FloppyDisk, X } from '@phosphor-icons/react'
 import type { LocalRoute, SavedRouteDTO } from '@trailx/shared'
 import { usePlatform } from '../../hooks/usePlatform'
@@ -17,13 +17,12 @@ interface AccountPanelProps {
 export function AccountPanel({ onClose }: AccountPanelProps) {
   const { isTMA } = usePlatform()
   const { webApp } = useTelegramWebApp()
-  const { authUser, isLoggedIn, isSimulated, logout, onTelegramSDKCallback } = useAuth()
+  const { authUser, isLoggedIn, isSimulated, logout, loginWithTelegram } = useAuth()
   const { savedRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, loadRoute } = useSavedRoutes()
   const localRoutes = useMapStore((s) => s.localRoutes)
   const waypoints = useMapStore((s) => s.waypoints)
 
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const sdkContainerRef = useRef<HTMLDivElement>(null)
 
   const canSave = waypoints.filter((w) => !isNaN(w.lat)).length >= 2
 
@@ -35,25 +34,6 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
     return () => { webApp.BackButton?.hide() }
   }, [isTMA, webApp, onClose])
 
-  // Inject Telegram Login SDK (Web only, not logged in)
-  useEffect(() => {
-    if (isLoggedIn || isTMA) return
-    const container = sdkContainerRef.current
-    if (!container) return
-
-    window.__tgAuthCallback = (data: { id_token: string }) => {
-      void onTelegramSDKCallback(data.id_token)
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://oauth.telegram.org/js/telegram-login.js?3'
-    script.async = true
-    script.dataset.clientId = '8613521247'
-    script.dataset.onauth = '__tgAuthCallback(data)'
-    container.appendChild(script)
-
-    return () => { delete window.__tgAuthCallback }
-  }, [isLoggedIn, isTMA, onTelegramSDKCallback])
 
   function initials(name: string) {
     return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
@@ -90,9 +70,9 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
             Sign in to save routes and access them from any device.
           </p>
           {/* SDK renders into this container and transforms the button */}
-          <div className={styles.tgLoginContainer} ref={sdkContainerRef}>
-            <button className="tg-auth-button" data-style="shine">Sign In with Telegram</button>
-          </div>
+          <button className={styles.loginBtn} onClick={loginWithTelegram}>
+            Sign in with Telegram
+          </button>
         </div>
 
         {localRoutes.length > 0 && (

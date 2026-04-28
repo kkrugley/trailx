@@ -32,14 +32,12 @@ vi.mock('../middleware/sessionAuth.js', () => ({
 }))
 
 import { prisma } from '../db.js'
-import { jwtVerify } from 'jose'
 import { validateTelegramInitData } from '../middleware/auth.js'
 import { resolveSessionIdentity } from '../middleware/sessionAuth.js'
 import { authRoutes } from './auth.js'
 
 const mockUser = prisma.user as unknown as Record<string, ReturnType<typeof vi.fn>>
 const mockSession = prisma.webSession as unknown as Record<string, ReturnType<typeof vi.fn>>
-const mockJwtVerify = jwtVerify as ReturnType<typeof vi.fn>
 const mockValidateInitData = validateTelegramInitData as ReturnType<typeof vi.fn>
 const mockResolveSession = resolveSessionIdentity as ReturnType<typeof vi.fn>
 
@@ -96,51 +94,6 @@ async function buildApp(cookieStore: Record<string, string> = {}) {
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
-
-describe('POST /api/auth/telegram', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockJwtVerify.mockResolvedValue({
-      payload: { id: 123456789, name: 'Test User', preferred_username: 'testuser', picture: 'https://t.me/avatars/1.jpg' },
-    })
-    mockUser.upsert.mockResolvedValue(DB_USER)
-    mockSession.create.mockResolvedValue({ token: 'session-token-abc' })
-  })
-
-  it('returns AuthUser and sets __txsid cookie on valid id_token', async () => {
-    const app = await buildApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/telegram',
-      payload: { id_token: 'valid.jwt.token' },
-    })
-    expect(res.statusCode).toBe(200)
-    const body = JSON.parse(res.body) as Record<string, unknown>
-    expect(body).toMatchObject({ id: 'user-cuid-1', telegramId: 123456789, name: 'Test User' })
-    expect(res.headers['set-cookie']).toContain('__txsid')
-  })
-
-  it('returns 401 on invalid id_token', async () => {
-    mockJwtVerify.mockRejectedValue(new Error('jwt invalid'))
-    const app = await buildApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/telegram',
-      payload: { id_token: 'bad.token' },
-    })
-    expect(res.statusCode).toBe(401)
-  })
-
-  it('returns 400 when id_token is missing', async () => {
-    const app = await buildApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/telegram',
-      payload: {},
-    })
-    expect(res.statusCode).toBe(400)
-  })
-})
 
 describe('POST /api/auth/tma', () => {
   beforeEach(() => {

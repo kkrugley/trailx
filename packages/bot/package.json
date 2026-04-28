@@ -20,7 +20,7 @@
     "fastify": "^4.28.0",
     "fastify-raw-body": "^4.3.0",
     "grammy": "^1.27.0",
-    "jose": "^6.2.2",
+    "jose": "^5.10.0",
     "stripe": "^16.0.0"
   },
   "devDependencies": {

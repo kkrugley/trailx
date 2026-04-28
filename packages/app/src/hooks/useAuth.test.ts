@@ -188,13 +188,14 @@ describe('useAuth', () => {
   })
 
   describe('loginWithTelegram', () => {
-    it('sets window.location.href to auth/telegram endpoint', () => {
-      const mockLoc = { href: '' }
+    it('sets window.location.href to auth/telegram with return_to param', () => {
+      const mockLoc = { href: '', origin: 'https://trailx.ru' }
       Object.defineProperty(window, 'location', { value: mockLoc, writable: true, configurable: true })
 
       const { result } = renderHook(() => useAuth())
       act(() => { result.current.loginWithTelegram() })
-      expect(mockLoc.href).toMatch(/\/auth\/telegram$/)
+      expect(mockLoc.href).toMatch(/\/auth\/telegram\?return_to=/)
+      expect(mockLoc.href).toContain('trailx.ru')
     })
   })
 

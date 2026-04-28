@@ -52,24 +52,38 @@ function generateCodeChallenge(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url')
 }
 
+const ALLOWED_RETURN_ORIGINS = [
+  'https://trailx.ru',
+  'https://trailx-app.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]
+
 // ── OIDC browser-redirect routes (prefix: /auth) ──────────────────────────────
 
 export const authOidcRoutes: FastifyPluginAsync = async (fastify) => {
   const CLIENT_ID = process.env.TELEGRAM_CLIENT_ID ?? ''
   const CLIENT_SECRET = process.env.TELEGRAM_CLIENT_SECRET ?? ''
   const REDIRECT_URI = process.env.TELEGRAM_OIDC_REDIRECT_URI ?? ''
-  const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+  const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000'
 
   // GET /auth/telegram — initiate OIDC Authorization Code flow with PKCE
-  fastify.get('/telegram', async (req, reply) => {
-    const state = randomBytes(16).toString('hex')
+  fastify.get<{ Querystring: { return_to?: string } }>('/telegram', async (req, reply) => {
+    const rawReturnTo = req.query.return_to ?? ''
+    const allowed = [...ALLOWED_RETURN_ORIGINS, FRONTEND_URL].filter(Boolean)
+    const returnTo = allowed.some(o => rawReturnTo.startsWith(o)) ? rawReturnTo : FRONTEND_URL
+
+    const nonce = randomBytes(16).toString('hex')
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
-    const returnTo = (req.headers.origin as string | undefined) ?? FRONTEND_URL
 
-    reply.setCookie('tg_oauth_state', state, STATE_COOKIE_OPTS)
+    // Encode returnTo inside the OAuth state so it survives the redirect without a cookie
+    const state = Buffer.from(JSON.stringify({ nonce, returnTo })).toString('base64url')
+
+    reply.setCookie('tg_oauth_state', nonce, STATE_COOKIE_OPTS)
     reply.setCookie('tg_pkce', codeVerifier, STATE_COOKIE_OPTS)
-    reply.setCookie('tg_return_to', returnTo, STATE_COOKIE_OPTS)
 
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
@@ -90,14 +104,19 @@ export const authOidcRoutes: FastifyPluginAsync = async (fastify) => {
     async (req, reply) => {
       const { code, state, error } = req.query
 
-      const returnToRaw = req.cookies.tg_return_to
-      const returnToResult = returnToRaw ? req.unsignCookie(returnToRaw) : null
-      const returnTo = returnToResult?.valid ? returnToResult.value : FRONTEND_URL
+      // Decode returnTo from the OAuth state param — doesn't rely on a separate cookie
+      let stateData: { nonce?: string; returnTo?: string } = {}
+      try {
+        stateData = JSON.parse(Buffer.from(state ?? '', 'base64url').toString()) as {
+          nonce: string
+          returnTo: string
+        }
+      } catch { /* malformed state → stateData stays empty */ }
+      const returnTo = stateData.returnTo ?? FRONTEND_URL
 
       const clearState = () => {
         reply.clearCookie('tg_oauth_state', { path: '/' })
         reply.clearCookie('tg_pkce', { path: '/' })
-        reply.clearCookie('tg_return_to', { path: '/' })
       }
 
       if (error) {
@@ -105,10 +124,10 @@ export const authOidcRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.redirect(`${returnTo}/?auth=error`)
       }
 
-      // Validate CSRF state
-      const storedStateRaw = req.cookies.tg_oauth_state
-      const storedStateResult = storedStateRaw ? req.unsignCookie(storedStateRaw) : null
-      if (!storedStateResult?.valid || storedStateResult.value !== state || !code) {
+      // CSRF: validate nonce from state against the short-lived cookie
+      const storedNonceRaw = req.cookies.tg_oauth_state
+      const storedNonceResult = storedNonceRaw ? req.unsignCookie(storedNonceRaw) : null
+      if (!storedNonceResult?.valid || storedNonceResult.value !== stateData.nonce || !code) {
         clearState()
         return reply.redirect(`${returnTo}/?auth=error`)
       }

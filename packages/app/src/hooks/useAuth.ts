@@ -5,9 +5,6 @@ import { useTelegramWebApp } from './useTelegramWebApp'
 import { useMapStore } from '../store/useMapStore'
 import { getMe, loginWithTMA, logout as apiLogout } from '../services/api'
 
-const API_BASE = (import.meta as ImportMeta & { env: Record<string, string> }).env
-  .VITE_API_URL ?? 'http://localhost:3000'
-
 export interface UseAuthReturn {
   authUser: AuthUser | null
   isLoggedIn: boolean
@@ -67,7 +64,7 @@ export function useAuth(): UseAuthReturn {
 
   const loginWithTelegram = useCallback(() => {
     const returnTo = encodeURIComponent(window.location.origin)
-    window.location.href = `${API_BASE}/auth/telegram?return_to=${returnTo}`
+    window.location.href = `/auth/telegram?return_to=${returnTo}`
   }, [])
 
   const logout = useCallback(async () => {

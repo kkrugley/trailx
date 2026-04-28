@@ -1,7 +1,7 @@
 import type { SessionPayload, CreateSessionResponse, GetSessionResponse, AuthUser, SavedRouteDTO, SaveRoutePayload } from '@trailx/shared'
 
 const API_BASE = (import.meta as ImportMeta & { env: Record<string, string> }).env
-  .VITE_API_URL ?? 'http://localhost:3000'
+  .VITE_API_URL ?? ''
 
 export interface RemoteWaypoint {
   lat: number

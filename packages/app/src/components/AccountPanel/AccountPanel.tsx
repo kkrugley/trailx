@@ -66,9 +66,11 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
           )}
         </div>
         <div className={styles.loginSection}>
-          <p className={styles.loginHint}>
-            Sign in to save routes and access them from any device.
-          </p>
+          <div className={styles.loginPromo}>
+            <FloppyDisk className={styles.loginPromoIcon} size={22} weight="duotone" />
+            <span className={styles.loginPromoTitle}>Save your routes</span>
+            <span className={styles.loginPromoHint}>Sign in to sync routes across all your devices.</span>
+          </div>
           <button className={styles.tgLoginBtn} onClick={loginWithTelegram}>
             <TelegramLogo size={20} weight="fill" />
             Sign In with Telegram

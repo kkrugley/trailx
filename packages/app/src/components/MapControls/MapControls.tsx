@@ -1,4 +1,4 @@
-import { useState, useRef, type RefObject } from 'react'
+import { useState, useRef, useEffect, type RefObject } from 'react'
 import { Plus, Minus, Crosshair, GearSix, Stack, Question, Bug, Toolbox, User } from '@phosphor-icons/react'
 import type { MapViewHandle } from '../MapView/MapView'
 import { AppSettingsPanel } from '../AppSettings/AppSettings'
@@ -11,22 +11,37 @@ import { useMapStore } from '../../store/useMapStore'
 import { useT } from '../../i18n/useT'
 import styles from './MapControls.module.css'
 
+type ActivePanel = 'info' | 'account' | 'settings' | 'layers' | 'tools' | 'debug' | null
+
 interface MapControlsProps {
   mapRef: RefObject<MapViewHandle | null>
 }
 
 export function MapControls({ mapRef }: MapControlsProps) {
   const debugPopoverClass = styles.popoverUp
-  const [infoOpen, setInfoOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null)
   const authUser = useMapStore((s) => s.authUser)
-  const [layersOpen, setLayersOpen] = useState(false)
-  const [toolsOpen, setToolsOpen] = useState(false)
-  const [debugOpen, setDebugOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const t = useT()
+
+  const toggle = (panel: NonNullable<ActivePanel>) =>
+    setActivePanel((cur) => (cur === panel ? null : panel))
+
+  const close = () => setActivePanel(null)
+
+  // Close active panel on click outside the controls widget
+  useEffect(() => {
+    if (!activePanel) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setActivePanel(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [activePanel])
+
   const zoomIn  = () => mapRef.current?.getMap()?.zoomIn()
   const zoomOut = () => mapRef.current?.getMap()?.zoomOut()
 
@@ -47,50 +62,50 @@ export function MapControls({ mapRef }: MapControlsProps) {
       {/* Info button */}
       <div className={styles.popoverAnchor}>
         <button
-          className={`${styles.iconBtn} ${infoOpen ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${activePanel === 'info' ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setInfoOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setDebugOpen(false) }}
+          onClick={() => toggle('info')}
           aria-label={t.mapControls.infoAriaLabel}
         >
-          <Question size={17} weight={infoOpen ? 'fill' : 'regular'} />
+          <Question size={17} weight={activePanel === 'info' ? 'fill' : 'regular'} />
         </button>
-        {infoOpen && (
+        {activePanel === 'info' && (
           <div className={styles.popover}>
-            <AppInfo onClose={() => setInfoOpen(false)} />
+            <AppInfo onClose={close} />
           </div>
         )}
       </div>
 
-  {/* Account button */}
-  <div className={styles.popoverAnchor}>
-    <button
-      className={`${styles.iconBtn} ${accountOpen ? styles.iconBtnActive : ''}`}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={() => { setAccountOpen((v) => !v); setInfoOpen(false); setSettingsOpen(false); setLayersOpen(false); setDebugOpen(false) }}
-      aria-label="Account"
-    >
-      <User size={17} weight={authUser ? 'fill' : 'regular'} />
-    </button>
-    {accountOpen && (
-      <div className={styles.popoverWide}>
-        <AccountPanel onClose={() => setAccountOpen(false)} />
+      {/* Account button */}
+      <div className={styles.popoverAnchor}>
+        <button
+          className={`${styles.iconBtn} ${activePanel === 'account' ? styles.iconBtnActive : ''}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => toggle('account')}
+          aria-label="Account"
+        >
+          <User size={17} weight={authUser ? 'fill' : 'regular'} />
+        </button>
+        {activePanel === 'account' && (
+          <div className={styles.popoverWide}>
+            <AccountPanel onClose={close} />
+          </div>
+        )}
       </div>
-    )}
-  </div>
 
       {/* Settings button */}
       <div className={styles.popoverAnchor}>
         <button
-          className={`${styles.iconBtn} ${settingsOpen ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${activePanel === 'settings' ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setSettingsOpen((v) => !v); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
+          onClick={() => toggle('settings')}
           aria-label={t.mapControls.settingsAriaLabel}
         >
-          <GearSix size={17} weight={settingsOpen ? 'fill' : 'regular'} />
+          <GearSix size={17} weight={activePanel === 'settings' ? 'fill' : 'regular'} />
         </button>
-        {settingsOpen && (
+        {activePanel === 'settings' && (
           <div className={styles.popover}>
-            <AppSettingsPanel onClose={() => setSettingsOpen(false)} />
+            <AppSettingsPanel onClose={close} />
           </div>
         )}
       </div>
@@ -98,16 +113,16 @@ export function MapControls({ mapRef }: MapControlsProps) {
       {/* Map layers button */}
       <div className={styles.popoverAnchor}>
         <button
-          className={`${styles.iconBtn} ${layersOpen ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${activePanel === 'layers' ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setLayersOpen((v) => !v); setSettingsOpen(false); setInfoOpen(false); setToolsOpen(false); setDebugOpen(false) }}
+          onClick={() => toggle('layers')}
           aria-label={t.mapControls.layersAriaLabel}
         >
-          <Stack size={17} weight={layersOpen ? 'fill' : 'regular'} />
+          <Stack size={17} weight={activePanel === 'layers' ? 'fill' : 'regular'} />
         </button>
-        {layersOpen && (
+        {activePanel === 'layers' && (
           <div className={styles.popover}>
-            <MapLayers onClose={() => setLayersOpen(false)} />
+            <MapLayers onClose={close} />
           </div>
         )}
       </div>
@@ -115,16 +130,16 @@ export function MapControls({ mapRef }: MapControlsProps) {
       {/* Tools button */}
       <div className={styles.popoverAnchor}>
         <button
-          className={`${styles.iconBtn} ${toolsOpen ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${activePanel === 'tools' ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setToolsOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false); setDebugOpen(false) }}
+          onClick={() => toggle('tools')}
           aria-label={t.mapControls.toolsAriaLabel}
         >
-          <Toolbox size={17} weight={toolsOpen ? 'fill' : 'regular'} />
+          <Toolbox size={17} weight={activePanel === 'tools' ? 'fill' : 'regular'} />
         </button>
-        {toolsOpen && (
+        {activePanel === 'tools' && (
           <div className={styles.popover}>
-            <ToolsPanel onClose={() => setToolsOpen(false)} mapRef={mapRef} />
+            <ToolsPanel onClose={close} mapRef={mapRef} />
           </div>
         )}
       </div>
@@ -154,16 +169,16 @@ export function MapControls({ mapRef }: MapControlsProps) {
       {/* Debug button */}
       <div className={styles.popoverAnchor}>
         <button
-          className={`${styles.iconBtn} ${debugOpen ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${activePanel === 'debug' ? styles.iconBtnActive : ''}`}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => { setDebugOpen((v) => !v); setSettingsOpen(false); setLayersOpen(false); setInfoOpen(false) }}
+          onClick={() => toggle('debug')}
           aria-label="Debug"
         >
-          <Bug size={17} weight={debugOpen ? 'fill' : 'regular'} />
+          <Bug size={17} weight={activePanel === 'debug' ? 'fill' : 'regular'} />
         </button>
-        {debugOpen && (
+        {activePanel === 'debug' && (
           <div className={debugPopoverClass}>
-            <DebugPanel onClose={() => setDebugOpen(false)} mapRef={mapRef} />
+            <DebugPanel onClose={close} mapRef={mapRef} />
           </div>
         )}
       </div>

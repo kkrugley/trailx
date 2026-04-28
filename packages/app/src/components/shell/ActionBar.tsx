@@ -32,7 +32,7 @@ export function ActionBar() {
       <button
         className={`${styles.button} ${isSearchOpen ? styles.active : ''}`}
         aria-label={isSearchOpen ? 'Close search' : 'Search'}
-        onClick={() => setSearchOpen(!isSearchOpen)}
+        onClick={() => { setSearchOpen(!isSearchOpen); if (!isSearchOpen) { setAccountOpen(false); setExportOpen(false) } }}
       >
         {isSearchOpen ? (
           <X size={24} weight="regular" />
@@ -49,14 +49,14 @@ export function ActionBar() {
       <button
         className={`${styles.button} ${isAccountOpen ? styles.active : ''}`}
         aria-label={isAccountOpen ? 'Close account' : 'Account'}
-        onClick={() => setAccountOpen(!isAccountOpen)}
+        onClick={() => { setAccountOpen(!isAccountOpen); if (!isAccountOpen) { setExportOpen(false); setSearchOpen(false) } }}
       >
         <User size={24} weight={authUser ? 'fill' : 'regular'} />
       </button>
       <button
         className={`${styles.button} ${isExportOpen ? styles.active : ''}`}
         aria-label={isExportOpen ? 'Close export' : 'Export'}
-        onClick={() => setExportOpen(!isExportOpen)}
+        onClick={() => { setExportOpen(!isExportOpen); if (!isExportOpen) { setAccountOpen(false); setSearchOpen(false) } }}
       >
         {isExportOpen ? (
           <X size={24} weight="regular" />

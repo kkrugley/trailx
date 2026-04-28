@@ -8,7 +8,7 @@ export interface POIImageResult {
   source: 'wikidata' | 'flickr' | 'mapillary' | 'placeholder'
 }
 
-// ── Internal response shapes ──────────────────────────────────────────────────
+// ── Internal response shapes ─────────────────────────────────────────────────
 
 interface WikidataClaim {
   mainsnak: { datavalue: { value: string } }
@@ -27,7 +27,7 @@ interface MapillaryResponse {
   data?: MapillaryImage[]
 }
 
-// ── Wikidata ──────────────────────────────────────────────────────────────────
+// ── Wikidata ─────────────────────────────────────────────────────────────────
 
 export async function fetchWikidataImage(wikidataId: string): Promise<string | null> {
   try {
@@ -87,25 +87,33 @@ export async function fetchWikidataImage(wikidataId: string): Promise<string | n
 // }
 
 // ── Mapillary ─────────────────────────────────────────────────────────────────
+// Uses VITE_MAPILLARY_ACCESS_TOKEN directly (client-side token, scoped to app)
 
 export async function fetchMapillaryImage(lat: number, lon: number): Promise<string | null> {
   try {
-    const token = import.meta.env.VITE_MAPILLARY_TOKEN as string | undefined
+    const token = import.meta.env.VITE_MAPILLARY_ACCESS_TOKEN as string | undefined
     if (!token) return null
 
-    const delta = 0.002 // ~220m radius — better Mapillary coverage than 0.0005
-    const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`
     const params = new URLSearchParams({
       access_token: token,
       fields: 'id,thumb_256_url',
-      bbox,
+      lat: String(lat),
+      lng: String(lon),
+      radius: '25',
       limit: '1',
     })
 
     const res = await fetch(`https://graph.mapillary.com/images?${params.toString()}`)
+
+    if (!res.ok) {
+      console.warn('[Mapillary] API error:', res.status, await res.text().catch(() => ''))
+      return null
+    }
+
     const data = (await res.json()) as MapillaryResponse
     return data.data?.[0]?.thumb_256_url ?? null
-  } catch {
+  } catch (err) {
+    console.error('[Mapillary] Fetch error:', err)
     return null
   }
 }

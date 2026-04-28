@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.unstubAllEnvs()
 })
 
-// ── fetchWikidataImage ────────────────────────────────────────────────────────
+// ── fetchWikidataImage ───────────────────────────────────────────────────────
 
 describe('fetchWikidataImage', () => {
   it('returns Commons URL when P18 claim exists', async () => {
@@ -74,14 +74,13 @@ describe('fetchWikidataImage', () => {
 // ── fetchMapillaryImage ───────────────────────────────────────────────────────
 
 describe('fetchMapillaryImage', () => {
-  it('returns null when VITE_MAPILLARY_TOKEN is not set', async () => {
-    // env not stubbed — token is undefined
+  it('returns null when VITE_MAPILLARY_ACCESS_TOKEN is not set', async () => {
     const url = await fetchMapillaryImage(52.1, 23.5)
     expect(url).toBeNull()
   })
 
   it('returns thumb URL when token is set and data is present', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'test-token')
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'test-token')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -94,7 +93,7 @@ describe('fetchMapillaryImage', () => {
   })
 
   it('returns null when data array is empty', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'test-token')
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'test-token')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ data: [] }),
@@ -104,8 +103,8 @@ describe('fetchMapillaryImage', () => {
     expect(url).toBeNull()
   })
 
-  it('includes token and bbox in fetch URL', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'my-token')
+  it('includes token, lat, lng, radius in fetch URL', async () => {
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'my-token')
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ data: [] }),
@@ -115,18 +114,32 @@ describe('fetchMapillaryImage', () => {
     await fetchMapillaryImage(52.0, 23.0)
     const url: string = fetchMock.mock.calls[0][0] as string
     expect(url).toContain('access_token=my-token')
-    expect(url).toContain('bbox=')
+    expect(url).toContain('lat=52')
+    expect(url).toContain('lng=23')
+    expect(url).toContain('radius=25')
   })
 
   it('returns null on network error (never throws)', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'test-token')
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'test-token')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network')))
+    const url = await fetchMapillaryImage(52.1, 23.5)
+    expect(url).toBeNull()
+  })
+
+  it('returns null when API returns error status', async () => {
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'test-token')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: () => Promise.resolve('Rate limit'),
+    }))
+
     const url = await fetchMapillaryImage(52.1, 23.5)
     expect(url).toBeNull()
   })
 })
 
-// ── getCategoryPlaceholder ────────────────────────────────────────────────────
+// ── getCategoryPlaceholder ─────────────────────────────────────────────────────
 
 describe('getCategoryPlaceholder', () => {
   it('uses "historic" tag as seed keyword', () => {
@@ -172,7 +185,7 @@ describe('streamPOIImages', () => {
   })
 
   it('yields mapillary image when token is set', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'tok')
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'tok')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -188,7 +201,7 @@ describe('streamPOIImages', () => {
   })
 
   it('skips wikidata step when no wikidata tag', async () => {
-    vi.stubEnv('VITE_MAPILLARY_TOKEN', 'tok')
+    vi.stubEnv('VITE_MAPILLARY_ACCESS_TOKEN', 'tok')
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ data: [] }),

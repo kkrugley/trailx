@@ -236,9 +236,31 @@
   line-height: 1.4;
 }
 
-.tgLoginContainer {
-  display: flex;
-  justify-content: center;
+.tgLoginBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5625rem 1.25rem;
+  background: linear-gradient(180deg, #2AABEE 0%, #229ED9 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(34, 158, 217, 0.35);
+  transition: filter 0.15s;
+}
+
+.tgLoginBtn:hover {
+  filter: brightness(1.08);
+}
+
+.tgLoginBtn:active {
+  filter: brightness(0.93);
+  transform: scale(0.98);
 }
 
 /* ── Modal ────────────────────────────────── */

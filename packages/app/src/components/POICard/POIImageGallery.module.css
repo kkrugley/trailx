@@ -27,6 +27,16 @@
   opacity: 0;
 }
 
+/* ── Category icon placeholder ──────────────────────────────────────────── */
+
+.iconPlaceholder {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ── Skeleton shimmer ─────────────────────────────────────────────────── */
 
 .skeleton {
@@ -66,45 +76,59 @@
   pointer-events: none;
 }
 
-/* ── Dots navigation ──────────────────────────────────────────────────── */
+/* ── Navigation arrows ────────────────────────────────────────────────── */
 
-.dots {
+.navArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0 0.4rem;
-}
-
-.dot {
-  width: 6px;
-  height: 6px;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
   border-radius: var(--radius-full);
-  background-color: var(--outline-variant);
-  border: none;
-  padding: 0;
   cursor: pointer;
-  transition: background-color 150ms ease, transform 150ms ease;
+  opacity: 0;
+  transition: opacity 200ms ease, background-color 150ms ease;
+  z-index: 10;
 }
 
-.dot:hover {
-  background-color: var(--secondary-container);
+.imageWrap:hover .navArrow,
+.navArrow:focus-visible {
+  opacity: 0.8;
 }
 
-.dotActive {
-  background-color: var(--secondary);
-  transform: scale(1.3);
+.navArrow:hover {
+  opacity: 1 !important;
+  background-color: var(--surface-container-highest);
 }
 
-.dotLoading {
-  width: 6px;
-  height: 6px;
+.navArrowLeft {
+  left: 0.5rem;
+}
+
+.navArrowRight {
+  right: 0.5rem;
+}
+
+/* ── Image counter ───────────────────────────────────────────────────── */
+
+.imageCounter {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--on-surface);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
   border-radius: var(--radius-full);
-  background-color: var(--outline-variant);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  border: 1px solid var(--outline-variant);
+  pointer-events: none;
 }

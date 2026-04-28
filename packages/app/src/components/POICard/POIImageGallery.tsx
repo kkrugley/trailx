@@ -1,8 +1,33 @@
 import { useState } from 'react'
-import type { POI } from '@trailx/shared'
+import {
+  CaretLeft,
+  CaretRight,
+  Drop,
+  Wrench,
+  House,
+  Bicycle,
+  Tent,
+  ForkKnife,
+  CastleTurret,
+  Binoculars,
+  MapPin,
+} from '@phosphor-icons/react'
+import type { POI, POICategory } from '@trailx/shared'
+import { POI_COLORS } from '@trailx/shared'
 import { usePOIImages } from '../../hooks/usePOIImages'
-import { getCategoryPlaceholder } from '../../services/poiImage'
 import styles from './POIImageGallery.module.css'
+
+const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
+  drinking_water: <Drop size={48} weight="fill" />,
+  bicycle_repair: <Wrench size={48} weight="fill" />,
+  shelter: <House size={48} weight="fill" />,
+  bicycle_shop: <Bicycle size={48} weight="fill" />,
+  camp_site: <Tent size={48} weight="fill" />,
+  food: <ForkKnife size={48} weight="fill" />,
+  historic: <CastleTurret size={48} weight="fill" />,
+  viewpoint: <Binoculars size={48} weight="fill" />,
+  custom: <MapPin size={48} weight="fill" />,
+}
 
 export interface POIImageGalleryProps {
   poi: POI
@@ -16,10 +41,17 @@ export function POIImageGallery({ poi }: POIImageGalleryProps) {
   const { images, isLoading, isPlaceholder } = usePOIImages(hookPoi)
 
   // Reset active index when POI changes
-  // (effect would be overkill — just clamp on render)
   const clampedIdx = Math.min(activeIdx, Math.max(0, images.length - 1))
 
-  const showDots = images.length > 1 || isLoading
+  const hasMultipleImages = images.length > 1
+
+  function goPrev() {
+    setActiveIdx((prev) => (prev > 0 ? prev - 1 : images.length - 1))
+  }
+
+  function goNext() {
+    setActiveIdx((prev) => (prev < images.length - 1 ? prev + 1 : 0))
+  }
 
   // ── Case 1: skeleton ────────────────────────────────────────────────────────
   if (isLoading && images.length === 0) {
@@ -30,17 +62,17 @@ export function POIImageGallery({ poi }: POIImageGalleryProps) {
     )
   }
 
-  // ── Case 2: placeholder ─────────────────────────────────────────────────────
+  // ── Case 2: no images — show category icon ──────────────────────────────────
   if (isPlaceholder) {
     return (
       <div className={styles.gallery}>
-        <div className={styles.imageWrap}>
-          <img
-            className={styles.image}
-            src={getCategoryPlaceholder(poi.tags)}
-            alt={poi.name ?? poi.category}
-          />
-          <span className={styles.badge}>generic</span>
+        <div
+          className={styles.iconPlaceholder}
+          style={{ backgroundColor: `${POI_COLORS[poi.category]}18` }}
+        >
+          <span style={{ color: POI_COLORS[poi.category] }}>
+            {CATEGORY_ICONS[poi.category]}
+          </span>
         </div>
       </div>
     )
@@ -59,21 +91,34 @@ export function POIImageGallery({ poi }: POIImageGalleryProps) {
           alt={poi.name ?? poi.category}
         />
         <span className={styles.badge}>{current.source}</span>
-      </div>
 
-      {showDots && (
-        <div className={styles.dots}>
-          {images.map((img, i) => (
+        {/* Navigation arrows */}
+        {hasMultipleImages && (
+          <>
             <button
-              key={img.url}
-              className={`${styles.dot} ${i === clampedIdx ? styles.dotActive : ''}`}
-              onClick={() => setActiveIdx(i)}
-              aria-label={`Image ${i + 1}`}
-            />
-          ))}
-          {isLoading && <span className={styles.dotLoading} aria-hidden="true" />}
-        </div>
-      )}
+              className={`${styles.navArrow} ${styles.navArrowLeft}`}
+              onClick={goPrev}
+              aria-label="Previous image"
+            >
+              <CaretLeft size={24} weight="bold" />
+            </button>
+            <button
+              className={`${styles.navArrow} ${styles.navArrowRight}`}
+              onClick={goNext}
+              aria-label="Next image"
+            >
+              <CaretRight size={24} weight="bold" />
+            </button>
+          </>
+        )}
+
+        {/* Image counter */}
+        {hasMultipleImages && (
+          <span className={styles.imageCounter}>
+            {clampedIdx + 1} / {images.length}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

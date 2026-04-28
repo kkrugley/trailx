@@ -1,11 +1,7 @@
 import type { RoutePoint, RouteResult, RoutingProfile } from '@trailx/shared'
 import type { AppSettings } from '../store/useMapStore'
 
-// In production VITE_API_URL points to the bot server; locally we use the Vite proxy
-const _apiUrl = (import.meta as ImportMeta & { env: Record<string, string> }).env.VITE_API_URL ?? ''
-const GH_ROUTE_URL = _apiUrl.includes('localhost') || _apiUrl.includes('127.0.0.1')
-  ? '/api/route'
-  : `${_apiUrl}/api/route`
+const GH_ROUTE_URL = '/api/route'
 
 const TIMEOUT_MS = 15_000
 

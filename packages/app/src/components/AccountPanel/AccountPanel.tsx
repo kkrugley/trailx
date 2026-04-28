@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FloppyDisk, X } from '@phosphor-icons/react'
+import { FloppyDisk, TelegramLogo, X } from '@phosphor-icons/react'
 import type { LocalRoute, SavedRouteDTO } from '@trailx/shared'
 import { usePlatform } from '../../hooks/usePlatform'
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
@@ -66,12 +66,14 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
           )}
         </div>
         <div className={styles.loginSection}>
-          <p className={styles.loginHint}>
-            Sign in to save routes and access them from any device.
-          </p>
-          {/* SDK renders into this container and transforms the button */}
-          <button className={styles.loginBtn} onClick={loginWithTelegram}>
-            Sign in with Telegram
+          <div className={styles.loginPromo}>
+            <FloppyDisk className={styles.loginPromoIcon} size={22} weight="duotone" />
+            <span className={styles.loginPromoTitle}>Save your routes</span>
+            <span className={styles.loginPromoHint}>Sign in to sync routes across all your devices.</span>
+          </div>
+          <button className={styles.tgLoginBtn} onClick={loginWithTelegram}>
+            <TelegramLogo size={20} weight="fill" />
+            Sign In with Telegram
           </button>
         </div>
 

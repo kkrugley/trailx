@@ -15,6 +15,7 @@ import type { POI, POICategory } from '@trailx/shared'
 import { POI_COLORS, POI_CATEGORIES } from '@trailx/shared'
 import { useMapStore } from '../../store/useMapStore'
 import { useT } from '../../i18n/useT'
+import { POIImageGallery } from './POIImageGallery'
 import styles from './POICard.module.css'
 
 // ── Category icon map ─────────────────────────────────────────────────────────
@@ -31,30 +32,7 @@ const CATEGORY_ICONS: Record<POICategory, React.ReactNode> = {
   custom: <MapPin size={18} weight="fill" />,
 }
 
-// ── Wikidata image fetch ──────────────────────────────────────────────────────
-
-interface WikidataImageClaim {
-  mainsnak: { datavalue: { value: string } }
-}
-interface WikidataEntity {
-  claims?: { P18?: WikidataImageClaim[] }
-}
-interface WikidataResponse {
-  entities?: Record<string, WikidataEntity>
-}
-
-async function fetchWikidataImage(qid: string): Promise<string | null> {
-  try {
-    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&props=claims&format=json&origin=*`
-    const res = await fetch(url)
-    const data = (await res.json()) as WikidataResponse
-    const filename = data.entities?.[qid]?.claims?.P18?.[0]?.mainsnak?.datavalue?.value
-    if (!filename) return null
-    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=300`
-  } catch {
-    return null
-  }
-}
+// POI images are now fetched via POIImageGallery component (Wikidata → Mapillary → placeholder)
 
 // ── POICard ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +45,6 @@ export interface POICardProps {
 export function POICard({ poi, onClose, draft }: POICardProps) {
   // Keep last non-null poi so the card content stays visible during the slide-out animation
   const [displayPoi, setDisplayPoi] = useState<POI | null>(null)
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   // Draft form state
   const [displayDraft, setDisplayDraft] = useState<{ lat: number; lng: number } | null>(null)
   const [draftName, setDraftName] = useState('')
@@ -89,12 +66,7 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
     }
   }, [draft])
 
-  // Fetch Wikidata image when POI changes
-  useEffect(() => {
-    setPhotoUrl(null)
-    if (!poi?.tags?.wikidata) return
-    fetchWikidataImage(poi.tags.wikidata).then(setPhotoUrl)
-  }, [poi?.id, poi?.tags?.wikidata])
+
 
   function handleAddToRoute() {
     if (!displayPoi) return
@@ -215,21 +187,8 @@ export function POICard({ poi, onClose, draft }: POICardProps) {
               </button>
             </div>
 
-            {/* ── Photo ── */}
-            <div className={styles.photoWrap}>
-              {photoUrl ? (
-                <img className={styles.photo} src={photoUrl} alt={displayPoi.name ?? 'POI'} />
-              ) : (
-                <div
-                  className={styles.photoPlaceholder}
-                  style={{ backgroundColor: `${POI_COLORS[displayPoi.category]}18` }}
-                >
-                  <span style={{ color: POI_COLORS[displayPoi.category] }}>
-                    {CATEGORY_ICONS[displayPoi.category]}
-                  </span>
-                </div>
-              )}
-            </div>
+{/* ── Photo ── */}
+      <POIImageGallery poi={displayPoi} />
 
             {/* ── Details ── */}
             <div className={styles.details}>

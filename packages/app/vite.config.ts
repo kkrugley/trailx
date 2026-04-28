@@ -47,6 +47,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: () => `/api/1/route?key=${ghKey}`,
         },
+        '/api': {
+          target: 'http://127.0.0.1:3001',
+          changeOrigin: true,
+        },
+        '/auth': {
+          target: 'http://127.0.0.1:3001',
+          changeOrigin: true,
+        },
       },
     },
     test: {

@@ -8,7 +8,7 @@ export interface POIImageResult {
   source: 'wikidata' | 'flickr' | 'mapillary' | 'placeholder'
 }
 
-// ── Internal response shapes ──────────────────────────────────────────────────
+// ── Internal response shapes ─────────────────────────────────────────────────
 
 interface WikidataClaim {
   mainsnak: { datavalue: { value: string } }
@@ -27,7 +27,7 @@ interface MapillaryResponse {
   data?: MapillaryImage[]
 }
 
-// ── Wikidata ──────────────────────────────────────────────────────────────────
+// ── Wikidata ─────────────────────────────────────────────────────────────────
 
 export async function fetchWikidataImage(wikidataId: string): Promise<string | null> {
   try {
@@ -87,25 +87,33 @@ export async function fetchWikidataImage(wikidataId: string): Promise<string | n
 // }
 
 // ── Mapillary ─────────────────────────────────────────────────────────────────
+// Uses VITE_MAPILLARY_ACCESS_TOKEN directly (client-side token, scoped to app)
 
 export async function fetchMapillaryImage(lat: number, lon: number): Promise<string | null> {
   try {
-    const token = import.meta.env.VITE_MAPILLARY_TOKEN as string | undefined
+    const token = import.meta.env.VITE_MAPILLARY_ACCESS_TOKEN as string | undefined
     if (!token) return null
 
-    const delta = 0.002 // ~220m radius — better Mapillary coverage than 0.0005
-    const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`
     const params = new URLSearchParams({
       access_token: token,
       fields: 'id,thumb_256_url',
-      bbox,
+      lat: String(lat),
+      lng: String(lon),
+      radius: '25',
       limit: '1',
     })
 
     const res = await fetch(`https://graph.mapillary.com/images?${params.toString()}`)
+
+    if (!res.ok) {
+      console.warn('[Mapillary] API error:', res.status, await res.text().catch(() => ''))
+      return null
+    }
+
     const data = (await res.json()) as MapillaryResponse
     return data.data?.[0]?.thumb_256_url ?? null
-  } catch {
+  } catch (err) {
+    console.error('[Mapillary] Fetch error:', err)
     return null
   }
 }
@@ -119,26 +127,43 @@ export function getCategoryPlaceholder(tags: Record<string, string>): string {
   return `https://picsum.photos/seed/${encodeURIComponent(keyword)}/600/338`
 }
 
-// ── Async generator — sequential, intentional ─────────────────────────────────
+// ── Async generator — parallel fetch, first-ready-first-shown ──────────────────
+// Both Mapillary and Wikidata start fetching simultaneously.
+// Results are yielded as soon as they're ready (race condition).
 
 export async function* streamPOIImages(poi: {
   lat: number
   lon: number
   tags: Record<string, string>
 }): AsyncGenerator<POIImageResult> {
-  // 1. Wikidata
+  // Start both fetches in parallel
+  const promises: Promise<POIImageResult | null>[] = []
+
+  // Mapillary promise
+  promises.push(
+    fetchMapillaryImage(poi.lat, poi.lon).then((url) =>
+      url ? { url, source: 'mapillary' as const } : null
+    )
+  )
+
+  // Wikidata promise (only if wikidata tag exists)
   if (poi.tags['wikidata']) {
-    const url = await fetchWikidataImage(poi.tags['wikidata'])
-    if (url) yield { url, source: 'wikidata' }
+    promises.push(
+      fetchWikidataImage(poi.tags['wikidata']).then((url) =>
+        url ? { url, source: 'wikidata' as const } : null
+      )
+    )
   }
 
-  // 2. Flickr — disabled, uncomment when paid account is ready
+  // Yield results as they complete (race condition)
+  const results = await Promise.all(promises)
+  for (const result of results) {
+    if (result) yield result
+  }
+
+  // Flickr — disabled, uncomment when paid account is ready
   // const flickrUrls = await fetchFlickrImages(poi.lat, poi.lon, poi.tags)
   // for (const url of flickrUrls) {
   //   yield { url, source: 'flickr' }
   // }
-
-  // 3. Mapillary
-  const mapillaryUrl = await fetchMapillaryImage(poi.lat, poi.lon)
-  if (mapillaryUrl) yield { url: mapillaryUrl, source: 'mapillary' }
 }

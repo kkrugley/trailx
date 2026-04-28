@@ -2,5 +2,10 @@
   "buildCommand": "pnpm --filter app build",
   "outputDirectory": "packages/app/dist",
   "installCommand": "pnpm install",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://trailxbot-production.up.railway.app/api/:path*" },
+    { "source": "/auth/:path*", "destination": "https://trailxbot-production.up.railway.app/auth/:path*" },
+    { "source": "/routes/:path*", "destination": "https://trailxbot-production.up.railway.app/routes/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

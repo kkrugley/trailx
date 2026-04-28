@@ -1,4 +1,4 @@
-import { Trash, MapPin } from '@phosphor-icons/react'
+import { Trash, Path } from '@phosphor-icons/react'
 import type { SavedRouteDTO, LocalRoute } from '@trailx/shared'
 import styles from './RouteListItem.module.css'
 
@@ -19,7 +19,7 @@ export function RouteListItem({ route, onLoad, onDelete }: RouteListItemProps) {
   return (
     <div className={styles.item}>
       <button className={styles.loadBtn} onClick={onLoad} aria-label={`Load route ${route.name}`}>
-        <MapPin size={15} weight="regular" className={styles.icon} />
+        <Path size={14} weight="regular" className={styles.icon} />
         <div className={styles.info}>
           <span className={styles.name}>{route.name}</span>
           {(distanceKm != null || profileId) && (

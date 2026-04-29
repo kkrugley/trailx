@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FloppyDisk, TelegramLogo, X } from '@phosphor-icons/react'
-import type { LocalRoute, SavedRouteDTO } from '@trailx/shared'
+import type { LocalRoute, SavedRouteDTO, BotRouteDTO } from '@trailx/shared'
 import { usePlatform } from '../../hooks/usePlatform'
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { useMapStore } from '../../store/useMapStore'
@@ -18,7 +18,7 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
   const { isTMA } = usePlatform()
   const { webApp } = useTelegramWebApp()
   const { authUser, isLoggedIn, isSimulated, logout, loginWithTelegram } = useAuth()
-  const { savedRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, loadRoute } = useSavedRoutes()
+  const { savedRoutes, botRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, loadRoute } = useSavedRoutes()
   const localRoutes = useMapStore((s) => s.localRoutes)
   const waypoints = useMapStore((s) => s.waypoints)
 
@@ -153,17 +153,32 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
           <div className={styles.loading}>
             <div className={styles.spinner} />
           </div>
-        ) : savedRoutes.length === 0 ? (
+        ) : savedRoutes.length === 0 && botRoutes.length === 0 ? (
           <p className={styles.emptyHint}>No saved routes yet.</p>
         ) : (
-          savedRoutes.map((r: SavedRouteDTO) => (
-            <RouteListItem
-              key={r.id}
-              route={r}
-              onLoad={() => { loadRoute(r); onClose?.() }}
-              onDelete={() => deleteRoute(r.id)}
-            />
-          ))
+          <>
+            {savedRoutes.map((r: SavedRouteDTO) => (
+              <RouteListItem
+                key={r.id}
+                route={r}
+                onLoad={() => { loadRoute(r); onClose?.() }}
+                onDelete={() => deleteRoute(r.id)}
+              />
+            ))}
+            {botRoutes.length > 0 && (
+              <>
+                <span className={styles.sectionSubLabel}>From Bot</span>
+                {botRoutes.map((r: BotRouteDTO) => (
+                  <RouteListItem
+                    key={r.id}
+                    route={r}
+                    onLoad={() => { loadRoute(r); onClose?.() }}
+                    readOnly
+                  />
+                ))}
+              </>
+            )}
+          </>
         )}
       </div>
 

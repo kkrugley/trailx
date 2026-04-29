@@ -17,13 +17,18 @@ model Group {
 }
 
 model Route {
-  id        String   @id @default(cuid())
-  groupId   String
-  group     Group    @relation(fields: [groupId], references: [id])
-  name      String?
-  waypoints Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  groupId           String
+  group             Group    @relation(fields: [groupId], references: [id])
+  name              String?
+  waypoints         Json
+  creatorTelegramId BigInt?
+  distanceKm        Float?
+  elevationM        Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([creatorTelegramId])
 }
 
 model Subscription {

@@ -1,4 +1,4 @@
-import type { SessionPayload, CreateSessionResponse, GetSessionResponse, AuthUser, SavedRouteDTO, SaveRoutePayload } from '@trailx/shared'
+import type { SessionPayload, CreateSessionResponse, GetSessionResponse, AuthUser, SavedRouteDTO, SaveRoutePayload, BotRouteDTO } from '@trailx/shared'
 
 const API_BASE = (import.meta as ImportMeta & { env: Record<string, string> }).env
   .VITE_API_URL ?? ''
@@ -114,6 +114,15 @@ export async function deleteSavedRoute(id: string, authHeader: TmaHeader = {}): 
     headers: authHeader,
   })
   if (!res.ok) throw new Error(`deleteSavedRoute failed: ${res.status}`)
+}
+
+export async function listUserBotRoutes(authHeader: TmaHeader = {}): Promise<BotRouteDTO[]> {
+  const res = await fetch(`${API_BASE}/api/user-bot-routes`, {
+    credentials: 'include',
+    headers: authHeader,
+  })
+  if (!res.ok) throw new Error(`listUserBotRoutes failed: ${res.status}`)
+  return res.json() as Promise<BotRouteDTO[]>
 }
 
 export async function renameSavedRoute(id: string, name: string, authHeader: TmaHeader = {}): Promise<SavedRouteDTO> {

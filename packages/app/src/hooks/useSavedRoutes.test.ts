@@ -43,8 +43,7 @@ const mockActions = {
   addLocalRoute: vi.fn(),
   removeLocalRoute: vi.fn(),
   clearLocalRoutes: vi.fn(),
-  clearRoute: vi.fn(),
-  addWaypoint: vi.fn(),
+  setWaypoints: vi.fn(),
   setAccountOpen: vi.fn(),
 }
 
@@ -303,13 +302,14 @@ describe('useSavedRoutes', () => {
   })
 
   describe('loadRoute', () => {
-    it('calls clearRoute then adds each waypoint', () => {
+    it('calls setWaypoints with all route waypoints at once', () => {
       const { result } = renderHook(() => useSavedRoutes())
 
       act(() => { result.current.loadRoute(MOCK_ROUTE) })
 
-      expect(mockActions.clearRoute).toHaveBeenCalledOnce()
-      expect(mockActions.addWaypoint).toHaveBeenCalledTimes(MOCK_ROUTE.waypoints.length)
+      expect(mockActions.setWaypoints).toHaveBeenCalledOnce()
+      const points = mockActions.setWaypoints.mock.calls[0][0] as Array<{ lat: number }>
+      expect(points).toHaveLength(MOCK_ROUTE.waypoints.length)
     })
 
     it('closes account panel after loading', () => {
@@ -320,14 +320,13 @@ describe('useSavedRoutes', () => {
       expect(mockActions.setAccountOpen).toHaveBeenCalledWith(false)
     })
 
-    it('passes correct waypoint data to addWaypoint', () => {
+    it('passes correct waypoint data to setWaypoints', () => {
       const { result } = renderHook(() => useSavedRoutes())
 
       act(() => { result.current.loadRoute(MOCK_ROUTE) })
 
-      expect(mockActions.addWaypoint).toHaveBeenCalledWith(
-        expect.objectContaining({ lat: 53.9, lng: 27.5, type: 'start', label: 'Start' }),
-      )
+      const points = mockActions.setWaypoints.mock.calls[0][0] as Array<Record<string, unknown>>
+      expect(points[0]).toMatchObject({ lat: 53.9, lng: 27.5, label: 'Start' })
     })
   })
 })

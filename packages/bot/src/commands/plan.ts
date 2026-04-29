@@ -26,6 +26,7 @@ export function registerPlan(bot: Bot<Context>): void {
           groupId: group.id,
           name,
           waypoints: [],
+          creatorTelegramId: ctx.from ? BigInt(ctx.from.id) : null,
         },
       })
 

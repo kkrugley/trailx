@@ -3,7 +3,6 @@ import { registerPaymentHandlers } from '../payments'
 import { registerStart } from './start'
 import { registerPlan } from './plan'
 import { registerMyRoutes } from './myroutes'
-import { registerEdit } from './edit'
 import { registerApp } from './app'
 import { registerAdd } from './add'
 import { registerVote } from './vote'
@@ -19,7 +18,6 @@ export function registerCommands(bot: Bot<Context>): void {
   registerStart(bot)
   registerPlan(bot)
   registerMyRoutes(bot)
-  registerEdit(bot)
   registerApp(bot)
   registerAdd(bot)
   registerVote(bot)

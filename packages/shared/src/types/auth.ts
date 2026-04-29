@@ -31,3 +31,14 @@ export interface SaveRoutePayload {
   elevationM?: number
   profileId: string
 }
+
+export interface BotRouteDTO {
+  id: string
+  name: string
+  waypoints: unknown[]
+  distanceKm: number | null
+  elevationM: number | null
+  groupId: string
+  createdAt: string
+  updatedAt: string
+}

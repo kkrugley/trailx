@@ -1,22 +1,38 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { SavedRouteDTO, SaveRoutePayload, LocalRoute } from '@trailx/shared'
+import type { SavedRouteDTO, SaveRoutePayload, LocalRoute, BotRouteDTO } from '@trailx/shared'
+import type { RoutePoint } from '@trailx/shared'
 import { usePlatform } from './usePlatform'
 import { useTelegramWebApp } from './useTelegramWebApp'
 import { useMapStore } from '../store/useMapStore'
 import {
   listSavedRoutes,
+  listUserBotRoutes,
   createSavedRoute,
   deleteSavedRoute as apiDeleteSavedRoute,
 } from '../services/api'
 
 export interface UseSavedRoutesReturn {
   savedRoutes: SavedRouteDTO[]
+  botRoutes: BotRouteDTO[]
   isLoading: boolean
   error: string | null
   isMigrating: boolean
   saveCurrentRoute: (name: string) => Promise<void>
   deleteRoute: (id: string) => Promise<void>
-  loadRoute: (route: SavedRouteDTO | LocalRoute) => void
+  loadRoute: (route: SavedRouteDTO | LocalRoute | BotRouteDTO) => void
+}
+
+function normaliseBotWaypoints(raw: unknown[]): RoutePoint[] {
+  const wps = raw as Array<{ lat: number; lng: number; label?: string; order: number }>
+  const sorted = [...wps].sort((a, b) => a.order - b.order)
+  return sorted.map((wp, i) => ({
+    id: crypto.randomUUID(),
+    lat: wp.lat,
+    lng: wp.lng,
+    label: wp.label,
+    order: wp.order,
+    type: (i === 0 ? 'start' : i === sorted.length - 1 ? 'end' : 'intermediate') as RoutePoint['type'],
+  }))
 }
 
 export function useSavedRoutes(): UseSavedRoutesReturn {
@@ -27,10 +43,11 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
   const profile = useMapStore((s) => s.profile)
   const routeResult = useMapStore((s) => s.routeResult)
   const waypoints = useMapStore((s) => s.waypoints)
-  const { addLocalRoute, removeLocalRoute, clearLocalRoutes, clearRoute, addWaypoint, setAccountOpen } =
+  const { addLocalRoute, removeLocalRoute, clearLocalRoutes, setWaypoints, setAccountOpen } =
     useMapStore((s) => s.actions)
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRouteDTO[]>([])
+  const [botRoutes, setBotRoutes] = useState<BotRouteDTO[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isMigrating, setIsMigrating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +99,35 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     },
   ]
 
+  const mockBotRoutes: BotRouteDTO[] = [
+    {
+      id: 'mock-bot-route-1',
+      name: 'Минск → Несвиж',
+      waypoints: [
+        { lat: 53.9045, lng: 27.5615, label: 'Минск (центр)', order: 0 },
+        { lat: 53.2195, lng: 26.6820, label: 'Несвиж', order: 1 },
+      ],
+      distanceKm: 107.4,
+      elevationM: 285,
+      groupId: 'mock-group-1',
+      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+      updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    },
+    {
+      id: 'mock-bot-route-2',
+      name: 'Велопоход по Налибокам',
+      waypoints: [
+        { lat: 53.6512, lng: 26.3240, label: 'Воложин', order: 0 },
+        { lat: 53.6890, lng: 26.7140, label: 'Ивенец', order: 1 },
+      ],
+      distanceKm: null,
+      elevationM: null,
+      groupId: 'mock-group-1',
+      createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
+      updatedAt: new Date(Date.now() - 86400000 * 10).toISOString(),
+    },
+  ]
+
   function buildAuthHeader(): { 'x-telegram-initdata': string } | Record<string, never> {
     if (isTMA && webApp?.initData) {
       return { 'x-telegram-initdata': webApp.initData }
@@ -90,9 +136,9 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
   }
 
   useEffect(() => {
-    // Return mock routes for debug simulation
     if (debugSimulateAuth) {
       setSavedRoutes(mockRoutes)
+      setBotRoutes(mockBotRoutes)
       setIsLoading(false)
       setIsMigrating(false)
       return
@@ -100,6 +146,7 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
 
     if (!authUser) {
       setSavedRoutes([])
+      setBotRoutes([])
       return
     }
 
@@ -109,9 +156,22 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
 
     async function fetchAndMigrate() {
       try {
-        const routes = await listSavedRoutes(buildAuthHeader())
+        const [savedResult, botResult] = await Promise.allSettled([
+          listSavedRoutes(buildAuthHeader()),
+          listUserBotRoutes(buildAuthHeader()),
+        ])
+
         if (cancelled) return
-        setSavedRoutes(routes)
+
+        const saved = savedResult.status === 'fulfilled' ? savedResult.value : []
+        const bot = botResult.status === 'fulfilled' ? botResult.value : []
+
+        setSavedRoutes(saved)
+        setBotRoutes(bot)
+
+        if (savedResult.status === 'rejected') {
+          setError(savedResult.reason instanceof Error ? savedResult.reason.message : 'Failed to load routes')
+        }
 
         // Post-login migration: push local routes to server
         const snapshot = useMapStore.getState().localRoutes
@@ -142,9 +202,9 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
       }
     }
 
-  void fetchAndMigrate()
-  return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    void fetchAndMigrate()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser, debugSimulateAuth])
 
   const saveCurrentRoute = useCallback(async (name: string) => {
@@ -187,14 +247,33 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     setSavedRoutes((prev) => prev.filter((r) => r.id !== id))
   }, [authUser, isTMA, webApp, removeLocalRoute])
 
-  const loadRoute = useCallback((route: SavedRouteDTO | LocalRoute) => {
-    clearRoute()
-    const wps = route.waypoints as Array<{ id: string; lat: number; lng: number; order: number; label?: string; type: 'start' | 'end' | 'intermediate' }>
-    for (const wp of wps) {
-      addWaypoint({ id: wp.id ?? crypto.randomUUID(), lat: wp.lat, lng: wp.lng, order: wp.order ?? 0, type: wp.type ?? 'intermediate', label: wp.label })
-    }
-    setAccountOpen(false)
-  }, [clearRoute, addWaypoint, setAccountOpen])
+  const loadRoute = useCallback((route: SavedRouteDTO | LocalRoute | BotRouteDTO) => {
+    let points: RoutePoint[]
 
-  return { savedRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, loadRoute }
+    if ('groupId' in route) {
+      points = normaliseBotWaypoints(route.waypoints)
+    } else {
+      const wps = route.waypoints as Array<{
+        id?: string
+        lat: number
+        lng: number
+        order: number
+        label?: string
+        type?: 'start' | 'end' | 'intermediate'
+      }>
+      points = wps.map((wp) => ({
+        id: wp.id ?? crypto.randomUUID(),
+        lat: wp.lat,
+        lng: wp.lng,
+        order: wp.order ?? 0,
+        type: wp.type ?? 'intermediate',
+        label: wp.label,
+      }))
+    }
+
+    setWaypoints(points)
+    setAccountOpen(false)
+  }, [setWaypoints, setAccountOpen])
+
+  return { savedRoutes, botRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, loadRoute }
 }

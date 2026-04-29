@@ -12,6 +12,7 @@ import { registerClient, unregisterClient } from './ws/hub'
 import { sessionRoutes } from './routes/sessions'
 import { authRoutes, authOidcRoutes } from './routes/auth.js'
 import { savedRoutesRoutes } from './routes/savedRoutes.js'
+import { userBotRoutesRoutes } from './routes/userBotRoutes.js'
 import { graphhopperRoutes } from './routes/graphhopper.js'
 import { webpayRoutes } from './routes/webpay'
 import { cryptopayRoutes } from './routes/cryptopay'
@@ -117,6 +118,7 @@ fastify.register(sessionRoutes, { prefix: '/api/sessions' })
 fastify.register(authOidcRoutes, { prefix: '/auth' })
 fastify.register(authRoutes, { prefix: '/api/auth' })
 fastify.register(savedRoutesRoutes, { prefix: '/api/saved-routes' })
+fastify.register(userBotRoutesRoutes, { prefix: '/api/user-bot-routes' })
 
 // Payment webhooks
 fastify.register(webpayRoutes)

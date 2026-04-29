@@ -37,7 +37,7 @@ function toAuthUser(user: {
 }): AuthUser {
   return {
     id: user.id,
-    telegramId: Number(user.telegramId),
+    telegramId: user.telegramId.toString(),
     name: user.name ?? '',
     username: user.username ?? undefined,
     avatarUrl: user.avatarUrl ?? undefined,

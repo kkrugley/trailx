@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
+import rateLimit from '@fastify/rate-limit'
 import rawBody from 'fastify-raw-body'
 import websocket from '@fastify/websocket'
 import { Bot } from 'grammy'
@@ -71,6 +72,15 @@ await fastify.register(cookie, {
 
 await fastify.register(rawBody)
 await fastify.register(websocket)
+await fastify.register(rateLimit, {
+  max: 60,
+  timeWindow: '1 minute',
+  keyGenerator: (req) => {
+    const initData = req.headers['x-telegram-initdata']
+    if (typeof initData === 'string' && initData) return initData.slice(0, 64)
+    return req.ip
+  },
+})
 
 // Sentry error handler — must be registered before routes
 Sentry.setupFastifyErrorHandler(fastify)
@@ -160,21 +170,59 @@ setInterval(async () => {
   if (count > 0) console.log(`Cleaned up ${count} expired sessions`)
 }, 60 * 60 * 1000)
 
+// Daily expiry reminder — notify 7 days before subscription expires
+setInterval(async () => {
+  const now = new Date()
+  const in7days = new Date(now.getTime() + 7 * 86400_000)
+  try {
+    const subs = await prisma.subscription.findMany({
+      where: {
+        status: 'active',
+        expiresAt: { lte: in7days, gte: now },
+        reminderSentAt: null,
+      },
+    })
+    for (const sub of subs) {
+      try {
+        await bot.api.sendMessage(
+          Number(sub.chatId),
+          `⏰ Подписка <b>TrailX Pro</b> истекает ${sub.expiresAt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}.\n\nПродли её через /upgrade.`,
+          { parse_mode: 'HTML' },
+        )
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: { reminderSentAt: now },
+        })
+      } catch {
+        // Bot may be blocked — ignore silently
+      }
+    }
+  } catch (err) {
+    console.error('[expiry-reminder] error:', err)
+  }
+}, 24 * 60 * 60 * 1000)
+
 // Graceful shutdown — flush Sentry events before exit
 process.on('SIGTERM', async () => {
   await Sentry.close(2000)
   process.exit(0)
 })
 
+const ALLOWED_UPDATES = [
+  'message', 'callback_query', 'pre_checkout_query',
+  'poll', 'poll_answer', 'inline_query',
+  'my_chat_member', 'chat_member', 'chosen_inline_result',
+] as const
+
 if (WEBHOOK_DOMAIN) {
   const webhookUrl = `${WEBHOOK_DOMAIN}/webhook/bot`
   await bot.api.setWebhook(webhookUrl, {
     secret_token: WEBHOOK_SECRET || undefined,
-    allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'],
+    allowed_updates: ALLOWED_UPDATES,
   })
   console.log(`Webhook set: ${webhookUrl}`)
 } else {
   // Local dev: use long polling
   console.log('Starting long polling...')
-  void bot.start({ allowed_updates: ['message', 'callback_query', 'pre_checkout_query', 'poll', 'poll_answer', 'inline_query', 'my_chat_member'] })
+  void bot.start({ allowed_updates: ALLOWED_UPDATES })
 }

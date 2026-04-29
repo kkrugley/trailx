@@ -493,7 +493,9 @@ export function registerUpgrade(bot: Bot<Context>): void {
 
   // ── Subscription transfer: confirm in group context ───────────────────────
   bot.callbackQuery(/^confirm_transfer:(\d+):(monthly|annual)$/, async (ctx) => {
+    // Answer immediately — must happen within 10s and before any DB work
     await ctx.answerCallbackQuery()
+
     const userId = BigInt(ctx.match[1])
     const planId = ctx.match[2] as PlanId
     const groupChatId = BigInt(ctx.chat?.id ?? 0)
@@ -501,17 +503,24 @@ export function registerUpgrade(bot: Bot<Context>): void {
 
     // Only the buyer can confirm
     if (confirmerId !== userId) {
-      await ctx.answerCallbackQuery('⚠️ Только покупатель может активировать подписку.')
+      await ctx.reply('⚠️ Только покупатель может активировать подписку.')
       return
     }
 
     try {
-      // Find subscription bought in a private chat (chatId == userId)
+      // Find personal subscription (chatId == userId, not yet linked to a group)
       const sub = await prisma.subscription.findFirst({
-        where: { userId, chatId: userId, status: 'active' },
+        where: { userId, chatId: userId, status: 'active', linkedGroupChatId: null },
       })
       if (!sub) {
-        await ctx.reply('⚠️ Активная личная подписка не найдена.')
+        const linked = await prisma.subscription.findFirst({
+          where: { userId, chatId: userId, status: 'active' },
+        })
+        if (linked?.linkedGroupChatId) {
+          await ctx.reply('ℹ️ Подписка уже привязана к группе. Передать её в другую группу нельзя.')
+        } else {
+          await ctx.reply('⚠️ Активная личная подписка не найдена.')
+        }
         return
       }
 
@@ -521,11 +530,30 @@ export function registerUpgrade(bot: Bot<Context>): void {
         return
       }
 
+      // COPY model: personal sub stays active, create a new group sub with same expiry
       await prisma.$transaction([
-        // Move subscription chatId to the group
-        prisma.subscription.update({ where: { id: sub.id }, data: { chatId: groupChatId } }),
-        // Remove isPro from the old private "group" record
-        prisma.group.updateMany({ where: { chatId: userId }, data: { isPro: false } }),
+        // Mark personal sub as linked (prevents re-transfer)
+        prisma.subscription.update({
+          where: { id: sub.id },
+          data: { linkedGroupChatId: groupChatId },
+        }),
+        // Create a new subscription for the group (copy of personal)
+        prisma.subscription.create({
+          data: {
+            chatId: groupChatId,
+            userId,
+            plan: sub.plan,
+            status: 'active',
+            provider: sub.provider,
+            amount: sub.amount,
+            currency: sub.currency,
+            telegramPaymentChargeId: sub.telegramPaymentChargeId
+              ? `${sub.telegramPaymentChargeId}_group`
+              : null,
+            providerPaymentChargeId: sub.providerPaymentChargeId,
+            expiresAt: sub.expiresAt,
+          },
+        }),
         // Activate Pro for the target group
         prisma.group.upsert({
           where: { chatId: groupChatId },
@@ -543,7 +571,8 @@ export function registerUpgrade(bot: Bot<Context>): void {
         `🎉 <b>TrailX Pro</b> активирован для этой группы!\n\n` +
         `📦 План: ${plan.label}\n` +
         `📅 Действует до: <b>${expiryStr}</b>\n\n` +
-        `Доступны: /add, /vote, /gpx, /weather.`,
+        `Доступны: /add, /vote, /gpx, /weather.\n\n` +
+        `💡 Твоя личная подписка также остаётся активной.`,
         { parse_mode: 'HTML' },
       )
     } catch (err) {

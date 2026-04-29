@@ -15,7 +15,7 @@ export interface UseAuthReturn {
 
 const SIMULATED_USER: AuthUser = {
   id: 'debug-user-123',
-  telegramId: 123456789,
+  telegramId: '123456789',
   name: 'Debug User',
   username: 'debuguser',
   avatarUrl: undefined,

@@ -43,6 +43,11 @@ export function validateTelegramInitData(initData: string): CallerIdentity {
     throw new AuthError('Invalid initData')
   }
 
+  const authDate = Number(params.get('auth_date') ?? 0)
+  if (Date.now() / 1000 - authDate > 86400) {
+    throw new AuthError('Telegram session expired. Please reopen the app.')
+  }
+
   const userJson = params.get('user')
   if (!userJson) throw new AuthError('Invalid initData: missing user')
 

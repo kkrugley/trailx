@@ -21,7 +21,7 @@ const mockUseMapStore = vi.mocked(useMapStore)
 
 const MOCK_USER = {
   id: 'user-1',
-  telegramId: 12345,
+  telegramId: '12345',
   name: 'Alice',
   username: 'alice',
   avatarUrl: undefined,

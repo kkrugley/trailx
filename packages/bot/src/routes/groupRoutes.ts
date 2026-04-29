@@ -46,9 +46,11 @@ function toDTO(
 
 export const groupRoutesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/group-routes — all routes from groups the user belongs to
-  fastify.get('/', async (req, reply) => {
+  fastify.get<{ Querystring: { limit?: string; offset?: string } }>('/', async (req, reply) => {
     try {
       const telegramId = await resolveTelegramId(req)
+      const limit = Math.min(Number(req.query.limit ?? 20), 50)
+      const offset = Number(req.query.offset ?? 0)
 
       // Find all groups this user is a member of
       const memberships = await prisma.groupMember.findMany({
@@ -65,7 +67,8 @@ export const groupRoutesRoutes: FastifyPluginAsync = async (fastify) => {
       const routes = await prisma.route.findMany({
         where: { groupId: { in: groupIds } },
         orderBy: { updatedAt: 'desc' },
-        take: 50,
+        take: limit,
+        skip: offset,
         select: {
           id: true,
           name: true,

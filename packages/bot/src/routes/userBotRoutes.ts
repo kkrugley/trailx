@@ -40,13 +40,16 @@ function toDTO(route: {
 
 export const userBotRoutesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/user-bot-routes — own bot routes
-  fastify.get('/', async (req, reply) => {
+  fastify.get<{ Querystring: { limit?: string; offset?: string } }>('/', async (req, reply) => {
     try {
       const telegramId = await resolveTelegramId(req)
+      const limit = Math.min(Number(req.query.limit ?? 20), 50)
+      const offset = Number(req.query.offset ?? 0)
       const routes = await prisma.route.findMany({
         where: { creatorTelegramId: telegramId },
         orderBy: { updatedAt: 'desc' },
-        take: 20,
+        take: limit,
+        skip: offset,
         select: {
           id: true,
           name: true,
@@ -79,6 +82,17 @@ export const userBotRoutesRoutes: FastifyPluginAsync = async (fastify) => {
         if (route.creatorTelegramId !== telegramId) return reply.code(403).send({ error: 'Forbidden' })
 
         const { name, waypoints } = req.body
+
+        if (waypoints !== undefined) {
+          const valid = Array.isArray(waypoints) &&
+            waypoints.every((w: unknown) => {
+              const wp = w as Record<string, unknown>
+              return typeof wp.lat === 'number' && typeof wp.lng === 'number' &&
+                     wp.lat >= -90 && wp.lat <= 90 && wp.lng >= -180 && wp.lng <= 180
+            })
+          if (!valid) return reply.code(400).send({ error: 'Invalid waypoints' })
+        }
+
         const data: Prisma.RouteUpdateInput = {}
         if (name !== undefined) data.name = name.trim()
         if (waypoints !== undefined) data.waypoints = waypoints as Prisma.InputJsonValue

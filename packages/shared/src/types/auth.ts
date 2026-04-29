@@ -1,6 +1,6 @@
 export interface AuthUser {
   id: string
-  telegramId: number
+  telegramId: string
   name: string
   username?: string
   avatarUrl?: string

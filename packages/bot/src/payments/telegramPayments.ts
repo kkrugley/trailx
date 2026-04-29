@@ -1,4 +1,5 @@
 import type { Bot, Context } from 'grammy'
+import { InlineKeyboard } from 'grammy'
 import { prisma } from '../db'
 import { calcExpiresAt, isPlanId } from './plans'
 import { getPlanSafe } from '../services/pricing'
@@ -112,12 +113,72 @@ export function registerPaymentHandlers(bot: Bot<Context>): void {
         `Теперь доступны все групповые функции: /add, /vote, /gpx, /weather.`,
         { parse_mode: 'HTML' },
       )
+
+      // If purchased in a private chat — offer to transfer to a group
+      const isPrivateChat = chatId === BigInt(ctx.from.id)
+      if (isPrivateChat) {
+        const kb = new InlineKeyboard().switchInlineChosen(
+          '👥 Активировать для группы',
+          {
+            query: `transfer:${ctx.from.id}:${planId}`,
+            allow_group_chats: true,
+            allow_channel_chats: false,
+            allow_user_chats: false,
+            allow_bot_chats: false,
+          },
+        )
+        await ctx.reply(
+          '💡 <b>Подписка привязана к твоему личному чату.</b>\n\n' +
+          'Хочешь передать её в один из групповых чатов? ' +
+          'После передачи группа получит Pro-доступ, а личный чат — нет.',
+          { parse_mode: 'HTML', reply_markup: kb },
+        )
+      }
     } catch (err) {
       console.error('[payment] Failed to activate subscription:', err)
       await ctx.reply(
         '⚠️ Платёж прошёл, но произошла ошибка активации подписки. ' +
         'Обратись в поддержку с кодом: ' + telegramPaymentChargeId,
       )
+    }
+  })
+
+  // ── Refund — deactivate subscription ────────────────────────────────────────
+  bot.on('message:refunded_payment', async (ctx) => {
+    const payment = ctx.message.refunded_payment
+    if (!payment) return
+
+    const chatId = BigInt(ctx.chat.id)
+    const chargeId = payment.telegram_payment_charge_id
+
+    try {
+      const sub = await prisma.subscription.findFirst({
+        where: { telegramPaymentChargeId: chargeId },
+      })
+
+      await prisma.$transaction([
+        prisma.subscription.updateMany({
+          where: { telegramPaymentChargeId: chargeId },
+          data: { status: 'refunded' },
+        }),
+        prisma.group.updateMany({ where: { chatId }, data: { isPro: false } }),
+      ])
+
+      // Also revoke the linked group subscription if this was a personal sub
+      if (sub?.linkedGroupChatId) {
+        await prisma.group.updateMany({
+          where: { chatId: sub.linkedGroupChatId },
+          data: { isPro: false },
+        })
+        await prisma.subscription.updateMany({
+          where: { chatId: sub.linkedGroupChatId, status: 'active' },
+          data: { status: 'refunded' },
+        })
+      }
+
+      await ctx.reply('ℹ️ Возврат средств выполнен. Подписка TrailX Pro деактивирована.')
+    } catch (err) {
+      console.error('[payment] Failed to process refund:', err)
     }
   })
 }

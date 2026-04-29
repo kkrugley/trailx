@@ -2,10 +2,22 @@ import type { Bot, Context } from 'grammy'
 import { InlineKeyboard } from 'grammy'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../db'
-import { geocode, type GeocodedPlace } from '../services/geocode'
+import { geocode, reverseGeocode, type GeocodedPlace } from '../services/geocode'
 import { broadcastRouteUpdate } from '../ws/hub'
-import { requireSubscription } from '../middleware/requireSubscription'
 import type { StoredWaypoint } from '../types'
+
+const FREE_TIER_LIMIT = 3
+
+async function isProUser(chatId: bigint, userId: bigint): Promise<boolean> {
+  const groupSub = await prisma.subscription.findFirst({
+    where: { chatId, status: 'active', expiresAt: { gt: new Date() } },
+  })
+  if (groupSub) return true
+  const personalSub = await prisma.subscription.findFirst({
+    where: { chatId: userId, status: 'active', expiresAt: { gt: new Date() } },
+  })
+  return !!personalSub
+}
 
 // ── In-memory result cache (10 min TTL) ─────────────────────────────────────
 // Avoids encoding full place data in callback_data (64-byte Telegram limit).
@@ -50,13 +62,22 @@ async function doSearch(
   await ctx.reply(`Найдено ${count} ${word}. Выбери нужное:`, { reply_markup: kb })
 }
 
+// Pattern: "52.0977 23.7341" or "52.0977,23.7341"
+const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/
+
 export function registerAdd(bot: Bot<Context>): void {
   // ── /add command ──────────────────────────────────────────────────────────
-  bot.command('add', requireSubscription, async (ctx) => {
+  bot.command('add', async (ctx) => {
     try {
       const place = ctx.match.trim()
       if (!place) {
-        await ctx.reply('Использование: /add <место>\nПример: /add Брест вокзал')
+        await ctx.reply(
+          'Использование:\n' +
+          '/add <место> — поиск по названию\n' +
+          '/add <широта> <долгота> — добавить по координатам\n\n' +
+          'Пример: /add Брест вокзал\n' +
+          'Пример: /add 52.0977 23.7341',
+        )
         return
       }
 
@@ -76,6 +97,44 @@ export function registerAdd(bot: Bot<Context>): void {
       }
 
       const waypoints = route.waypoints as unknown as StoredWaypoint[]
+      const userId = BigInt(ctx.from?.id ?? ctx.chat.id)
+
+      // ── Free-tier limit check ─────────────────────────────────────────────
+      if (waypoints.length >= FREE_TIER_LIMIT && !(await isProUser(chatId, userId))) {
+        await ctx.reply(
+          `⚠️ Бесплатный план позволяет добавить до ${FREE_TIER_LIMIT} точек в маршрут.\n\n` +
+          'Оформи TrailX Pro через /upgrade для неограниченного количества точек.',
+        )
+        return
+      }
+
+      // ── Coordinate input shortcut ─────────────────────────────────────────
+      const coordMatch = place.match(COORD_RE)
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1])
+        const lng = parseFloat(coordMatch[2])
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          const label = (await reverseGeocode(lat, lng)) ?? `${lat}, ${lng}`
+          const newWaypoint: StoredWaypoint = {
+            lat,
+            lng,
+            label,
+            order: waypoints.length,
+          }
+          const updated = [...waypoints, newWaypoint]
+          await prisma.route.update({
+            where: { id: routeId },
+            data: { waypoints: updated as unknown as Prisma.InputJsonValue },
+          })
+          broadcastRouteUpdate(chatId.toString(), routeId, updated)
+          await ctx.reply(
+            `✅ *${label}* добавлен в маршрут!\nТочек в маршруте: ${updated.length}`,
+            { parse_mode: 'Markdown' },
+          )
+          return
+        }
+      }
+
       await doSearch(ctx, place, routeId, waypoints)
     } catch (err) {
       console.error('[/add]', err)
@@ -108,6 +167,16 @@ export function registerAdd(bot: Bot<Context>): void {
       }
 
       const waypoints = route.waypoints as unknown as StoredWaypoint[]
+      const userId = BigInt(ctx.from?.id ?? ctx.chat!.id)
+
+      if (waypoints.length >= FREE_TIER_LIMIT && !(await isProUser(chatId, userId))) {
+        await ctx.editMessageText(
+          `⚠️ Бесплатный план позволяет добавить до ${FREE_TIER_LIMIT} точек в маршрут.\n\n` +
+          'Оформи TrailX Pro через /upgrade для неограниченного количества точек.',
+        )
+        return
+      }
+
       const newWaypoint: StoredWaypoint = {
         lat: place.lat,
         lng: place.lng,

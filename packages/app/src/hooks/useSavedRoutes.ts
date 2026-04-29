@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { SavedRouteDTO, SaveRoutePayload, LocalRoute, BotRouteDTO } from '@trailx/shared'
+import type { SavedRouteDTO, SaveRoutePayload, LocalRoute, BotRouteDTO, GroupRouteDTO } from '@trailx/shared'
 import type { RoutePoint } from '@trailx/shared'
 import { usePlatform } from './usePlatform'
 import { useTelegramWebApp } from './useTelegramWebApp'
@@ -7,19 +7,23 @@ import { useMapStore } from '../store/useMapStore'
 import {
   listSavedRoutes,
   listUserBotRoutes,
+  listGroupRoutes,
   createSavedRoute,
   deleteSavedRoute as apiDeleteSavedRoute,
+  deleteBotRoute as apiDeleteBotRoute,
 } from '../services/api'
 
 export interface UseSavedRoutesReturn {
   savedRoutes: SavedRouteDTO[]
   botRoutes: BotRouteDTO[]
+  groupRoutes: GroupRouteDTO[]
   isLoading: boolean
   error: string | null
   isMigrating: boolean
   saveCurrentRoute: (name: string) => Promise<void>
   deleteRoute: (id: string) => Promise<void>
-  loadRoute: (route: SavedRouteDTO | LocalRoute | BotRouteDTO) => void
+  deleteBotRoute: (id: string) => Promise<void>
+  loadRoute: (route: SavedRouteDTO | LocalRoute | BotRouteDTO | GroupRouteDTO) => void
 }
 
 function normaliseBotWaypoints(raw: unknown[]): RoutePoint[] {
@@ -48,6 +52,7 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRouteDTO[]>([])
   const [botRoutes, setBotRoutes] = useState<BotRouteDTO[]>([])
+  const [groupRoutes, setGroupRoutes] = useState<GroupRouteDTO[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isMigrating, setIsMigrating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,35 +73,6 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
       createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
       updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     },
-    {
-      id: 'mock-route-2',
-      name: 'Morning Ride: Lakes Loop',
-      waypoints: [
-        { id: 'wp4', lat: 53.8891, lng: 27.6748, order: 0, type: 'start', label: 'Zaslonava' },
-        { id: 'wp5', lat: 53.8765, lng: 27.7210, order: 1, type: 'intermediate', label: 'Water Reservoir' },
-        { id: 'wp6', lat: 53.8891, lng: 27.6748, order: 2, type: 'end', label: 'Zaslonava' },
-      ],
-      distanceKm: 12.3,
-      elevationM: 78,
-      profileId: 'racingbike',
-      createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-      updatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    },
-    {
-      id: 'mock-route-3',
-      name: 'Weekend MTB Trail',
-      waypoints: [
-        { id: 'wp7', lat: 53.9342, lng: 27.5934, order: 0, type: 'start', label: 'Forest Entrance' },
-        { id: 'wp8', lat: 53.9456, lng: 27.6123, order: 1, type: 'intermediate', label: 'Lake View' },
-        { id: 'wp9', lat: 53.9512, lng: 27.6345, order: 2, type: 'intermediate', label: 'Hill Top' },
-        { id: 'wp10', lat: 53.9342, lng: 27.5934, order: 3, type: 'end', label: 'Forest Exit' },
-      ],
-      distanceKm: 18.7,
-      elevationM: 156,
-      profileId: 'mtb',
-      createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
-      updatedAt: new Date(Date.now() - 86400000 * 8).toISOString(),
-    },
   ]
 
   const mockBotRoutes: BotRouteDTO[] = [
@@ -113,8 +89,11 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
       createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
       updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     },
+  ]
+
+  const mockGroupRoutes: GroupRouteDTO[] = [
     {
-      id: 'mock-bot-route-2',
+      id: 'mock-group-route-1',
       name: 'Велопоход по Налибокам',
       waypoints: [
         { lat: 53.6512, lng: 26.3240, label: 'Воложин', order: 0 },
@@ -122,7 +101,9 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
       ],
       distanceKm: null,
       elevationM: null,
-      groupId: 'mock-group-1',
+      groupId: 'mock-group-2',
+      groupChatId: '-1001234567890',
+      isOwner: false,
       createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
       updatedAt: new Date(Date.now() - 86400000 * 10).toISOString(),
     },
@@ -139,6 +120,7 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     if (debugSimulateAuth) {
       setSavedRoutes(mockRoutes)
       setBotRoutes(mockBotRoutes)
+      setGroupRoutes(mockGroupRoutes)
       setIsLoading(false)
       setIsMigrating(false)
       return
@@ -147,6 +129,7 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     if (!authUser) {
       setSavedRoutes([])
       setBotRoutes([])
+      setGroupRoutes([])
       return
     }
 
@@ -156,18 +139,21 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
 
     async function fetchAndMigrate() {
       try {
-        const [savedResult, botResult] = await Promise.allSettled([
+        const [savedResult, botResult, groupResult] = await Promise.allSettled([
           listSavedRoutes(buildAuthHeader()),
           listUserBotRoutes(buildAuthHeader()),
+          listGroupRoutes(buildAuthHeader()),
         ])
 
         if (cancelled) return
 
         const saved = savedResult.status === 'fulfilled' ? savedResult.value : []
         const bot = botResult.status === 'fulfilled' ? botResult.value : []
+        const group = groupResult.status === 'fulfilled' ? groupResult.value : []
 
         setSavedRoutes(saved)
         setBotRoutes(bot)
+        setGroupRoutes(group)
 
         if (savedResult.status === 'rejected') {
           setError(savedResult.reason instanceof Error ? savedResult.reason.message : 'Failed to load routes')
@@ -247,7 +233,12 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     setSavedRoutes((prev) => prev.filter((r) => r.id !== id))
   }, [authUser, isTMA, webApp, removeLocalRoute])
 
-  const loadRoute = useCallback((route: SavedRouteDTO | LocalRoute | BotRouteDTO) => {
+  const deleteBotRoute = useCallback(async (id: string) => {
+    await apiDeleteBotRoute(id, buildAuthHeader())
+    setBotRoutes((prev) => prev.filter((r) => r.id !== id))
+  }, [isTMA, webApp])
+
+  const loadRoute = useCallback((route: SavedRouteDTO | LocalRoute | BotRouteDTO | GroupRouteDTO) => {
     let points: RoutePoint[]
 
     if ('groupId' in route) {
@@ -275,5 +266,5 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     setAccountOpen(false)
   }, [setWaypoints, setAccountOpen])
 
-  return { savedRoutes, botRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, loadRoute }
+  return { savedRoutes, botRoutes, groupRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, loadRoute }
 }

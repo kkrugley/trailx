@@ -1,58 +1,46 @@
 import type { Bot, Context } from 'grammy'
-import type { InlineQueryResultArticle } from 'grammy/types'
-import { prisma } from '../db'
+import { InlineKeyboard } from 'grammy'
+import { getPlanSafe } from '../services/pricing'
+import type { PlanId } from '../payments/plans'
 
 export function registerInlineQuery(bot: Bot<Context>): void {
   bot.on('inline_query', async (ctx) => {
     try {
       const query = ctx.inlineQuery.query.trim()
-      const userId = ctx.inlineQuery.from.id
 
-      // Resolve groups the user belongs to (check membership via Telegram API)
-      const groups = await prisma.group.findMany({ select: { id: true, chatId: true } })
+      // Subscription transfer: query = "transfer:{userId}:{planId}"
+      const transferMatch = query.match(/^transfer:(\d+):(monthly|annual)$/)
+      if (transferMatch) {
+        const [, userId, planId] = transferMatch
+        const plan = await getPlanSafe(planId as PlanId)
+        const priceHint = plan.priceDisplay ? ` — ${plan.priceDisplay}` : ''
 
-      const memberGroupIds = (await Promise.allSettled(
-        groups.map(async (g) => {
-          const member = await ctx.api.getChatMember(Number(g.chatId), userId)
-          if (['member', 'administrator', 'creator'].includes(member.status)) {
-            return g.id
-          }
-          return null
-        }),
-      ))
-        .filter((r): r is PromiseFulfilledResult<string> =>
-          r.status === 'fulfilled' && r.value !== null,
+        const confirmKb = new InlineKeyboard()
+          .text('✅ Подтвердить активацию', `confirm_transfer:${userId}:${planId}`)
+
+        await ctx.answerInlineQuery(
+          [
+            {
+              type: 'article' as const,
+              id: 'activate',
+              title: '✅ Активировать TrailX Pro для этой группы',
+              description: `План: ${plan.label}${priceHint}`,
+              input_message_content: {
+                message_text:
+                  `🎉 <b>TrailX Pro</b> — запрос на активацию!\n` +
+                  `📦 План: ${plan.label}${priceHint}\n\n` +
+                  `Нажми кнопку ниже для подтверждения.`,
+                parse_mode: 'HTML' as const,
+              },
+              reply_markup: confirmKb,
+            },
+          ],
+          { cache_time: 0 },
         )
-        .map((r) => r.value)
-
-      if (memberGroupIds.length === 0) {
-        await ctx.answerInlineQuery([], { cache_time: 60 })
         return
       }
 
-      const routes = await prisma.route.findMany({
-        where: {
-          groupId: { in: memberGroupIds },
-          ...(query ? { name: { contains: query, mode: 'insensitive' as const } } : {}),
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 5,
-      })
-
-      const results: InlineQueryResultArticle[] = routes.map((r) => ({
-        type: 'article' as const,
-        id: r.id,
-        title: r.name ?? r.id,
-        description: `Точек: ${(r.waypoints as unknown[]).length}`,
-        input_message_content: {
-          message_text:
-            `🗺 *${r.name ?? 'Маршрут'}*\n` +
-            `Точек: ${(r.waypoints as unknown[]).length}`,
-          parse_mode: 'Markdown' as const,
-        },
-      }))
-
-      await ctx.answerInlineQuery(results, { cache_time: 300 })
+      await ctx.answerInlineQuery([], { cache_time: 60 })
     } catch (err) {
       console.error('[inline_query]', err)
       await ctx.answerInlineQuery([], { cache_time: 0 })

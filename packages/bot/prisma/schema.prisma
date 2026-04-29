@@ -8,12 +8,26 @@ datasource db {
 }
 
 model Group {
-  id            String   @id
-  chatId        BigInt   @unique
-  isPro         Boolean  @default(false)
+  id            String        @id
+  chatId        BigInt        @unique
+  isPro         Boolean       @default(false)
   activeRouteId String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime      @default(now())
   routes        Route[]
+  members       GroupMember[]
+}
+
+model GroupMember {
+  id         String   @id @default(cuid())
+  groupId    String
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  telegramId BigInt
+  status     String   @default("member") // 'member' | 'administrator' | 'creator' | 'left' | 'kicked'
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([groupId, telegramId])
+  @@index([telegramId])
 }
 
 model Route {
@@ -42,6 +56,8 @@ model Subscription {
   provider                String?  // "stars" | "ton" | "webpay"
   telegramPaymentChargeId String?  @unique
   providerPaymentChargeId String?
+  linkedGroupChatId       BigInt?
+  reminderSentAt          DateTime?
   expiresAt               DateTime
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -137,15 +153,16 @@ model WebSession {
 
 // Subscription plans — dynamic pricing from DB
 model Plan {
-  id String @id // 'monthly' | 'annual'
-  label String // '1 месяц' | '1 год'
-  description String // описание подписки
-  days Int // срок в днях
-  isActive Boolean @default(true)
-  sortOrder Int @default(0) // для сортировки в UI
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  pricing ProviderPricing[]
+  id           String   @id // 'monthly' | 'annual'
+  label        String   // '1 месяц' | '1 год'
+  description  String   // описание подписки
+  days         Int      // срок в днях
+  priceDisplay String?  // ориентировочная цена для UI, например "$5"
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0) // для сортировки в UI
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  pricing      ProviderPricing[]
 }
 
 // Provider-specific pricing for each plan

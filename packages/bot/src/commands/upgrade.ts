@@ -17,7 +17,6 @@ import {
 import {
   getPlans,
   getPlanSafe,
-  getPricingForProviderSafe,
 } from '../services/pricing'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -54,25 +53,11 @@ async function planKeyboard(): Promise<InlineKeyboard> {
   const kb = new InlineKeyboard()
 
   for (const plan of plans) {
-    const providers = getAvailableProviders()
-    let displayPrice = ''
-
-    for (const provider of providers) {
-      const supports = await provider.supportsPlan?.(plan.id)
-      if (supports !== false) {
-        const pricing = await getPricingForProviderSafe(plan.id, provider.id)
-        if (pricing) {
-          displayPrice = pricing.displayAmount
-          break
-        }
-      }
-    }
-
+    const price = plan.priceDisplay ?? ''
     const prefix = plan.id === 'annual' ? '🔥' : '✅'
-    const label = displayPrice
-      ? `${prefix} ${plan.label} — ${displayPrice}`
+    const label = price
+      ? `${prefix} ${plan.label} — ${price}`
       : `${prefix} ${plan.label}`
-
     kb.text(label, `pay:${plan.id}`).row()
   }
 
@@ -504,5 +489,95 @@ export function registerUpgrade(bot: Bot<Context>): void {
   bot.callbackQuery('sub:cancel_abort', async (ctx) => {
     await ctx.answerCallbackQuery('Подписка сохранена 👍')
     await ctx.reply('👍 Подписка сохранена.')
+  })
+
+  // ── Subscription transfer: confirm in group context ───────────────────────
+  bot.callbackQuery(/^confirm_transfer:(\d+):(monthly|annual)$/, async (ctx) => {
+    // Answer immediately — must happen within 10s and before any DB work
+    await ctx.answerCallbackQuery()
+
+    const userId = BigInt(ctx.match[1])
+    const planId = ctx.match[2] as PlanId
+    const groupChatId = BigInt(ctx.chat?.id ?? 0)
+    const confirmerId = BigInt(ctx.from?.id ?? 0)
+
+    // Only the buyer can confirm
+    if (confirmerId !== userId) {
+      await ctx.reply('⚠️ Только покупатель может активировать подписку.')
+      return
+    }
+
+    try {
+      // Find personal subscription (chatId == userId, not yet linked to a group)
+      const sub = await prisma.subscription.findFirst({
+        where: { userId, chatId: userId, status: 'active', linkedGroupChatId: null },
+      })
+      if (!sub) {
+        const linked = await prisma.subscription.findFirst({
+          where: { userId, chatId: userId, status: 'active' },
+        })
+        if (linked?.linkedGroupChatId) {
+          await ctx.reply('ℹ️ Подписка уже привязана к группе. Передать её в другую группу нельзя.')
+        } else {
+          await ctx.reply('⚠️ Активная личная подписка не найдена.')
+        }
+        return
+      }
+
+      const existing = await getActiveSub(groupChatId)
+      if (existing?.status === 'active') {
+        await ctx.reply('ℹ️ У этой группы уже есть активная подписка.')
+        return
+      }
+
+      // COPY model: personal sub stays active, create a new group sub with same expiry
+      await prisma.$transaction([
+        // Mark personal sub as linked (prevents re-transfer)
+        prisma.subscription.update({
+          where: { id: sub.id },
+          data: { linkedGroupChatId: groupChatId },
+        }),
+        // Create a new subscription for the group (copy of personal)
+        prisma.subscription.create({
+          data: {
+            chatId: groupChatId,
+            userId,
+            plan: sub.plan,
+            status: 'active',
+            provider: sub.provider,
+            amount: sub.amount,
+            currency: sub.currency,
+            telegramPaymentChargeId: sub.telegramPaymentChargeId
+              ? `${sub.telegramPaymentChargeId}_group`
+              : null,
+            providerPaymentChargeId: sub.providerPaymentChargeId,
+            expiresAt: sub.expiresAt,
+          },
+        }),
+        // Activate Pro for the target group
+        prisma.group.upsert({
+          where: { chatId: groupChatId },
+          create: { id: groupChatId.toString(), chatId: groupChatId, isPro: true },
+          update: { isPro: true },
+        }),
+      ])
+
+      const plan = await getPlanSafe(planId)
+      const expiryStr = sub.expiresAt.toLocaleDateString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      })
+
+      await ctx.reply(
+        `🎉 <b>TrailX Pro</b> активирован для этой группы!\n\n` +
+        `📦 План: ${plan.label}\n` +
+        `📅 Действует до: <b>${expiryStr}</b>\n\n` +
+        `Доступны: /add, /vote, /gpx, /weather.\n\n` +
+        `💡 Твоя личная подписка также остаётся активной.`,
+        { parse_mode: 'HTML' },
+      )
+    } catch (err) {
+      console.error('[confirm_transfer]', err)
+      await ctx.reply('⚠️ Ошибка при передаче подписки. Попробуй позже.')
+    }
   })
 }

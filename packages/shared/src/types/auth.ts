@@ -1,6 +1,6 @@
 export interface AuthUser {
   id: string
-  telegramId: number
+  telegramId: string
   name: string
   username?: string
   avatarUrl?: string
@@ -41,4 +41,9 @@ export interface BotRouteDTO {
   groupId: string
   createdAt: string
   updatedAt: string
+}
+
+export interface GroupRouteDTO extends BotRouteDTO {
+  groupChatId: string
+  isOwner: boolean
 }

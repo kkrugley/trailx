@@ -1,17 +1,4 @@
-const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org'
-const NOMINATIM_EMAIL = 'trailx@app'
-
-// 1 req/sec throttle per Nominatim usage policy
-let lastCallTime = 0
-
-function throttledFetch(url: string): Promise<Response> {
-  const now = Date.now()
-  const wait = Math.max(0, lastCallTime + 1000 - now)
-  lastCallTime = now + wait
-  return new Promise((resolve, reject) =>
-    setTimeout(() => fetch(url).then(resolve, reject), wait),
-  )
-}
+const PHOTON_BASE = 'https://photon.komoot.io'
 
 export interface GeocodedPlace {
   lat: number
@@ -24,45 +11,50 @@ interface Waypoint {
   lng: number
 }
 
-interface NominatimResult {
-  lat: string
-  lon: string
-  display_name: string
-  address?: Partial<Record<string, string>>
+interface PhotonProperties {
+  name?: string
+  street?: string
+  housenumber?: string
+  city?: string
+  town?: string
+  village?: string
+  county?: string
+  country?: string
+  type?: string
 }
 
-function buildLabel(result: NominatimResult): string {
-  const a = result.address
-  if (!a) return result.display_name.split(',').slice(0, 2).join(',').trim()
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] }
+  properties: PhotonProperties
+}
 
-  const city = a.city ?? a.town ?? a.village ?? a.suburb ?? a.municipality
-  const poi = a.name ?? a.amenity ?? a.tourism ?? a.leisure ?? a.natural
+interface PhotonResponse {
+  features: PhotonFeature[]
+}
 
-  if (poi) {
-    const road = a.road ?? a.pedestrian ?? a.footway
-    const streetHint = road
-      ? a.house_number
-        ? `${road} ${a.house_number}`
-        : road
-      : null
-    const context = [streetHint, city].filter(Boolean).join(', ')
+function buildLabel(p: PhotonProperties): string {
+  const poi = p.name
+  const road = p.street
+  const house = p.housenumber
+  const city = p.city ?? p.town ?? p.village ?? p.county
+
+  if (poi && poi !== road) {
+    const streetPart = road ? (house ? `${road} ${house}` : road) : null
+    const context = [streetPart, city].filter(Boolean).join(', ')
     return context ? `${poi} — ${context}` : poi
   }
 
-  const road = a.road ?? a.pedestrian ?? a.footway ?? a.cycleway ?? a.path
   if (road) {
-    const streetAddr = a.house_number ? `${road} ${a.house_number}` : road
+    const streetAddr = house ? `${road} ${house}` : road
     return city ? `${streetAddr}, ${city}` : streetAddr
   }
 
-  return result.display_name.split(',').slice(0, 2).join(',').trim()
+  return city ?? p.country ?? 'Unknown'
 }
 
 /**
- * Search for places using Nominatim.
- * If routeWaypoints are provided, applies a soft geographic bias toward the
- * route's bounding box (results outside the box are still returned if nothing
- * is found inside).
+ * Forward geocoding via Photon (Komoot).
+ * If routeWaypoints provided, applies a bbox soft bias.
  */
 export async function geocode(
   query: string,
@@ -71,37 +63,61 @@ export async function geocode(
   if (!query.trim()) return []
 
   const params = new URLSearchParams({
-    format: 'json',
     q: query.trim(),
+    lang: 'ru',
     limit: '5',
-    'accept-language': 'ru,en',
-    email: NOMINATIM_EMAIL,
-    addressdetails: '1',
   })
 
   if (routeWaypoints && routeWaypoints.length > 0) {
     const lats = routeWaypoints.map((w) => w.lat)
     const lngs = routeWaypoints.map((w) => w.lng)
-    const pad = 0.05 // ~5 km
-    const minLng = Math.min(...lngs) - pad
-    const minLat = Math.min(...lats) - pad
-    const maxLng = Math.max(...lngs) + pad
-    const maxLat = Math.max(...lats) + pad
-    // Nominatim viewbox: left(minLng), top(maxLat), right(maxLng), bottom(minLat)
-    params.set('viewbox', `${minLng},${maxLat},${maxLng},${minLat}`)
-    params.set('bounded', '0') // soft bias — still return results outside box
+    const pad = 0.05
+    params.set('bbox', [
+      Math.min(...lngs) - pad,
+      Math.min(...lats) - pad,
+      Math.max(...lngs) + pad,
+      Math.max(...lats) + pad,
+    ].join(','))
   }
 
   try {
-    const res = await throttledFetch(`${NOMINATIM_BASE}/search?${params}`)
-    if (!res.ok) return []
-    const results = (await res.json()) as NominatimResult[]
-    return results.map((r) => ({
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-      name: buildLabel(r),
+    const res = await fetch(`${PHOTON_BASE}/api/?${params}`)
+    if (!res.ok) {
+      console.error('[geocode] Photon returned', res.status)
+      return []
+    }
+    const data = (await res.json()) as PhotonResponse
+    return data.features.map((f) => ({
+      lat: f.geometry.coordinates[1],
+      lng: f.geometry.coordinates[0],
+      name: buildLabel(f.properties),
     }))
-  } catch {
+  } catch (err) {
+    console.error('[geocode] Photon fetch error:', err)
     return []
+  }
+}
+
+/**
+ * Reverse geocoding via Photon — returns a short human-readable label.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lon: String(lng),
+      lang: 'ru',
+    })
+    const res = await fetch(`${PHOTON_BASE}/reverse?${params}`)
+    if (!res.ok) {
+      console.error('[reverseGeocode] Photon returned', res.status)
+      return null
+    }
+    const data = (await res.json()) as PhotonResponse
+    if (!data.features.length) return null
+    return buildLabel(data.features[0].properties)
+  } catch (err) {
+    console.error('[reverseGeocode] Photon fetch error:', err)
+    return null
   }
 }

@@ -2,7 +2,7 @@ import type { Bot, Context } from 'grammy'
 import { InlineKeyboard } from 'grammy'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../db'
-import { geocode, type GeocodedPlace } from '../services/geocode'
+import { geocode, reverseGeocode, type GeocodedPlace } from '../services/geocode'
 import { broadcastRouteUpdate } from '../ws/hub'
 import { requireSubscription } from '../middleware/requireSubscription'
 import type { StoredWaypoint } from '../types'
@@ -50,13 +50,22 @@ async function doSearch(
   await ctx.reply(`Найдено ${count} ${word}. Выбери нужное:`, { reply_markup: kb })
 }
 
+// Pattern: "52.0977 23.7341" or "52.0977,23.7341"
+const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/
+
 export function registerAdd(bot: Bot<Context>): void {
   // ── /add command ──────────────────────────────────────────────────────────
   bot.command('add', requireSubscription, async (ctx) => {
     try {
       const place = ctx.match.trim()
       if (!place) {
-        await ctx.reply('Использование: /add <место>\nПример: /add Брест вокзал')
+        await ctx.reply(
+          'Использование:\n' +
+          '/add <место> — поиск по названию\n' +
+          '/add <широта> <долгота> — добавить по координатам\n\n' +
+          'Пример: /add Брест вокзал\n' +
+          'Пример: /add 52.0977 23.7341',
+        )
         return
       }
 
@@ -76,6 +85,34 @@ export function registerAdd(bot: Bot<Context>): void {
       }
 
       const waypoints = route.waypoints as unknown as StoredWaypoint[]
+
+      // ── Coordinate input shortcut ─────────────────────────────────────────
+      const coordMatch = place.match(COORD_RE)
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1])
+        const lng = parseFloat(coordMatch[2])
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          const label = (await reverseGeocode(lat, lng)) ?? `${lat}, ${lng}`
+          const newWaypoint: StoredWaypoint = {
+            lat,
+            lng,
+            label,
+            order: waypoints.length,
+          }
+          const updated = [...waypoints, newWaypoint]
+          await prisma.route.update({
+            where: { id: routeId },
+            data: { waypoints: updated as unknown as Prisma.InputJsonValue },
+          })
+          broadcastRouteUpdate(chatId.toString(), routeId, updated)
+          await ctx.reply(
+            `✅ *${label}* добавлен в маршрут!\nТочек в маршруте: ${updated.length}`,
+            { parse_mode: 'Markdown' },
+          )
+          return
+        }
+      }
+
       await doSearch(ctx, place, routeId, waypoints)
     } catch (err) {
       console.error('[/add]', err)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FloppyDisk, TelegramLogo, X } from '@phosphor-icons/react'
-import type { LocalRoute, SavedRouteDTO, BotRouteDTO } from '@trailx/shared'
+import type { LocalRoute, SavedRouteDTO, BotRouteDTO, GroupRouteDTO } from '@trailx/shared'
 import { usePlatform } from '../../hooks/usePlatform'
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
 import { useMapStore } from '../../store/useMapStore'
@@ -18,7 +18,7 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
   const { isTMA } = usePlatform()
   const { webApp } = useTelegramWebApp()
   const { authUser, isLoggedIn, isSimulated, logout, loginWithTelegram } = useAuth()
-  const { savedRoutes, botRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, loadRoute } = useSavedRoutes()
+  const { savedRoutes, botRoutes, groupRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, loadRoute } = useSavedRoutes()
   const localRoutes = useMapStore((s) => s.localRoutes)
   const waypoints = useMapStore((s) => s.waypoints)
 
@@ -173,7 +173,21 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
                     key={r.id}
                     route={r}
                     onLoad={() => { loadRoute(r); onClose?.() }}
-                    readOnly
+                    onDelete={() => deleteBotRoute(r.id)}
+                  />
+                ))}
+              </>
+            )}
+            {groupRoutes.length > 0 && (
+              <>
+                <span className={styles.sectionSubLabel}>Group Routes</span>
+                {groupRoutes.map((r: GroupRouteDTO) => (
+                  <RouteListItem
+                    key={r.id}
+                    route={r}
+                    onLoad={() => { loadRoute(r); onClose?.() }}
+                    onDelete={r.isOwner ? () => deleteBotRoute(r.id) : undefined}
+                    readOnly={!r.isOwner}
                   />
                 ))}
               </>

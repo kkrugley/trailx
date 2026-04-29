@@ -1,4 +1,5 @@
 import type { Bot, Context } from 'grammy'
+import { InlineKeyboard } from 'grammy'
 import { prisma } from '../db'
 import { calcExpiresAt, isPlanId } from './plans'
 import { getPlanSafe } from '../services/pricing'
@@ -112,6 +113,27 @@ export function registerPaymentHandlers(bot: Bot<Context>): void {
         `Теперь доступны все групповые функции: /add, /vote, /gpx, /weather.`,
         { parse_mode: 'HTML' },
       )
+
+      // If purchased in a private chat — offer to transfer to a group
+      const isPrivateChat = chatId === BigInt(ctx.from.id)
+      if (isPrivateChat) {
+        const kb = new InlineKeyboard().switchInlineChosen(
+          '👥 Активировать для группы',
+          {
+            query: `transfer:${ctx.from.id}:${planId}`,
+            allow_group_chats: true,
+            allow_channel_chats: false,
+            allow_user_chats: false,
+            allow_bot_chats: false,
+          },
+        )
+        await ctx.reply(
+          '💡 <b>Подписка привязана к твоему личному чату.</b>\n\n' +
+          'Хочешь передать её в один из групповых чатов? ' +
+          'После передачи группа получит Pro-доступ, а личный чат — нет.',
+          { parse_mode: 'HTML', reply_markup: kb },
+        )
+      }
     } catch (err) {
       console.error('[payment] Failed to activate subscription:', err)
       await ctx.reply(

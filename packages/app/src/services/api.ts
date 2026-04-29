@@ -1,4 +1,4 @@
-import type { SessionPayload, CreateSessionResponse, GetSessionResponse, AuthUser, SavedRouteDTO, SaveRoutePayload, BotRouteDTO } from '@trailx/shared'
+import type { SessionPayload, CreateSessionResponse, GetSessionResponse, AuthUser, SavedRouteDTO, SaveRoutePayload, BotRouteDTO, GroupRouteDTO } from '@trailx/shared'
 
 const API_BASE = (import.meta as ImportMeta & { env: Record<string, string> }).env
   .VITE_API_URL ?? ''
@@ -134,4 +134,37 @@ export async function renameSavedRoute(id: string, name: string, authHeader: Tma
   })
   if (!res.ok) throw new Error(`renameSavedRoute failed: ${res.status}`)
   return res.json() as Promise<SavedRouteDTO>
+}
+
+export async function listGroupRoutes(authHeader: TmaHeader = {}): Promise<GroupRouteDTO[]> {
+  const res = await fetch(`${API_BASE}/api/group-routes`, {
+    credentials: 'include',
+    headers: authHeader,
+  })
+  if (!res.ok) throw new Error(`listGroupRoutes failed: ${res.status}`)
+  return res.json() as Promise<GroupRouteDTO[]>
+}
+
+export async function updateBotRoute(
+  id: string,
+  body: { name?: string; waypoints?: unknown[] },
+  authHeader: TmaHeader = {},
+): Promise<BotRouteDTO> {
+  const res = await fetch(`${API_BASE}/api/user-bot-routes/${id}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeader },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`updateBotRoute failed: ${res.status}`)
+  return res.json() as Promise<BotRouteDTO>
+}
+
+export async function deleteBotRoute(id: string, authHeader: TmaHeader = {}): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/user-bot-routes/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: authHeader,
+  })
+  if (!res.ok) throw new Error(`deleteBotRoute failed: ${res.status}`)
 }

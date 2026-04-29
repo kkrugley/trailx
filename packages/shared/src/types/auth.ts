@@ -42,3 +42,8 @@ export interface BotRouteDTO {
   createdAt: string
   updatedAt: string
 }
+
+export interface GroupRouteDTO extends BotRouteDTO {
+  groupChatId: string
+  isOwner: boolean
+}

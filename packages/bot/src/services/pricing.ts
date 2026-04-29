@@ -22,6 +22,7 @@ export interface Plan {
   label: string
   description: string
   days: number
+  priceDisplay?: string // ориентировочная цена для UI, например "$5"
   isActive: boolean
   sortOrder: number
 }
@@ -162,6 +163,7 @@ export const FALLBACK_PLANS: Plan[] = [
     label: '1 месяц',
     description: 'TrailX Pro — доступ к групповым маршрутам, командам бота и синхронизации в реальном времени.',
     days: 30,
+    priceDisplay: '$5',
     isActive: true,
     sortOrder: 1,
   },
@@ -170,6 +172,7 @@ export const FALLBACK_PLANS: Plan[] = [
     label: '1 год',
     description: 'TrailX Pro на 12 месяцев — экономия 25% по сравнению с ежемесячной оплатой.',
     days: 365,
+    priceDisplay: '$45',
     isActive: true,
     sortOrder: 2,
   },

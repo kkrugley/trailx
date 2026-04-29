@@ -123,9 +123,11 @@ describe('useSavedRoutes', () => {
       setupMockStore({ debugSimulateAuth: true })
     })
 
-    it('returns 3 mock routes', () => {
+    it('returns mock routes for each category', () => {
       const { result } = renderHook(() => useSavedRoutes())
-      expect(result.current.savedRoutes).toHaveLength(3)
+      expect(result.current.savedRoutes).toHaveLength(1)
+      expect(result.current.botRoutes).toHaveLength(1)
+      expect(result.current.groupRoutes).toHaveLength(1)
     })
 
     it('isLoading is false immediately', () => {

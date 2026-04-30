@@ -81,6 +81,7 @@ desktop.ini
 # Optional: Database
 *.dump
 *.sql
+!packages/bot/prisma/migrations/**/*.sql
 dump.rdb
 *.db
 *.sqlite

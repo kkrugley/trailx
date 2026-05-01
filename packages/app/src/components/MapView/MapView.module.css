@@ -86,3 +86,70 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── WebGL unavailable fallback overlay ──────────────────────────────────── */
+.webglFallback {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  background: var(--surface-variant, #f2ede7);
+  text-align: center;
+}
+
+.webglFallbackIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--text-secondary, #7a7570);
+}
+
+.webglFallbackTitle {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--primary, #151415);
+  margin: 0;
+}
+
+.webglFallbackBody {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #7a7570);
+  margin: 0;
+  max-width: 28rem;
+  line-height: 1.5;
+}
+
+.webglFallbackActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+.webglFallbackBtn {
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: var(--secondary, #4456b5);
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.webglFallbackBtn:hover {
+  opacity: 0.85;
+}
+
+.webglFallbackLink {
+  font-size: 0.8125rem;
+  color: var(--secondary, #4456b5);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

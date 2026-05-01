@@ -182,6 +182,10 @@ export interface Translations {
   mapView: {
     buildingRoute: string
     searchingPoi: string
+    webglUnavailableTitle: string
+    webglUnavailableBody: string
+    webglUnavailableLink: string
+    webglUnavailableReload: string
   }
   appShell: {
     filterAriaLabel: string
@@ -396,6 +400,10 @@ export const ru: Translations = {
   mapView: {
     buildingRoute: 'Строю маршрут…',
     searchingPoi: 'Ищу POI…',
+    webglUnavailableTitle: 'Карта не может загрузиться',
+    webglUnavailableBody: 'В вашем браузере недоступен WebGL. Включите аппаратное ускорение в настройках браузера и обновите страницу.',
+    webglUnavailableLink: 'Как включить WebGL',
+    webglUnavailableReload: 'Перезагрузить',
   },
   appShell: {
     filterAriaLabel: 'Фильтр POI',

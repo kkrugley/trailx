@@ -188,6 +188,10 @@ export const en: Translations = {
   mapView: {
     buildingRoute: 'Building route…',
     searchingPoi: 'Searching POI…',
+    webglUnavailableTitle: 'Map cannot load',
+    webglUnavailableBody: 'WebGL is not available in your browser. Enable hardware acceleration in browser settings and reload the page.',
+    webglUnavailableLink: 'How to enable WebGL',
+    webglUnavailableReload: 'Reload',
   },
   appShell: {
     filterAriaLabel: 'POI filter',

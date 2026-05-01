@@ -228,6 +228,18 @@ function addCustomLayersAndSources(map: maplibregl.Map): void {
   })
 }
 
+function isWebGLSupported(): boolean {
+  try {
+    const canvas = document.createElement('canvas')
+    return !!(
+      canvas.getContext('webgl') ??
+      canvas.getContext('experimental-webgl')
+    )
+  } catch {
+    return false
+  }
+}
+
 export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -238,6 +250,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   // mapReady (bool) is kept for UI-only checks (skeleton, context menu).
   const [mapVersion, setMapVersion] = useState(0)
   const [contextMenu, setContextMenu] = useState<{ lat: number; lng: number; x: number; y: number } | null>(null)
+  const [webglError, setWebglError] = useState(false)
 
   const t = useT()
   const waypoints = useMapStore((s) => s.waypoints)
@@ -379,14 +392,25 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   useEffect(() => {
     if (!containerRef.current) return
 
-    const savedStyle = MAP_STYLES[useMapStore.getState().appSettings.mapStyle] ?? STYLE_URL
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: savedStyle as maplibregl.StyleSpecification | string,
-      center: INITIAL_CENTER,
-      zoom: INITIAL_ZOOM,
-      attributionControl: false,
-    })
+    if (!isWebGLSupported()) {
+      setWebglError(true)
+      return
+    }
+
+    let map: maplibregl.Map
+    try {
+      const savedStyle = MAP_STYLES[useMapStore.getState().appSettings.mapStyle] ?? STYLE_URL
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: savedStyle as maplibregl.StyleSpecification | string,
+        center: INITIAL_CENTER,
+        zoom: INITIAL_ZOOM,
+        attributionControl: false,
+      })
+    } catch {
+      setWebglError(true)
+      return
+    }
 
     mapRef.current = map
 
@@ -585,6 +609,34 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   function handleContextAddPoi() {
     if (!contextMenu) return
     setNewPoiDraft({ lat: contextMenu.lat, lng: contextMenu.lng })
+  }
+
+  if (webglError) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.webglFallback}>
+          <span className={styles.webglFallbackIcon} aria-hidden="true">🗺️</span>
+          <p className={styles.webglFallbackTitle}>{t.mapView.webglUnavailableTitle}</p>
+          <p className={styles.webglFallbackBody}>{t.mapView.webglUnavailableBody}</p>
+          <div className={styles.webglFallbackActions}>
+            <button
+              className={styles.webglFallbackBtn}
+              onClick={() => window.location.reload()}
+            >
+              {t.mapView.webglUnavailableReload}
+            </button>
+            <a
+              className={styles.webglFallbackLink}
+              href="https://get.webgl.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.mapView.webglUnavailableLink}
+            </a>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

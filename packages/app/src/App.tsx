@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AppShell } from './components/shell/AppShell'
+import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary'
 import { useTelegramWebApp } from './hooks/useTelegramWebApp'
 import { useRouteSync } from './hooks/useRouteSync'
 import { useSessionLoader } from './hooks/useSessionLoader'
@@ -44,8 +45,9 @@ export function App() {
 
   return (
     <div className={`${styles.root} ${isAvailable ? styles.tma : ''}`}>
-      <AppShell key={expandCount} />
-
+      <ErrorBoundary>
+        <AppShell key={expandCount} />
+      </ErrorBoundary>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { geocode } from './geocode'
+import { geocode, reverseGeocode } from './geocode'
 
 const mockResult = (display: string) => ({
   lat: '52.1',
@@ -83,5 +83,37 @@ describe('geocode', () => {
   it('returns empty array for empty input', async () => {
     const results = await geocode('')
     expect(results).toHaveLength(0)
+  })
+
+  it('sends User-Agent header to Nominatim', async () => {
+    let capturedInit: RequestInit | undefined
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      capturedInit = init
+      return new Response(JSON.stringify([mockResult('Test')]), { status: 200 })
+    })
+
+    await geocode('минск немига 5')
+    expect(capturedInit?.headers).toBeDefined()
+    expect((capturedInit!.headers as Record<string, string>)['User-Agent']).toMatch(/^TrailX\//)
+  })
+})
+
+describe('reverseGeocode', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends User-Agent header for reverse requests', async () => {
+    let capturedInit: RequestInit | undefined
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      capturedInit = init
+      return new Response(
+        JSON.stringify({ display_name: 'Немига, Минск', address: { road: 'Немига', city: 'Минск' } }),
+        { status: 200 },
+      )
+    })
+
+    await reverseGeocode(53.9, 27.56)
+    expect((capturedInit!.headers as Record<string, string>)['User-Agent']).toMatch(/^TrailX\//)
   })
 })

@@ -3,6 +3,7 @@ import { InlineKeyboard } from 'grammy'
 import { prisma } from '../db'
 import { calcExpiresAt, isPlanId } from './plans'
 import { getPlanSafe } from '../services/pricing'
+import { shouldOfferGroupActivation } from './groupActivation'
 
 /**
  * Registers Telegram Payments lifecycle handlers — covers both:
@@ -76,6 +77,7 @@ export function registerPaymentHandlers(bot: Bot<Context>): void {
             telegramPaymentChargeId,
             providerPaymentChargeId,
             expiresAt,
+            linkedGroupChatId: null,
           },
         }),
         prisma.paymentRecord.create({
@@ -114,9 +116,9 @@ export function registerPaymentHandlers(bot: Bot<Context>): void {
         { parse_mode: 'HTML' },
       )
 
-      // If purchased in a private chat — offer to transfer to a group
+      // If purchased in a private chat and user has common groups — offer to transfer
       const isPrivateChat = chatId === BigInt(ctx.from.id)
-      if (isPrivateChat) {
+      if (isPrivateChat && await shouldOfferGroupActivation(userId)) {
         const kb = new InlineKeyboard().switchInlineChosen(
           '👥 Активировать для группы',
           {

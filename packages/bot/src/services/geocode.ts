@@ -1,5 +1,6 @@
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org'
 const NOMINATIM_EMAIL = 'trailx@app'
+const NOMINATIM_USER_AGENT = 'TrailX/1.0 (https://github.com/kkrugley/trailx)'
 
 export interface GeocodedPlace {
   lat: number
@@ -130,7 +131,9 @@ function buildLabel(result: NominatimResult): string {
 }
 
 async function nominatimFetch(params: URLSearchParams): Promise<NominatimResult[]> {
-  const res = await fetch(`${NOMINATIM_BASE}/search?${params}`)
+  const res = await fetch(`${NOMINATIM_BASE}/search?${params}`, {
+    headers: { 'User-Agent': NOMINATIM_USER_AGENT },
+  })
   if (!res.ok) {
     console.error('[geocode] Nominatim returned', res.status)
     return []
@@ -279,7 +282,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
         'accept-language': 'ru,en',
         email: NOMINATIM_EMAIL,
       })
-      const res = await fetch(`${NOMINATIM_BASE}/reverse?${params}`)
+      const res = await fetch(`${NOMINATIM_BASE}/reverse?${params}`, {
+        headers: { 'User-Agent': NOMINATIM_USER_AGENT },
+      })
       if (!res.ok) {
         console.error('[reverseGeocode] Nominatim returned', res.status)
         return null

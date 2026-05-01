@@ -14,7 +14,7 @@ export function registerApp(bot: Bot<Context>): void {
       const isGroup =
         ctx.chat?.type === 'group' || ctx.chat?.type === 'supergroup'
 
-      const caption = routeId ? '🗺 Открыть маршрут в TrailX' : '🗺 Открыть TrailX'
+      const caption = routeId ? '🗺 Открыть выбранный маршрут в TrailX' : '🗺 Открыть TrailX'
 
       // In groups web_app buttons are silently rejected by Telegram clients —
       // use a plain url button pointing to the t.me deep-link instead.

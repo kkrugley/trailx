@@ -129,9 +129,98 @@ function buildLabel(result: NominatimResult): string {
   return result.display_name.split(',').slice(0, 2).join(',').trim()
 }
 
+async function nominatimFetch(params: URLSearchParams): Promise<NominatimResult[]> {
+  const res = await fetch(`${NOMINATIM_BASE}/search?${params}`)
+  if (!res.ok) {
+    console.error('[geocode] Nominatim returned', res.status)
+    return []
+  }
+  return (await res.json()) as NominatimResult[]
+}
+
+function baseParams(query: string, routeWaypoints?: Waypoint[]): URLSearchParams {
+  const params = new URLSearchParams({
+    format: 'json',
+    q: query.trim(),
+    limit: '5',
+    'accept-language': 'ru,en',
+    email: NOMINATIM_EMAIL,
+    addressdetails: '1',
+  })
+
+  if (routeWaypoints && routeWaypoints.length > 0) {
+    const lats = routeWaypoints.map((w) => w.lat)
+    const lngs = routeWaypoints.map((w) => w.lng)
+    const pad = 0.05
+    params.set('viewbox', [
+      Math.min(...lngs) - pad,
+      Math.min(...lats) - pad,
+      Math.max(...lngs) + pad,
+      Math.max(...lats) + pad,
+    ].join(','))
+    params.set('bounded', '0')
+  }
+
+  return params
+}
+
 /**
- * Forward geocoding via Nominatim.
- * If routeWaypoints provided, applies a viewbox soft bias.
+ * Reorder heuristic for "city street house" → "street house, city" format.
+ * Nominatim parses comma-separated queries significantly better for Cyrillic
+ * addresses where the city comes first.
+ */
+function reorderQuery(query: string): string | null {
+  const tokens = query.trim().split(/\s+/)
+  // Only apply to 2–4 token queries without commas
+  if (tokens.length < 2 || tokens.length > 4 || query.includes(',')) return null
+  // Move first token (likely city) to end after a comma
+  const [city, ...rest] = tokens
+  return `${rest.join(' ')}, ${city}`
+}
+
+/**
+ * Build structured params when input looks like "city street housenumber".
+ * Treats first token as city, rest as street address.
+ */
+function structuredParams(query: string, routeWaypoints?: Waypoint[]): URLSearchParams | null {
+  const tokens = query.trim().split(/\s+/)
+  if (tokens.length < 2 || tokens.length > 4 || query.includes(',')) return null
+
+  const [city, ...streetParts] = tokens
+  const params = new URLSearchParams({
+    format: 'json',
+    street: streetParts.join(' '),
+    city,
+    limit: '5',
+    'accept-language': 'ru,en',
+    email: NOMINATIM_EMAIL,
+    addressdetails: '1',
+  })
+
+  if (routeWaypoints && routeWaypoints.length > 0) {
+    const lats = routeWaypoints.map((w) => w.lat)
+    const lngs = routeWaypoints.map((w) => w.lng)
+    const pad = 0.05
+    params.set('viewbox', [
+      Math.min(...lngs) - pad,
+      Math.min(...lats) - pad,
+      Math.max(...lngs) + pad,
+      Math.max(...lats) + pad,
+    ].join(','))
+    params.set('bounded', '0')
+  }
+
+  return params
+}
+
+/**
+ * Forward geocoding via Nominatim with 3-attempt cascade.
+ *
+ * Attempt 1: raw query as-is.
+ * Attempt 2: reordered "street house, city" form (helps Cyrillic "city street house" patterns).
+ * Attempt 3: structured street= + city= params.
+ *
+ * If routeWaypoints provided, applies a viewbox soft bias on all attempts.
  */
 export async function geocode(
   query: string,
@@ -141,40 +230,33 @@ export async function geocode(
 
   return throttle(async () => {
     try {
-      const params = new URLSearchParams({
-        format: 'json',
-        q: query.trim(),
-        limit: '5',
-        'accept-language': 'ru,en',
-        email: NOMINATIM_EMAIL,
-        addressdetails: '1',
-      })
-
-      if (routeWaypoints && routeWaypoints.length > 0) {
-        const lats = routeWaypoints.map((w) => w.lat)
-        const lngs = routeWaypoints.map((w) => w.lng)
-        const pad = 0.05
-        // Nominatim viewbox: minLon,minLat,maxLon,maxLat
-        params.set('viewbox', [
-          Math.min(...lngs) - pad,
-          Math.min(...lats) - pad,
-          Math.max(...lngs) + pad,
-          Math.max(...lats) + pad,
-        ].join(','))
-        params.set('bounded', '0')
+      // Attempt 1 — original query
+      let data = await nominatimFetch(baseParams(query, routeWaypoints))
+      if (data.length > 0) {
+        return data.map((r) => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), name: buildLabel(r) }))
       }
 
-      const res = await fetch(`${NOMINATIM_BASE}/search?${params}`)
-      if (!res.ok) {
-        console.error('[geocode] Nominatim returned', res.status)
-        return []
+      // Attempt 2 — reordered form (city → end)
+      const reordered = reorderQuery(query)
+      if (reordered) {
+        console.log(`[geocode] attempt 2 (reordered): "${reordered}"`)
+        data = await nominatimFetch(baseParams(reordered, routeWaypoints))
+        if (data.length > 0) {
+          return data.map((r) => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), name: buildLabel(r) }))
+        }
       }
-      const data = (await res.json()) as NominatimResult[]
-      return data.map((r) => ({
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-        name: buildLabel(r),
-      }))
+
+      // Attempt 3 — structured street + city
+      const structured = structuredParams(query, routeWaypoints)
+      if (structured) {
+        console.log(`[geocode] attempt 3 (structured): street="${structured.get('street')}" city="${structured.get('city')}"`)
+        data = await nominatimFetch(structured)
+        if (data.length > 0) {
+          return data.map((r) => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), name: buildLabel(r) }))
+        }
+      }
+
+      return []
     } catch (err) {
       console.error('[geocode] Nominatim fetch error:', err)
       return []

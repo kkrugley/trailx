@@ -3,6 +3,9 @@ import { InlineKeyboard } from 'grammy'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../db'
 import { geocode, reverseGeocode, type GeocodedPlace } from '../services/geocode'
+import { getUserSettings } from '../services/userSettings'
+import { t, pluralRu } from '../i18n/messages'
+import type { Language } from '../i18n/messages'
 import { broadcastRouteUpdate } from '../ws/hub'
 import type { StoredWaypoint } from '../types'
 
@@ -20,7 +23,6 @@ async function isProUser(chatId: bigint, userId: bigint): Promise<boolean> {
 }
 
 // ── In-memory result cache (10 min TTL) ─────────────────────────────────────
-// Avoids encoding full place data in callback_data (64-byte Telegram limit).
 let cacheSeq = 0
 const resultCache = new Map<string, GeocodedPlace[]>()
 
@@ -32,8 +34,7 @@ function cacheResults(results: GeocodedPlace[]): string {
 }
 
 // ── In-memory pending "refine search" state (10 min TTL) ────────────────────
-// Key: `${chatId}:${forceReplyMessageId}` → routeId
-const pendingRefines = new Map<string, string>()
+const pendingRefines = new Map<string, { routeId: string; lang: Language }>()
 
 // ── Search and reply with inline keyboard ────────────────────────────────────
 async function doSearch(
@@ -41,25 +42,25 @@ async function doSearch(
   place: string,
   routeId: string,
   waypoints: StoredWaypoint[],
+  lang: Language,
 ): Promise<void> {
   const results = await geocode(place, waypoints)
 
   if (results.length === 0) {
-    await ctx.reply(`Место "${place}" не найдено. Попробуй /add с более точным запросом.`)
+    await ctx.reply(t(lang, 'addNotFound', { place }))
     return
   }
 
   const cacheKey = cacheResults(results)
   const kb = new InlineKeyboard()
   for (let i = 0; i < results.length; i++) {
-    // Callback data: add_wp:{cacheKey}:{index}:{routeId} — stays well under 64 bytes
     kb.text(results[i].name, `add_wp:${cacheKey}:${i}:${routeId}`).row()
   }
-  kb.text('🔍 Уточнить поиск', `add_refine:${routeId}`)
+  kb.text(t(lang, 'addRefineBtn'), `add_refine:${routeId}`)
 
   const count = results.length
-  const word = count === 1 ? 'место' : count < 5 ? 'места' : 'мест'
-  await ctx.reply(`Найдено ${count} ${word}. Выбери нужное:`, { reply_markup: kb })
+  const word = pluralRu(lang, count, 'addFoundWord1', 'addFoundWord234', 'addFoundWordMany')
+  await ctx.reply(t(lang, 'addFound', { count, word }), { reply_markup: kb })
 }
 
 // Pattern: "52.0977 23.7341" or "52.0977,23.7341"
@@ -68,16 +69,13 @@ const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/
 export function registerAdd(bot: Bot<Context>): void {
   // ── /add command ──────────────────────────────────────────────────────────
   bot.command('add', async (ctx) => {
+    const telegramId = BigInt(ctx.from?.id ?? ctx.chat.id)
+    const { language: lang } = await getUserSettings(telegramId)
+
     try {
       const place = ctx.match.trim()
       if (!place) {
-        await ctx.reply(
-          'Использование:\n' +
-          '/add <место> — поиск по названию\n' +
-          '/add <широта> <долгота> — добавить по координатам\n\n' +
-          'Пример: /add Брест вокзал\n' +
-          'Пример: /add 52.0977 23.7341',
-        )
+        await ctx.reply(t(lang, 'addUsage'))
         return
       }
 
@@ -86,13 +84,13 @@ export function registerAdd(bot: Bot<Context>): void {
       const routeId = group?.activeRouteId
 
       if (!routeId) {
-        await ctx.reply('Нет активного маршрута. Создай через /plan <название>.')
+        await ctx.reply(t(lang, 'addNoRoute'))
         return
       }
 
       const route = await prisma.route.findUnique({ where: { id: routeId } })
       if (!route) {
-        await ctx.reply('Активный маршрут не найден.')
+        await ctx.reply(t(lang, 'addRouteNotFound'))
         return
       }
 
@@ -101,10 +99,7 @@ export function registerAdd(bot: Bot<Context>): void {
 
       // ── Free-tier limit check ─────────────────────────────────────────────
       if (waypoints.length >= FREE_TIER_LIMIT && !(await isProUser(chatId, userId))) {
-        await ctx.reply(
-          `⚠️ Бесплатный план позволяет добавить до ${FREE_TIER_LIMIT} точек в маршрут.\n\n` +
-          'Оформи TrailX Pro через /upgrade для неограниченного количества точек.',
-        )
+        await ctx.reply(t(lang, 'addFreeTierLimit', { limit: FREE_TIER_LIMIT }))
         return
       }
 
@@ -128,32 +123,34 @@ export function registerAdd(bot: Bot<Context>): void {
           })
           broadcastRouteUpdate(chatId.toString(), routeId, updated)
           await ctx.reply(
-            `✅ *${label}* добавлен в маршрут!\nТочек в маршруте: ${updated.length}`,
+            t(lang, 'addAdded', { name: label, count: updated.length }),
             { parse_mode: 'Markdown' },
           )
           return
         }
       }
 
-      await doSearch(ctx, place, routeId, waypoints)
+      await doSearch(ctx, place, routeId, waypoints, lang)
     } catch (err) {
       console.error('[/add]', err)
-      await ctx.reply('Произошла ошибка. Попробуй позже.')
+      await ctx.reply(t(lang, 'addError'))
     }
   })
 
   // ── Callback: add_wp:{cacheKey}:{index}:{routeId} ─────────────────────────
   bot.callbackQuery(/^add_wp:/, async (ctx) => {
     await ctx.answerCallbackQuery()
+    const telegramId = BigInt(ctx.from.id)
+    const { language: lang } = await getUserSettings(telegramId)
+
     try {
       const parts = ctx.callbackQuery.data.split(':')
-      // parts: ['add_wp', cacheKey, index, routeId]
       const [, cacheKey, indexStr, routeId] = parts
       const index = parseInt(indexStr, 10)
 
       const results = resultCache.get(cacheKey)
       if (!results || !results[index]) {
-        await ctx.editMessageText('Время поиска истекло. Повтори /add.')
+        await ctx.editMessageText(t(lang, 'addExpired'))
         return
       }
 
@@ -162,7 +159,7 @@ export function registerAdd(bot: Bot<Context>): void {
 
       const route = await prisma.route.findUnique({ where: { id: routeId } })
       if (!route) {
-        await ctx.editMessageText('Маршрут не найден.')
+        await ctx.editMessageText(t(lang, 'addRouteNotFoundCb'))
         return
       }
 
@@ -170,10 +167,7 @@ export function registerAdd(bot: Bot<Context>): void {
       const userId = BigInt(ctx.from?.id ?? ctx.chat!.id)
 
       if (waypoints.length >= FREE_TIER_LIMIT && !(await isProUser(chatId, userId))) {
-        await ctx.editMessageText(
-          `⚠️ Бесплатный план позволяет добавить до ${FREE_TIER_LIMIT} точек в маршрут.\n\n` +
-          'Оформи TrailX Pro через /upgrade для неограниченного количества точек.',
-        )
+        await ctx.editMessageText(t(lang, 'addFreeTierLimit', { limit: FREE_TIER_LIMIT }))
         return
       }
 
@@ -193,27 +187,30 @@ export function registerAdd(bot: Bot<Context>): void {
       broadcastRouteUpdate(chatId.toString(), routeId, updated)
 
       await ctx.editMessageText(
-        `✅ *${place.name}* добавлен в маршрут!\nТочек в маршруте: ${updated.length}`,
+        t(lang, 'addAdded', { name: place.name, count: updated.length }),
         { parse_mode: 'Markdown' },
       )
     } catch (err) {
       console.error('[add_wp callback]', err)
-      await ctx.reply('Произошла ошибка. Попробуй позже.')
+      await ctx.reply(t(lang, 'addError'))
     }
   })
 
   // ── Callback: add_refine:{routeId} ────────────────────────────────────────
   bot.callbackQuery(/^add_refine:/, async (ctx) => {
+    const telegramId = BigInt(ctx.from.id)
+    const { language: lang } = await getUserSettings(telegramId)
+
     try {
       const routeId = ctx.callbackQuery.data.slice('add_refine:'.length)
-      const sent = await ctx.reply('Введи уточнённый запрос для поиска:', {
+      const sent = await ctx.reply(t(lang, 'addRefinePrompt'), {
         reply_markup: {
           force_reply: true,
-          input_field_placeholder: 'Например: Брест, ул. Ленина',
+          input_field_placeholder: t(lang, 'addRefinePlaceholder'),
         },
       })
       const key = `${ctx.chat!.id}:${sent.message_id}`
-      pendingRefines.set(key, routeId)
+      pendingRefines.set(key, { routeId, lang })
       setTimeout(() => pendingRefines.delete(key), 10 * 60 * 1000)
       await ctx.answerCallbackQuery()
     } catch (err) {
@@ -228,23 +225,24 @@ export function registerAdd(bot: Bot<Context>): void {
     if (!replyTo) return next()
 
     const key = `${ctx.chat.id}:${replyTo}`
-    const routeId = pendingRefines.get(key)
-    if (!routeId) return next()
+    const pending = pendingRefines.get(key)
+    if (!pending) return next()
 
     pendingRefines.delete(key)
+    const { routeId, lang } = pending
 
     try {
       const route = await prisma.route.findUnique({ where: { id: routeId } })
       if (!route) {
-        await ctx.reply('Маршрут не найден.')
+        await ctx.reply(t(lang, 'addRouteNotFoundCb'))
         return
       }
 
       const waypoints = route.waypoints as unknown as StoredWaypoint[]
-      await doSearch(ctx, ctx.message.text, routeId, waypoints)
+      await doSearch(ctx, ctx.message.text, routeId, waypoints, lang)
     } catch (err) {
       console.error('[add refine reply]', err)
-      await ctx.reply('Произошла ошибка. Попробуй позже.')
+      await ctx.reply(t(lang, 'addError'))
     }
   })
 }

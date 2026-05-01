@@ -14,6 +14,7 @@ import { registerUpgrade } from './upgrade'
 import { registerHelp } from './help'
 import { registerInlineQuery } from './inlineQuery'
 import { registerChatMember, upsertGroupMember } from './chatMember'
+import { registerSettings } from './settings'
 
 export function registerCommands(bot: Bot<Context>): void {
   // ── Group membership tracking middleware ──────────────────────────────────
@@ -45,6 +46,7 @@ export function registerCommands(bot: Bot<Context>): void {
   registerSocial(bot)
   registerUpgrade(bot)
   registerPaymentHandlers(bot)
+  registerSettings(bot)
   registerHelp(bot)
   registerInlineQuery(bot)
   registerChatMember(bot)

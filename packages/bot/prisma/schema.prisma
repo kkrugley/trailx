@@ -151,6 +151,14 @@ model WebSession {
   createdAt DateTime @default(now())
 }
 
+model UserSettings {
+  telegramId   BigInt   @id
+  language     String   @default("ru") // 'ru' | 'en'
+  routeProfile String   @default("bike") // 'bike' | 'racingbike' | 'mtb' | 'foot'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 // Subscription plans — dynamic pricing from DB
 model Plan {
   id           String   @id // 'monthly' | 'annual'

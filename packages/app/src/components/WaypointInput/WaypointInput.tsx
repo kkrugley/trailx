@@ -14,6 +14,7 @@ interface WaypointInputProps {
   placeholder: string
   onRemove: (id: string) => void
   onUpdate: (id: string, lat: number, lng: number, label: string) => void
+  readOnly?: boolean
 }
 
 const TYPE_COLORS: Record<RoutePoint['type'], string> = {
@@ -22,7 +23,7 @@ const TYPE_COLORS: Record<RoutePoint['type'], string> = {
   intermediate: '#4456b5',
 }
 
-export function WaypointInput({ point, placeholder, onRemove, onUpdate }: WaypointInputProps) {
+export function WaypointInput({ point, placeholder, onRemove, onUpdate, readOnly }: WaypointInputProps) {
   const {
     attributes,
     listeners,
@@ -89,8 +90,9 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
       <button
         className={styles.dragHandle}
         aria-label="Drag to reorder"
-        {...attributes}
-        {...listeners}
+        disabled={readOnly}
+        style={readOnly ? { opacity: 0.2, cursor: 'default' } : undefined}
+        {...(readOnly ? {} : { ...attributes, ...listeners })}
       >
         <DotsSixVertical size={18} weight="regular" />
       </button>
@@ -107,12 +109,13 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
           className={styles.input}
           value={inputValue}
           placeholder={placeholder}
-          onChange={(e) => {
+          readOnly={readOnly}
+          onChange={readOnly ? undefined : (e) => {
             setInputValue(e.target.value)
             setShowSuggestions(true)
           }}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onFocus={readOnly ? undefined : () => setShowSuggestions(true)}
+          onBlur={readOnly ? undefined : () => setTimeout(() => setShowSuggestions(false), 150)}
         />
         {showSuggestions && suggestions.length > 0 && (
           <SearchSuggestions
@@ -124,13 +127,15 @@ export function WaypointInput({ point, placeholder, onRemove, onUpdate }: Waypoi
         )}
       </div>
 
-      <button
-        className={styles.removeBtn}
-        onClick={() => onRemove(point.id)}
-        aria-label="Remove waypoint"
-      >
-        <X size={16} weight="bold" />
-      </button>
+      {!readOnly && (
+        <button
+          className={styles.removeBtn}
+          onClick={() => onRemove(point.id)}
+          aria-label="Remove waypoint"
+        >
+          <X size={16} weight="bold" />
+        </button>
+      )}
     </li>
   )
 }

@@ -43,8 +43,11 @@ const mockActions = {
   addLocalRoute: vi.fn(),
   removeLocalRoute: vi.fn(),
   clearLocalRoutes: vi.fn(),
+  renameLocalRoute: vi.fn(),
   setWaypoints: vi.fn(),
   setAccountOpen: vi.fn(),
+  setActiveRouteSource: vi.fn(),
+  setActiveLocalRouteId: vi.fn(),
 }
 
 type MockState = {

@@ -23,6 +23,7 @@ import { useMapStore } from '../../store/useMapStore'
 import { usePOISearch } from '../../hooks/usePOISearch'
 import { useMeasureSync } from '../../hooks/useMeasureSync'
 import { useTelegramWebApp } from '../../hooks/useTelegramWebApp'
+import { useRoutePermissions } from '../../hooks/useRoutePermissions'
 import { MapContextMenu } from '../MapContextMenu/MapContextMenu'
 import { generateWaypointIcon } from '../../utils/waypointIcon'
 import { generatePOIIcon } from '../../utils/poiIcon'
@@ -262,6 +263,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
   const isSearchingPOI = useMapStore((s) => s.isSearchingPOI)
   usePOISearch()
   useMeasureSync(mapRef.current, mapVersion)
+  const { canEdit } = useRoutePermissions()
 
   const { setSelectedPOI, updateWaypoint, addIntermediateAt, setNewPoiDraft } = useMapStore((s) => s.actions)
 
@@ -665,6 +667,7 @@ export const MapView = forwardRef<MapViewHandle>(function MapView(_props, ref) {
           onAddIntermediate={handleContextAddIntermediate}
           onSetEnd={handleContextSetEnd}
           onAddPoi={handleContextAddPoi}
+          canEdit={canEdit}
         />
       )}
     </div>

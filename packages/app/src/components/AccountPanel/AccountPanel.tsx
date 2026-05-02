@@ -18,7 +18,7 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
   const { isTMA } = usePlatform()
   const { webApp } = useTelegramWebApp()
   const { authUser, isLoggedIn, isSimulated, logout, loginWithTelegram } = useAuth()
-  const { savedRoutes, botRoutes, groupRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, loadRoute } = useSavedRoutes()
+  const { savedRoutes, botRoutes, groupRoutes, isLoading, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, renameRoute, loadRoute } = useSavedRoutes()
   const localRoutes = useMapStore((s) => s.localRoutes)
   const waypoints = useMapStore((s) => s.waypoints)
 
@@ -86,6 +86,7 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
                 route={r}
                 onLoad={() => loadRoute(r)}
                 onDelete={() => deleteRoute(r.id)}
+                onRename={(name) => void renameRoute(r.id, name)}
               />
             ))}
             <p className={styles.localHint}>
@@ -163,6 +164,7 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
                 route={r}
                 onLoad={() => { loadRoute(r); onClose?.() }}
                 onDelete={() => deleteRoute(r.id)}
+                onRename={(name) => void renameRoute(r.id, name)}
               />
             ))}
             {botRoutes.length > 0 && (

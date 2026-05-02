@@ -78,3 +78,67 @@
   background: rgba(220, 50, 50, 0.07);
   color: #c0392b;
 }
+
+.renameBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--tg-theme-hint-color);
+  opacity: 0.45;
+  transition: opacity 0.1s, background 0.1s;
+}
+
+.renameBtn:hover {
+  opacity: 1;
+  background: rgba(68, 86, 181, 0.07);
+  color: var(--primary);
+}
+
+.editRow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.renameInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  background: var(--surface-container-highest);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: 0.8125rem;
+  color: var(--tg-theme-text-color);
+  outline: none;
+}
+
+.editActionBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--tg-theme-hint-color);
+  opacity: 0.6;
+  transition: opacity 0.1s, background 0.1s;
+}
+
+.editActionBtn:hover {
+  opacity: 1;
+  background: rgba(68, 86, 181, 0.07);
+}

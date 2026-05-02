@@ -19,6 +19,7 @@ const MOCK_ACTIONS = {
   setRouteError: vi.fn(),
   setStandalonePois: vi.fn(),
   setMeasureSessions: vi.fn(),
+  setActiveRouteSource: vi.fn(),
 }
 
 const MOCK_POI = { id: 'poi-1', lat: 48.85, lng: 2.35, name: 'Eiffel Tower', category: 'tourism' as const }

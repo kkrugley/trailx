@@ -13,6 +13,7 @@ export interface MapContextMenuProps {
   onAddIntermediate: () => void
   onSetEnd: () => void
   onAddPoi: () => void
+  canEdit?: boolean
 }
 
 export function MapContextMenu({
@@ -22,6 +23,7 @@ export function MapContextMenu({
   onAddIntermediate,
   onSetEnd,
   onAddPoi,
+  canEdit = true,
 }: MapContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const t = useT()
@@ -87,28 +89,32 @@ export function MapContextMenu({
 
       <div className={styles.divider} />
 
-      {/* Маршрутные действия */}
-      <button className={styles.item} onClick={() => { onSetStart(); onClose() }}>
-        <FlagBanner size={15} weight="fill" className={styles.iconStart} />
-        {t.mapContextMenu.setStart}
-      </button>
-      <button className={styles.item} onClick={() => { onAddIntermediate(); onClose() }}>
-        <PlusCircle size={15} weight="fill" className={styles.iconMid} />
-        {t.mapContextMenu.addIntermediate}
-      </button>
-      <button className={styles.item} onClick={() => { onSetEnd(); onClose() }}>
-        <FlagPennant size={15} weight="fill" className={styles.iconEnd} />
-        {t.mapContextMenu.setEnd}
-      </button>
+      {/* Маршрутные действия — только при canEdit */}
+      {canEdit && (
+        <>
+          <button className={styles.item} onClick={() => { onSetStart(); onClose() }}>
+            <FlagBanner size={15} weight="fill" className={styles.iconStart} />
+            {t.mapContextMenu.setStart}
+          </button>
+          <button className={styles.item} onClick={() => { onAddIntermediate(); onClose() }}>
+            <PlusCircle size={15} weight="fill" className={styles.iconMid} />
+            {t.mapContextMenu.addIntermediate}
+          </button>
+          <button className={styles.item} onClick={() => { onSetEnd(); onClose() }}>
+            <FlagPennant size={15} weight="fill" className={styles.iconEnd} />
+            {t.mapContextMenu.setEnd}
+          </button>
 
-      <div className={styles.divider} />
+          <div className={styles.divider} />
 
-      <button className={styles.item} onClick={() => { onAddPoi(); onClose() }}>
-        <MapPin size={15} weight="fill" className={styles.iconPoi} />
-        {t.mapContextMenu.addMarker}
-      </button>
+          <button className={styles.item} onClick={() => { onAddPoi(); onClose() }}>
+            <MapPin size={15} weight="fill" className={styles.iconPoi} />
+            {t.mapContextMenu.addMarker}
+          </button>
 
-      <div className={styles.divider} />
+          <div className={styles.divider} />
+        </>
+      )}
 
       <button className={styles.item} onClick={copyCoords}>
         <Copy size={15} className={styles.iconUtil} />

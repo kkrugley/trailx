@@ -10,6 +10,7 @@ import {
   listGroupRoutes,
   createSavedRoute,
   deleteSavedRoute as apiDeleteSavedRoute,
+  renameSavedRoute as apiRenameSavedRoute,
   deleteBotRoute as apiDeleteBotRoute,
 } from '../services/api'
 
@@ -23,6 +24,7 @@ export interface UseSavedRoutesReturn {
   saveCurrentRoute: (name: string) => Promise<void>
   deleteRoute: (id: string) => Promise<void>
   deleteBotRoute: (id: string) => Promise<void>
+  renameRoute: (id: string, name: string) => Promise<void>
   loadRoute: (route: SavedRouteDTO | LocalRoute | BotRouteDTO | GroupRouteDTO) => void
 }
 
@@ -47,8 +49,10 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
   const profile = useMapStore((s) => s.profile)
   const routeResult = useMapStore((s) => s.routeResult)
   const waypoints = useMapStore((s) => s.waypoints)
-  const { addLocalRoute, removeLocalRoute, clearLocalRoutes, setWaypoints, setAccountOpen } =
-    useMapStore((s) => s.actions)
+  const {
+    addLocalRoute, removeLocalRoute, clearLocalRoutes, setWaypoints, setAccountOpen,
+    renameLocalRoute, setActiveRouteSource, setActiveLocalRouteId,
+  } = useMapStore((s) => s.actions)
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRouteDTO[]>([])
   const [botRoutes, setBotRoutes] = useState<BotRouteDTO[]>([])
@@ -238,12 +242,33 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
     setBotRoutes((prev) => prev.filter((r) => r.id !== id))
   }, [isTMA, webApp])
 
+  const renameRoute = useCallback(async (id: string, name: string) => {
+    if (!authUser) {
+      renameLocalRoute(id, name)
+      return
+    }
+    const updated = await apiRenameSavedRoute(id, name, buildAuthHeader())
+    setSavedRoutes((prev) => prev.map((r) => r.id === id ? updated : r))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser, isTMA, webApp, renameLocalRoute])
+
   const loadRoute = useCallback((route: SavedRouteDTO | LocalRoute | BotRouteDTO | GroupRouteDTO) => {
     let points: RoutePoint[]
 
-    if ('groupId' in route) {
+    if ('groupChatId' in route) {
+      // GroupRouteDTO — may be read-only if not owner
       points = normaliseBotWaypoints(route.waypoints)
-    } else {
+      setWaypoints(points)
+      setActiveRouteSource({ kind: 'group', isOwner: (route as GroupRouteDTO).isOwner })
+      setActiveLocalRouteId(null)
+    } else if ('groupId' in route) {
+      // BotRouteDTO — personal bot route, always owned
+      points = normaliseBotWaypoints(route.waypoints)
+      setWaypoints(points)
+      setActiveRouteSource({ kind: 'saved', isOwner: true })
+      setActiveLocalRouteId(null)
+    } else if ('profileId' in route) {
+      // SavedRouteDTO — own saved route
       const wps = route.waypoints as Array<{
         id?: string
         lat: number
@@ -260,11 +285,34 @@ export function useSavedRoutes(): UseSavedRoutesReturn {
         type: wp.type ?? 'intermediate',
         label: wp.label,
       }))
+      setWaypoints(points)
+      setActiveRouteSource({ kind: 'saved', isOwner: true })
+      setActiveLocalRouteId(null)
+    } else {
+      // LocalRoute — guest route
+      const wps = route.waypoints as Array<{
+        id?: string
+        lat: number
+        lng: number
+        order: number
+        label?: string
+        type?: 'start' | 'end' | 'intermediate'
+      }>
+      points = wps.map((wp) => ({
+        id: wp.id ?? crypto.randomUUID(),
+        lat: wp.lat,
+        lng: wp.lng,
+        order: wp.order ?? 0,
+        type: wp.type ?? 'intermediate',
+        label: wp.label,
+      }))
+      setWaypoints(points)
+      setActiveRouteSource({ kind: 'local', isOwner: true })
+      setActiveLocalRouteId(route.id)
     }
 
-    setWaypoints(points)
     setAccountOpen(false)
-  }, [setWaypoints, setAccountOpen])
+  }, [setWaypoints, setAccountOpen, setActiveRouteSource, setActiveLocalRouteId])
 
-  return { savedRoutes, botRoutes, groupRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, loadRoute }
+  return { savedRoutes, botRoutes, groupRoutes, isLoading, error, isMigrating, saveCurrentRoute, deleteRoute, deleteBotRoute, renameRoute, loadRoute }
 }

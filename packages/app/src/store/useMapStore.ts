@@ -3,6 +3,11 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { RoutePoint, RouteResult, RoutingProfile, POI, POICategory, GPXFile, AuthUser, LocalRoute } from '@trailx/shared'
 import { POI_CATEGORIES } from '@trailx/shared'
 
+export type RouteSource = {
+  kind: 'local' | 'saved' | 'session' | 'group'
+  isOwner: boolean
+}
+
 // ── Measure tool ─────────────────────────────────────────────────────────────
 export const MEASURE_COLORS = [
   '#e74c3c', '#2ecc71', '#3498db', '#f39c12',
@@ -134,6 +139,11 @@ interface MapStoreActions {
   addLocalRoute: (route: LocalRoute) => void
   removeLocalRoute: (id: string) => void
   clearLocalRoutes: () => void
+  renameLocalRoute: (id: string, name: string) => void
+  updateLocalRoute: (id: string, waypoints: unknown[]) => void
+  // Route source / permissions
+  setActiveRouteSource: (source: RouteSource | null) => void
+  setActiveLocalRouteId: (id: string | null) => void
 }
 
 interface MapStore {
@@ -169,6 +179,10 @@ interface MapStore {
   debugSimulateAuth: boolean
   // Local routes (persisted — anonymous users)
   localRoutes: LocalRoute[]
+  // Tracks which local route is being actively edited (persisted)
+  activeLocalRouteId: string | null
+  // Tracks how the current route was loaded — determines edit permissions (NOT persisted)
+  activeRouteSource: RouteSource | null
   actions: MapStoreActions
 }
 
@@ -217,6 +231,8 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   isAccountOpen: false,
   debugSimulateAuth: false,
   localRoutes: [],
+  activeLocalRouteId: null,
+  activeRouteSource: null,
 
   actions: {
     addWaypoint: (point) =>
@@ -330,7 +346,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
 
     setWaypoints: (points) => set({ waypoints: assignTypes(points), routeResult: null, routeError: null }),
 
-    clearRoute: () => set({ waypoints: makeEmptyWaypoints(), routeResult: null, routeError: null }),
+    clearRoute: () => set({ waypoints: makeEmptyWaypoints(), routeResult: null, routeError: null, activeLocalRouteId: null, activeRouteSource: null }),
 
     setRouteResult: (result) => set({ routeResult: result }),
 
@@ -479,7 +495,21 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     removeLocalRoute: (id) =>
       set((state) => ({ localRoutes: state.localRoutes.filter((r) => r.id !== id) })),
 
-    clearLocalRoutes: () => set({ localRoutes: [] }),
+    clearLocalRoutes: () => set({ localRoutes: [], activeLocalRouteId: null }),
+
+    renameLocalRoute: (id, name) =>
+      set((state) => ({
+        localRoutes: state.localRoutes.map((r) => r.id === id ? { ...r, name } : r),
+      })),
+
+    updateLocalRoute: (id, waypoints) =>
+      set((state) => ({
+        localRoutes: state.localRoutes.map((r) => r.id === id ? { ...r, waypoints } : r),
+      })),
+
+    setActiveRouteSource: (source) => set({ activeRouteSource: source }),
+
+    setActiveLocalRouteId: (id) => set({ activeLocalRouteId: id }),
 
     loadRouteFromGPX: (gpxFile) =>
       set((state) => {
@@ -524,7 +554,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
   },
 }), {
   name: 'trailx-session',
-  version: 3,
+  version: 4,
   // JSON.stringify(NaN) === "null", so waypoints with lat/lng NaN are stored as null.
   // The reviver restores null back to NaN on every load, preventing runtime crashes
   // in components that call .toFixed() / .toFixed() on supposedly-numeric coordinates.
@@ -540,6 +570,9 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     }
     if (version < 3) {
       state.localRoutes = []
+    }
+    if (version < 4) {
+      state.activeLocalRouteId = null
     }
     // Ensure new AppSettings fields added after v2 have their default values
     const settings = state.appSettings as Partial<AppSettings> | undefined
@@ -557,5 +590,7 @@ export const useMapStore = create<MapStore>()(persist((set) => ({
     measureActiveSessionId: state.measureActiveSessionId,
     appSettings: state.appSettings,
     localRoutes: state.localRoutes,
+    activeLocalRouteId: state.activeLocalRouteId,
+    // activeRouteSource is intentionally NOT persisted (session-only)
   }),
 }))

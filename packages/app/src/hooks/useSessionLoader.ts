@@ -4,6 +4,17 @@ import type { AppSettings, MeasureSession } from '../store/useMapStore'
 import { getSession, SessionNotFoundError } from '../services/api'
 import { useMapStore } from '../store/useMapStore'
 
+const SESSION_TOKENS_KEY = 'trailx-session-tokens'
+
+function getStoredEditToken(sessionId: string): string | null {
+  try {
+    const tokens = JSON.parse(localStorage.getItem(SESSION_TOKENS_KEY) ?? '{}') as Record<string, string>
+    return tokens[sessionId] ?? null
+  } catch {
+    return null
+  }
+}
+
 export interface UseSessionLoaderReturn {
   isLoading: boolean
   error: string | null
@@ -43,7 +54,7 @@ export function useSessionLoader(): UseSessionLoaderReturn {
 
         const {
           clearRoute, addWaypoint, setRouteResult, updateSettings,
-          setStandalonePois, setMeasureSessions,
+          setStandalonePois, setMeasureSessions, setActiveRouteSource,
         } = useMapStore.getState().actions
 
         // Restore waypoints
@@ -61,6 +72,10 @@ export function useSessionLoader(): UseSessionLoaderReturn {
 
         // Restore settings
         updateSettings(payload.appSettings as Partial<AppSettings>)
+
+        // Set permissions: owner if they have the stored edit token for this session
+        const editToken = getStoredEditToken(sessionId!)
+        setActiveRouteSource({ kind: 'session', isOwner: editToken !== null })
 
         cleanUrl()
       } catch (err) {
